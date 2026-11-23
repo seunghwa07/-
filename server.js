@@ -14,6 +14,7 @@ const ICONS = ['🪖', '🐸', '🚀', '🐱', '🤖', '🦖'];
 const rooms = new Map();
 
 const send = (ws, m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
+const FUEL = 200, STEP = 3; // 턴마다 이동 가능한 거리(px), 한 번에 움직이는 거리
 const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
@@ -51,12 +52,13 @@ function newGame(r) {
     players: SPAWN.map((x, i) => ({ x, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   r.game.turn = r.game.players.findIndex(p => p.on);
+  r.game.fuel = FUEL;
 }
 
 function snapshot(r) {
   const g = r.game;
   return {
-    type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner,
+    type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel,
     players: g.players.map(p => ({ x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
   };
 }
@@ -106,7 +108,7 @@ function fire(r, shooter, angle, power) {
     });
   }
 
-  if (!checkEnd(r)) { g.turn = nextTurn(g, shooter); g.wind = rndWind(); }
+  if (!checkEnd(r)) { g.turn = nextTurn(g, shooter); g.wind = rndWind(); g.fuel = FUEL; }
   return { type: 'shot', by: shooter, angle, path, impact, state: snapshot(r) };
 }
 
@@ -128,7 +130,7 @@ function leave(ws) {
   else if (g) {
     if (g.players[i].on && g.winner === -1) {
       g.players[i].hp = 0;
-      if (!checkEnd(r) && g.turn === i) g.turn = nextTurn(g, i);
+      if (!checkEnd(r) && g.turn === i) { g.turn = nextTurn(g, i); g.fuel = FUEL; }
     }
     toRoom(r, snapshot(r));
   } else toRoom(r, roomMsg(r));
@@ -163,6 +165,17 @@ wss.on('connection', ws => {
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'start' && !r.game && ws.slot === host(r) && count(r) >= 2) {
       newGame(r); toRoom(r, snapshot(r)); pushList();
+    } else if (r && m.type === 'move') {
+      const g = r.game, now = Date.now();
+      if (!g || g.winner !== -1 || g.turn !== ws.slot || g.fuel <= 0 || now - (ws.lastMove || 0) < 30) return;
+      ws.lastMove = now;
+      const dir = m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0, p = g.players[ws.slot];
+      const nx = p.x + dir * STEP;
+      if (!dir || nx < 15 || nx > W - 15) return;
+      if (g.terrain[nx] < g.terrain[p.x] - 5) return; // 너무 가파른 오르막은 못 올라감
+      if (g.players.some((q, i) => i !== ws.slot && q.hp > 0 && Math.abs(q.x - nx) < 28)) return;
+      p.x = nx; g.fuel -= STEP;
+      toRoom(r, { type: 'moved', i: ws.slot, x: nx, y: g.terrain[nx], fuel: g.fuel });
     } else if (r && m.type === 'fire') {
       const g = r.game;
       if (!g || g.winner !== -1 || g.turn !== ws.slot || g.players[ws.slot].hp <= 0) return;

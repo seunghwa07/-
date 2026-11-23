@@ -2,7 +2,11 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
 <title>증강 포트리스</title>
 <style>
   :root{--bg:#04061a;--card:#080d28;--bd:#2a3556;--tx:#eef1ff;--sub:#9aa5c8;--in:#10163a;--pri:#8a3d14;--pri2:#c9651f;--btn:#1b2447}
@@ -32,13 +36,29 @@
   .pc .nm{font-weight:bold;font-size:17px;margin-top:4px;overflow:hidden;text-overflow:ellipsis}
   .pc .tg{font-size:12px;color:var(--sub);margin-top:2px}
   .code{font-family:monospace;letter-spacing:3px;color:var(--pri2)}
-  #info{padding:8px;font-size:16px}
-  canvas#c{width:100%;max-width:1000px;touch-action:none}
-  #ctl{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:1000px;padding:12px 20px}
-  #pad{position:relative;width:140px;height:140px;border-radius:50%;background:var(--in);border:2px solid var(--bd);touch-action:none}
-  #knob{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:#3a4}
-  #rd{text-align:center;font-size:16px}
-  #fire{width:110px;height:110px;border-radius:50%;font-size:22px;background:#d33;color:#fff}
+  /* ---------- 게임 화면 (항상 가로) ---------- */
+  #game{position:fixed;inset:0;background:#000;overflow:hidden;touch-action:none;overscroll-behavior:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;--ch:100vh}
+  /* 전체화면/방향 잠금이 안 되는 터치 기기(iOS 등)에서 세로로 들고 있으면 화면을 90° 돌려서 가로로 보여줘요 */
+  #game.force-land{inset:auto;top:0;left:0;width:var(--sh);height:var(--sw);transform-origin:0 0;transform:translateX(var(--sw)) rotate(90deg)}
+  #c{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+  #info{position:absolute;top:6px;left:50%;transform:translateX(-50%);background:#000a;color:#fff;padding:6px 14px;border-radius:14px;font-size:15px;white-space:nowrap;z-index:5}
+
+  /* 컨트롤 크기는 화면 높이에 맞춰 자동 조절 */
+  .pad,#fire,#fuel,#rd{--s:clamp(96px,calc(var(--ch) * .36),150px);--m:max(18px,env(safe-area-inset-left,0px));--b:max(16px,env(safe-area-inset-bottom,0px))}
+  .pad{position:absolute;bottom:var(--b);width:var(--s);height:var(--s);border-radius:50%;background:#ffffff22;border:2px solid #ffffff66;touch-action:none;z-index:5}
+  .pad::after{content:attr(data-l);position:absolute;top:-22px;left:0;right:0;text-align:center;color:#fffa;font-size:13px}
+  .knob{position:absolute;left:50%;top:50%;width:calc(var(--s) * .36);height:calc(var(--s) * .36);margin:calc(var(--s) * -.18);border-radius:50%;background:#3a4c;pointer-events:none}
+  #am .knob{background:#e55c}
+  #mv{left:var(--m)}
+  #am{right:var(--m)}
+  /* 발사 버튼: 조이스틱과 완전히 분리된 독립 버튼 (조준 조이스틱 왼쪽) */
+  #fire{position:absolute;right:calc(var(--m) + var(--s) + 22px);bottom:calc(var(--b) + 6px);width:calc(var(--s) * .72);height:calc(var(--s) * .72);padding:0;border-radius:50%;border:3px solid #fff8;font-size:clamp(15px,calc(var(--ch) * .045),22px);font-weight:bold;background:#d33;color:#fff;touch-action:none;z-index:5;box-shadow:0 4px 14px #0008}
+  #fire:active:not(:disabled){transform:scale(.94);background:#f44}
+  #fire:disabled{opacity:.4}
+  #fuel{position:absolute;left:var(--m);bottom:calc(var(--b) + var(--s) + 10px);width:var(--s);height:10px;background:#0009;border-radius:5px;overflow:hidden;z-index:5}
+  #fb{display:block;height:100%;width:0;background:#fc3}
+  #rd{position:absolute;right:var(--m);bottom:calc(var(--b) + var(--s) + 10px);color:#fff;background:#0009;padding:4px 10px;border-radius:10px;font-size:14px;z-index:5}
+  #fs{display:none;position:absolute;inset:0;background:#000d;color:#fff;align-items:center;justify-content:center;text-align:center;font-size:20px;padding:20px;line-height:1.6;z-index:20}
 </style>
 </head>
 <body>
@@ -78,14 +98,15 @@
   <div id="rmsg" style="margin-top:10px;color:var(--sub)"></div>
 </div>
 
-<div id="game" hidden style="width:100%;flex-direction:column;align-items:center">
-  <div id="info"></div>
+<div id="game" hidden>
   <canvas id="c" width="1000" height="600"></canvas>
-  <div id="ctl">
-    <div id="pad"><div id="knob"></div></div>
-    <div id="rd"></div>
-    <button id="fire">발사!</button>
-  </div>
+  <div id="info"></div>
+  <div id="fuel"><i id="fb"></i></div>
+  <div id="mv" class="pad" data-l="이동"><div class="knob"></div></div>
+  <div id="rd"></div>
+  <div id="am" class="pad" data-l="조준"><div class="knob"></div></div>
+  <button id="fire">🔥<br>발사!</button>
+  <div id="fs">👆 화면을 터치하면<br>가로 전체화면으로 시작해요</div>
 </div>
 
 <script src="maps.js"></script>
@@ -111,8 +132,9 @@ function el(tag, text, parent, css) {
   return e;
 }
 function show(v) {
+  const was = !$('game').hidden;
   ['menu', 'room', 'game'].forEach(x => { $(x).hidden = x !== v; });
-  $('game').style.display = v === 'game' ? 'flex' : 'none';
+  if (was && v !== 'game') exitFS();
 }
 const sendMsg = m => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
 
@@ -180,6 +202,11 @@ function onMsg(m) {
   else if (m.type === 'joined') me = m.you;
   else if (m.type === 'error') $('msg').textContent = m.msg;
   else if (m.type === 'room' || m.type === 'state') { if (anim) anim.pending = m; else apply(m); }
+  else if (m.type === 'moved') {
+    const t = anim ? anim.pending : st;
+    if (t && t.players) { const p = t.players[m.i]; p.x = m.x; p.y = m.y; t.fuel = m.fuel; }
+    ui();
+  }
   else if (m.type === 'shot') { aims[m.by] = m.angle; anim = { path: m.path, i: 0, impact: m.impact, pending: m.state }; ui(); }
 }
 
@@ -246,7 +273,7 @@ function renderRoom() {
   $('start').disabled = cnt < 2;
   $('rmsg').textContent = cnt < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : '';
 }
-$('start').onclick = () => sendMsg({ type: 'start' });
+$('start').onclick = () => { enterFS(); sendMsg({ type: 'start' }); };
 $('leave').onclick = () => { sendMsg({ type: 'leave' }); me = -1; st = null; show('menu'); };
 
 function apply(m) {
@@ -256,45 +283,100 @@ function apply(m) {
   if (fresh) {
     fresh = false;
     m.players.forEach((p, i) => { aims[i] = p.x < 500 ? 45 : 135; });
-    my.angle = aims[me]; my.power = 50; placeKnob();
+    my.angle = aims[me]; my.power = 50; placeAim(); showFsPrompt();
   }
   ui();
+}
+
+function canAct() {
+  return st && st.type === 'state' && me >= 0 && st.turn === me && st.winner === -1 && !anim && st.players[me].hp > 0;
 }
 
 function ui() {
   if (!st || st.type !== 'state') return;
   const mine = me >= 0 && st.players[me].on && st.players[me].hp > 0;
-  $('fire').disabled = !(mine && st.turn === me && st.winner === -1 && !anim);
+  $('fire').disabled = !canAct();
   $('rd').textContent = mine ? `각도 ${my.angle}° · 파워 ${my.power}` : '관전 중';
+  $('fb').style.width = (st.turn === me && st.winner === -1 ? Math.max(0, st.fuel) / 200 * 100 : 0) + '%';
   let t;
   if (st.winner !== -1) t = (st.winner === -2 ? '무승부' : st.winner === me ? '승리!' : `${st.players[st.winner].name} 승리`) + ' (잠시 후 대기실로)';
   else t = (st.turn === me ? '내 차례' : `${st.players[st.turn].name}의 차례`) + ' · 바람 ' + (st.wind > 0 ? '→ ' : st.wind < 0 ? '← ' : '') + Math.abs(st.wind);
   $('info').textContent = t;
 }
 
-// ---------- 조이스틱: 방향 = 각도(0~180°), 당긴 거리 = 파워 ----------
-const pad = $('pad'), knob = $('knob'); let drag = false;
-function placeKnob() {
-  const d = my.power / 100 * 70, a = my.angle * Math.PI / 180;
-  knob.style.transform = `translate(${Math.cos(a) * d}px,${-Math.sin(a) * d}px)`;
+// ---------- 가로 전체화면 ----------
+const rootEl = document.documentElement;
+const fsOK = !!(rootEl.requestFullscreen || rootEl.webkitRequestFullscreen);
+const inFS = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+async function enterFS() {
+  try { if (!inFS() && fsOK) await (rootEl.requestFullscreen || rootEl.webkitRequestFullscreen).call(rootEl); } catch (e) {}
+  try { await screen.orientation.lock('landscape'); } catch (e) {}
+  layout();
 }
-function stick(e) {
+function exitFS() {
+  try { screen.orientation.unlock(); } catch (e) {}
+  try { if (inFS()) (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
+}
+function showFsPrompt() { $('fs').style.display = fsOK && !inFS() && !$('game').hidden ? 'flex' : 'none'; }
+$('fs').onclick = () => { enterFS(); $('fs').style.display = 'none'; };
+function onFsChange() { layout(); if (!$('game').hidden) showFsPrompt(); }
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+
+// 화면 방향/크기에 맞춰 레이아웃 갱신: 터치 기기에서 세로면 게임 화면을 돌려서 가로로 보여줘요
+function layout() {
+  const w = innerWidth, h = innerHeight, g = $('game');
+  const rot = matchMedia('(pointer:coarse)').matches && h > w;
+  g.classList.toggle('force-land', rot);
+  g.style.setProperty('--sw', w + 'px');
+  g.style.setProperty('--sh', h + 'px');
+  g.style.setProperty('--ch', (rot ? w : h) + 'px');
+  placeAim();
+}
+addEventListener('resize', layout);
+addEventListener('orientationchange', () => setTimeout(layout, 150));
+
+// ---------- 조이스틱 (이동 / 조준 분리) ----------
+function makePad(pad, onMove, resetOnEnd) {
+  const knob = pad.firstElementChild; let drag = false;
+  const upd = e => {
+    const r = pad.getBoundingClientRect(), Rm = r.width / 2 * 0.7;
+    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    if ($('game').classList.contains('force-land')) [dx, dy] = [dy, -dx]; // 90° 회전 보정
+    const h = Math.hypot(dx, dy), k = Math.min(h, Rm) / (h || 1);
+    knob.style.transform = `translate(${dx * k}px,${dy * k}px)`;
+    onMove(dx, dy, Rm, h);
+  };
+  pad.onpointerdown = e => { drag = true; pad.setPointerCapture(e.pointerId); upd(e); };
+  pad.onpointermove = e => { if (drag) upd(e); };
+  pad.onpointerup = pad.onpointercancel = () => {
+    drag = false;
+    if (resetOnEnd) { knob.style.transform = ''; onMove(0, 0, 1, 0); }
+  };
+}
+
+// 이동: 좌우로 밀면 이동 (턴마다 연료 한도 안에서)
+let mvDir = 0;
+makePad($('mv'), (dx, dy, Rm) => { mvDir = dx > Rm * 0.3 ? 1 : dx < -Rm * 0.3 ? -1 : 0; }, true);
+setInterval(() => { if (mvDir && canAct() && st.fuel > 0) sendMsg({ type: 'move', dir: mvDir }); }, 40);
+
+// 조준: 방향 = 각도(0~180°), 당긴 거리 = 파워. 놓아도 값은 유지돼요.
+makePad($('am'), (dx, dy, Rm, h) => {
   if (me < 0) return;
-  const r = pad.getBoundingClientRect(), R = r.width / 2;
-  const dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
   let ang = Math.atan2(-dy, dx) * 180 / Math.PI;
   if (ang < 0) ang = dx >= 0 ? 0 : 180;
   my.angle = Math.round(ang);
-  my.power = Math.max(10, Math.min(100, Math.round(Math.hypot(dx, dy) / R * 100)));
-  aims[me] = my.angle; placeKnob(); ui();
+  my.power = Math.max(10, Math.min(100, Math.round(h / Rm * 100)));
+  aims[me] = my.angle; ui();
+}, false);
+function placeAim() {
+  const pad = $('am'), d = my.power / 100 * (pad.offsetWidth / 2 * 0.7), a = my.angle * Math.PI / 180;
+  pad.firstElementChild.style.transform = `translate(${Math.cos(a) * d}px,${-Math.sin(a) * d}px)`;
 }
-pad.onpointerdown = e => { drag = true; pad.setPointerCapture(e.pointerId); stick(e); };
-pad.onpointermove = e => drag && stick(e);
-pad.onpointerup = pad.onpointercancel = () => { drag = false; };
-placeKnob();
 
+// 발사: 별도 버튼
 $('fire').onclick = () => {
-  if ($('fire').disabled) return;
+  if (!canAct()) return;
   sendMsg({ type: 'fire', angle: my.angle, power: my.power });
   $('fire').disabled = true;
 };
@@ -344,6 +426,7 @@ function draw() {
 (function loop() { draw(); requestAnimationFrame(loop); })();
 
 show('menu');
+layout();
 if ($('url').value.trim()) connect(); else setConn(0, '서버 URL을 입력해 주세요');
 </script>
 </body>
