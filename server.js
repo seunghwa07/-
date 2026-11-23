@@ -10,6 +10,7 @@ const wss = new WebSocketServer({ server });
 
 const W = 1000, H = 600, G = 500, CRATER = 40, HIT_R = 18, MAX = 4, RANDOM_MAP = 4;
 const SPAWN = [100, 366, 633, 900];
+const ICONS = ['🪖', '🐸', '🚀', '🐱', '🤖', '🦖'];
 const rooms = new Map();
 
 const send = (ws, m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
@@ -17,7 +18,7 @@ const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
 const toRoom = (r, m) => r.slots.forEach(s => s && send(s.ws, m));
-const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, names: r.slots.map(s => s && s.name) });
+const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
 const listMsg = () => ({
   type: 'rooms',
   rooms: [...rooms.values()].map(r => ({
@@ -47,7 +48,7 @@ function newGame(r) {
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1,
-    players: SPAWN.map((x, i) => ({ x, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], name: r.slots[i] ? r.slots[i].name : '' })),
+    players: SPAWN.map((x, i) => ({ x, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   r.game.turn = r.game.players.findIndex(p => p.on);
 }
@@ -56,7 +57,7 @@ function snapshot(r) {
   const g = r.game;
   return {
     type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner,
-    players: g.players.map(p => ({ x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name })),
+    players: g.players.map(p => ({ x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
   };
 }
 
@@ -109,9 +110,9 @@ function fire(r, shooter, angle, power) {
   return { type: 'shot', by: shooter, angle, path, impact, state: snapshot(r) };
 }
 
-function join(ws, r, name) {
+function join(ws, r, name, icon) {
   const i = r.slots.indexOf(null);
-  r.slots[i] = { ws, name };
+  r.slots[i] = { ws, name, icon };
   ws.room = r; ws.slot = i;
   send(ws, { type: 'joined', code: r.code, you: i });
   toRoom(r, roomMsg(r));
@@ -142,18 +143,19 @@ wss.on('connection', ws => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     const r = ws.room;
     const name = String(m.name || '').trim().slice(0, 8) || '플레이어';
+    const icon = ICONS.includes(m.icon) ? m.icon : ICONS[0];
 
     if (m.type === 'create' && !r) {
       const code = newCode();
       const nr = { code, slots: Array(MAX).fill(null), mapId: 0, game: null };
       rooms.set(code, nr);
-      join(ws, nr, name);
+      join(ws, nr, name, icon);
     } else if (m.type === 'join' && !r) {
       const t = rooms.get(String(m.code || '').toUpperCase());
       if (!t) return send(ws, { type: 'error', msg: '방을 찾을 수 없어요' });
       if (t.game) return send(ws, { type: 'error', msg: '이미 게임이 진행 중이에요' });
       if (!t.slots.includes(null)) return send(ws, { type: 'error', msg: '방이 가득 찼어요' });
-      join(ws, t, name);
+      join(ws, t, name, icon);
     } else if (m.type === 'leave') {
       leave(ws); send(ws, listMsg());
     } else if (r && m.type === 'map' && !r.game && ws.slot === host(r)) {

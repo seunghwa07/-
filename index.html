@@ -5,51 +5,80 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>증강 포트리스</title>
 <style>
-  body{margin:0;background:#111;color:#eee;font:15px sans-serif;display:flex;flex-direction:column;align-items:center;user-select:none}
-  #menu,#room{width:100%;max-width:480px;padding:16px;box-sizing:border-box}
-  h2,h3{margin:12px 0 6px}
-  input{font-size:16px;padding:10px;border-radius:8px;border:1px solid #666;background:#222;color:#eee;box-sizing:border-box}
-  button{font-size:16px;border:0;border-radius:10px;color:#fff;background:#3a4;padding:10px 16px}
-  button:disabled{background:#555}
-  #msg{color:#fc6;min-height:20px}
+  :root{--bg:#04061a;--card:#080d28;--bd:#2a3556;--tx:#eef1ff;--sub:#9aa5c8;--in:#10163a;--pri:#8a3d14;--pri2:#c9651f;--btn:#1b2447}
+  body.light{--bg:#eef2fb;--card:#fff;--bd:#c9d2ea;--tx:#1a2140;--sub:#5a6485;--in:#f3f6fd;--pri:#e8873a;--pri2:#f5a25d;--btn:#e3e9f8}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);font:15px sans-serif;display:flex;flex-direction:column;align-items:center;user-select:none}
+  .card{width:calc(100% - 32px);max-width:480px;margin:28px 16px;padding:22px;border:2px solid var(--bd);border-radius:32px;background:var(--card);position:relative}
+  h1{text-align:center;margin:8px 0 4px;font-size:30px}
+  h2{margin:4px 0 8px}
+  h3{margin:18px 0 8px;font-size:16px}
+  .sub{text-align:center;color:var(--sub);margin:0 0 6px}
+  .logo{width:84px;height:84px;margin:14px auto 0;border-radius:24px;border:2px solid var(--pri2);background:var(--in);display:flex;align-items:center;justify-content:center;font-size:44px}
+  .chip{position:absolute;top:18px;right:18px;background:var(--btn);color:var(--tx);border:1px solid var(--bd);border-radius:14px;padding:8px 12px;font-size:14px}
+  input,select{font-size:16px;padding:13px;border-radius:16px;border:2px solid var(--bd);background:var(--in);color:var(--tx);width:100%;min-width:0}
+  .mono{font-family:monospace;font-size:14px}
+  .row{display:flex;gap:10px;align-items:stretch}
+  button{font-size:16px;border:0;border-radius:16px;color:var(--tx);background:var(--btn);padding:12px 16px;white-space:nowrap}
+  button.pri{background:var(--pri);color:#fff;font-weight:bold}
+  button.dan{background:#a33;color:#fff}
+  button:disabled{opacity:.45}
+  #conn{margin:6px 2px;font-size:13px;color:var(--sub)}
+  #msg{color:#fc6;min-height:20px;margin-top:6px}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pc{border:2px solid var(--bd);border-top-width:6px;border-radius:18px;padding:12px 6px;text-align:center;background:var(--in)}
+  .pc.empty{border-style:dashed;color:var(--sub);padding:30px 6px}
+  .pc .ic{font-size:38px;line-height:1.2}
+  .pc .nm{font-weight:bold;font-size:17px;margin-top:4px;overflow:hidden;text-overflow:ellipsis}
+  .pc .tg{font-size:12px;color:var(--sub);margin-top:2px}
+  .code{font-family:monospace;letter-spacing:3px;color:var(--pri2)}
   #info{padding:8px;font-size:16px}
   canvas#c{width:100%;max-width:1000px;touch-action:none}
-  #ctl{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:1000px;padding:12px 20px;box-sizing:border-box}
-  #pad{position:relative;width:140px;height:140px;border-radius:50%;background:#2a2a2a;border:2px solid #666;touch-action:none}
+  #ctl{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:1000px;padding:12px 20px}
+  #pad{position:relative;width:140px;height:140px;border-radius:50%;background:var(--in);border:2px solid var(--bd);touch-action:none}
   #knob{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:#3a4}
   #rd{text-align:center;font-size:16px}
-  #fire{width:110px;height:110px;border-radius:50%;font-size:22px;background:#d33}
-  #fire:disabled{background:#555}
+  #fire{width:110px;height:110px;border-radius:50%;font-size:22px;background:#d33;color:#fff}
 </style>
 </head>
 <body>
 
-<div id="menu">
-  <h2>증강 포트리스</h2>
-  <input id="name" maxlength="8" placeholder="닉네임 (최대 8자)" style="width:100%">
-  <div style="margin:10px 0"><button id="create" style="width:100%">방 만들기</button></div>
-  <div style="display:flex;gap:8px">
+<div id="menu" class="card">
+  <button id="theme" class="chip">☀️ 라이트</button>
+  <div class="logo">💥</div>
+  <h1>증강 포트리스</h1>
+  <p class="sub">지형을 부수고 마지막까지 살아남으세요!</p>
+
+  <h3>내 닉네임 및 탱크 모양</h3>
+  <div class="row"><input id="name" maxlength="8" placeholder="닉네임"><select id="icon"></select></div>
+
+  <h3>Render 서버 URL 주소</h3>
+  <input id="url" class="mono" placeholder="https://내서버.onrender.com" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <div id="conn"></div>
+
+  <div class="row" style="margin-top:10px">
+    <button id="create" class="pri" style="flex:1.2">🏠 방 만들기</button>
     <input id="code" maxlength="4" placeholder="방 코드" style="flex:1;text-transform:uppercase">
-    <button id="join">입장</button>
+    <button id="join">참가</button>
   </div>
   <div id="msg"></div>
   <h3>열린 방</h3>
   <div id="rooms"></div>
 </div>
 
-<div id="room" hidden>
-  <h2 id="rt"></h2>
-  <div id="plist"></div>
-  <h3>맵 <span id="mapnote" style="font-size:12px;color:#aaa"></span></h3>
+<div id="room" class="card" hidden>
+  <h2>방 코드 <span id="rc" class="code"></span></h2>
+  <div id="cards" class="cards"></div>
+  <h3>맵 <span id="mapnote" style="font-size:12px;color:var(--sub)"></span></h3>
   <div id="maps"></div>
-  <div style="margin-top:12px;display:flex;gap:8px">
-    <button id="start" style="flex:1">게임 시작</button>
-    <button id="leave" style="background:#a33">나가기</button>
+  <div class="row" style="margin-top:14px">
+    <button id="start" class="pri" style="flex:1">게임 시작</button>
+    <button id="leave" class="dan">나가기</button>
   </div>
-  <div id="rmsg" style="margin-top:8px;color:#aaa"></div>
+  <div id="rmsg" style="margin-top:10px;color:var(--sub)"></div>
 </div>
 
-<div id="game" hidden style="width:100%;display:flex;flex-direction:column;align-items:center">
+<div id="game" hidden style="width:100%;flex-direction:column;align-items:center">
   <div id="info"></div>
   <canvas id="c" width="1000" height="600"></canvas>
   <div id="ctl">
@@ -64,10 +93,16 @@
 const $ = id => document.getElementById(id);
 const cv = $('c'), ctx = cv.getContext('2d'), W = 1000, H = 600;
 const COLORS = ['#2a6fdb', '#d33', '#2a2', '#e90'];
+const ICONS = [['🪖', '탱크'], ['🐸', '개구리'], ['🚀', '우주선'], ['🐱', '고양이'], ['🤖', '로봇'], ['🦖', '공룡']];
 const MAPS = FMAP.MAPS, RANDOM = MAPS.length;
-let ws, me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
+let ws = null, wsUrl = '', pending = null, retry = null;
+let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 
+const ls = {
+  get: k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+};
 function el(tag, text, parent, css) {
   const e = document.createElement(tag);
   if (text != null) e.textContent = text;
@@ -75,23 +110,87 @@ function el(tag, text, parent, css) {
   parent.appendChild(e);
   return e;
 }
-function show(v) { ['menu', 'room', 'game'].forEach(x => { $(x).hidden = x !== v; }); }
-const sendMsg = m => ws.readyState === 1 && ws.send(JSON.stringify(m));
-function nick() {
-  const n = $('name').value.trim() || '플레이어';
-  try { localStorage.setItem('nick', n); } catch (e) {}
-  return n;
+function show(v) {
+  ['menu', 'room', 'game'].forEach(x => { $(x).hidden = x !== v; });
+  $('game').style.display = v === 'game' ? 'flex' : 'none';
 }
-try { $('name').value = localStorage.getItem('nick') || ''; } catch (e) {}
+const sendMsg = m => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
+
+// ---------- 테마 / 입력 초기값 ----------
+function setTheme(light) {
+  document.body.classList.toggle('light', light);
+  $('theme').textContent = light ? '🌙 다크' : '☀️ 라이트';
+  ls.set('theme', light ? 'light' : 'dark');
+}
+$('theme').onclick = () => setTheme(!document.body.classList.contains('light'));
+setTheme(ls.get('theme') === 'light');
+
+ICONS.forEach(([e, n]) => { const o = el('option', `${e} ${n}`, $('icon')); o.value = e; });
+$('name').value = ls.get('nick') || '여행자';
+$('icon').value = ls.get('icon') || ICONS[0][0];
+$('url').value = ls.get('url') || (location.protocol.startsWith('http') ? location.origin : '');
+const profile = () => {
+  const name = $('name').value.trim() || '여행자';
+  ls.set('nick', name); ls.set('icon', $('icon').value);
+  return { name, icon: $('icon').value };
+};
+
+// ---------- 서버 연결 ----------
+function toWs(u) {
+  u = u.trim().replace(/\/+$/, '');
+  if (!u) return '';
+  if (/^wss?:\/\//.test(u)) return u;
+  if (/^https?:\/\//.test(u)) return u.replace(/^http/, 'ws');
+  return (/^(localhost|127\.|192\.168\.)/.test(u) ? 'ws://' : 'wss://') + u;
+}
+function setConn(level, text) { $('conn').textContent = ['🔴 ', '🟡 ', '🟢 '][level] + text; }
+
+function connect() {
+  clearTimeout(retry);
+  const u = toWs($('url').value);
+  if (!u) { setConn(0, '서버 URL을 입력해 주세요'); return; }
+  wsUrl = u; ls.set('url', $('url').value.trim());
+  if (ws) { ws.onclose = null; ws.close(); }
+  setConn(1, '연결 중... (Render 무료 서버는 깨어나는 데 최대 1분 걸려요)');
+  let s;
+  try { s = new WebSocket(u); } catch (e) { setConn(0, '올바르지 않은 주소예요'); return; }
+  ws = s;
+  s.onopen = () => {
+    if (ws !== s) return;
+    setConn(2, '서버에 연결됨'); $('msg').textContent = '';
+    if (pending) { const p = pending; pending = null; sendMsg(p); }
+  };
+  s.onmessage = e => { if (ws === s) onMsg(JSON.parse(e.data)); };
+  s.onclose = () => {
+    if (ws !== s) return;
+    ws = null; show('menu'); me = -1; st = null; anim = null;
+    setConn(0, '연결이 끊겼어요. 다시 연결하는 중...');
+    retry = setTimeout(connect, 2500);
+  };
+}
+function act(m) {
+  if (toWs($('url').value) !== wsUrl || !ws || ws.readyState > 1) { pending = m; connect(); $('msg').textContent = '서버에 연결하는 중이에요...'; return; }
+  if (ws.readyState === 0) { pending = m; $('msg').textContent = '서버에 연결하는 중이에요...'; return; }
+  sendMsg(m);
+}
+$('url').onchange = connect;
+
+function onMsg(m) {
+  if (m.type === 'rooms') { rooms = m.rooms; renderRooms(); }
+  else if (m.type === 'joined') me = m.you;
+  else if (m.type === 'error') $('msg').textContent = m.msg;
+  else if (m.type === 'room' || m.type === 'state') { if (anim) anim.pending = m; else apply(m); }
+  else if (m.type === 'shot') { aims[m.by] = m.angle; anim = { path: m.path, i: 0, impact: m.impact, pending: m.state }; ui(); }
+}
 
 // ---------- 메뉴 ----------
-$('create').onclick = () => sendMsg({ type: 'create', name: nick() });
+$('create').onclick = () => act({ type: 'create', ...profile() });
 $('join').onclick = () => joinRoom($('code').value);
-function joinRoom(code) { $('msg').textContent = ''; sendMsg({ type: 'join', name: nick(), code }); }
+function joinRoom(code) { $('msg').textContent = ''; act({ type: 'join', code, ...profile() }); }
 
 function renderRooms() {
   const box = $('rooms'); box.textContent = '';
-  if (!rooms.length) el('div', '열린 방이 없어요. 방을 만들어 보세요.', box, 'color:#aaa');
+  if (!rooms.length) el('div', '열린 방이 없어요. 방을 만들어 보세요.', box, 'color:var(--sub)');
   rooms.forEach(r => {
     const label = `${r.code} · ${r.host}의 방 · ${r.count}/4 · ${r.map === RANDOM ? '랜덤' : MAPS[r.map].name}${r.playing ? ' (게임 중)' : ''}`;
     const b = el('button', label, box, 'display:block;margin:6px 0;width:100%;text-align:left');
@@ -118,7 +217,7 @@ function preview(c, id) {
 }
 const mapCards = [];
 for (let id = 0; id <= RANDOM; id++) {
-  const d = el('div', null, $('maps'), 'display:inline-block;margin:4px;padding:4px;border:2px solid #555;border-radius:8px;cursor:pointer;text-align:center');
+  const d = el('div', null, $('maps'), 'display:inline-block;margin:4px;padding:4px;border:2px solid var(--bd);border-radius:12px;cursor:pointer;text-align:center');
   const c = el('canvas', null, d); c.width = 120; c.height = 70;
   preview(c, id);
   el('div', id === RANDOM ? '랜덤' : MAPS[id].name, d);
@@ -127,39 +226,28 @@ for (let id = 0; id <= RANDOM; id++) {
 }
 
 function renderRoom() {
-  $('rt').textContent = '방 코드 ' + st.code;
-  const box = $('plist'); box.textContent = '';
+  $('rc').textContent = st.code;
+  const box = $('cards'); box.textContent = '';
   st.names.forEach((n, i) => {
-    const label = n ? `P${i + 1} ${n}${i === st.host ? ' 👑' : ''}${i === me ? ' (나)' : ''}` : `P${i + 1} 비어 있음`;
-    el('div', label, box, `color:${n ? COLORS[i] : '#666'};margin:3px 0`);
+    const c = el('div', null, box, `border-top-color:${n ? COLORS[i] : 'var(--bd)'}`);
+    c.className = 'pc' + (n ? '' : ' empty');
+    if (!n) { el('div', '대기 중...', c); return; }
+    el('div', st.icons[i] || '🪖', c).className = 'ic';
+    el('div', n, c).className = 'nm';
+    el('div', `P${i + 1}${i === st.host ? ' · 👑 방장' : ''}${i === me ? ' · 나' : ''}`, c).className = 'tg';
   });
-  const isHost = me === st.host, n = st.names.filter(Boolean).length;
-  mapCards.forEach((d, i) => { d.style.borderColor = i === st.mapId ? '#ff0' : '#555'; d.style.opacity = isHost || i === st.mapId ? 1 : 0.6; });
+  const isHost = me === st.host, cnt = st.names.filter(Boolean).length;
+  mapCards.forEach((d, i) => {
+    d.style.borderColor = i === st.mapId ? '#ff0' : 'var(--bd)';
+    d.style.opacity = isHost || i === st.mapId ? 1 : 0.6;
+  });
   $('mapnote').textContent = isHost ? '(방장이 선택)' : '(방장이 선택해요)';
   $('start').hidden = !isHost;
-  $('start').disabled = n < 2;
-  $('rmsg').textContent = n < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : '';
+  $('start').disabled = cnt < 2;
+  $('rmsg').textContent = cnt < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : '';
 }
 $('start').onclick = () => sendMsg({ type: 'start' });
 $('leave').onclick = () => { sendMsg({ type: 'leave' }); me = -1; st = null; show('menu'); };
-
-// ---------- 통신 ----------
-function connect() {
-  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-  ws.onmessage = e => {
-    const m = JSON.parse(e.data);
-    if (m.type === 'rooms') { rooms = m.rooms; renderRooms(); }
-    else if (m.type === 'joined') me = m.you;
-    else if (m.type === 'error') $('msg').textContent = m.msg;
-    else if (m.type === 'room' || m.type === 'state') { if (anim) anim.pending = m; else apply(m); }
-    else if (m.type === 'shot') { aims[m.by] = m.angle; anim = { path: m.path, i: 0, impact: m.impact, pending: m.state }; ui(); }
-  };
-  ws.onclose = () => {
-    show('menu'); me = -1; st = null; anim = null;
-    $('msg').textContent = '연결이 끊겼어요. 재접속 중...';
-    setTimeout(connect, 1500);
-  };
-}
 
 function apply(m) {
   st = m;
@@ -235,8 +323,8 @@ function draw() {
     ctx.moveTo(p.x, p.y - 12); ctx.lineTo(p.x + Math.cos(a) * 22, p.y - 12 - Math.sin(a) * 22); ctx.stroke();
     ctx.fillStyle = '#000'; ctx.fillRect(p.x - 20, p.y - 34, 40, 6);
     ctx.fillStyle = '#4f4'; ctx.fillRect(p.x - 20, p.y - 34, 40 * p.hp / 100, 6);
-    ctx.fillStyle = '#fff'; ctx.fillText(i === me ? '나' : p.name, p.x, p.y - 40);
-    if (st.turn === i && st.winner === -1) { ctx.fillStyle = '#ff0'; ctx.fillText('▼', p.x, p.y - 54); }
+    ctx.fillStyle = '#fff'; ctx.fillText(`${p.icon || ''} ${i === me ? '나' : p.name}`, p.x, p.y - 40);
+    if (st.turn === i && st.winner === -1) { ctx.fillStyle = '#ff0'; ctx.fillText('▼', p.x, p.y - 56); }
   });
 
   if (anim) {
@@ -254,7 +342,9 @@ function draw() {
   }
 }
 (function loop() { draw(); requestAnimationFrame(loop); })();
-connect();
+
+show('menu');
+if ($('url').value.trim()) connect(); else setConn(0, '서버 URL을 입력해 주세요');
 </script>
 </body>
 </html>
