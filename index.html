@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>증강 포트리스</title>
+<style>
+  body{margin:0;background:#111;color:#eee;font:15px sans-serif;display:flex;flex-direction:column;align-items:center;user-select:none}
+  #menu,#room{width:100%;max-width:480px;padding:16px;box-sizing:border-box}
+  h2,h3{margin:12px 0 6px}
+  input{font-size:16px;padding:10px;border-radius:8px;border:1px solid #666;background:#222;color:#eee;box-sizing:border-box}
+  button{font-size:16px;border:0;border-radius:10px;color:#fff;background:#3a4;padding:10px 16px}
+  button:disabled{background:#555}
+  #msg{color:#fc6;min-height:20px}
+  #info{padding:8px;font-size:16px}
+  canvas#c{width:100%;max-width:1000px;touch-action:none}
+  #ctl{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:1000px;padding:12px 20px;box-sizing:border-box}
+  #pad{position:relative;width:140px;height:140px;border-radius:50%;background:#2a2a2a;border:2px solid #666;touch-action:none}
+  #knob{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:#3a4}
+  #rd{text-align:center;font-size:16px}
+  #fire{width:110px;height:110px;border-radius:50%;font-size:22px;background:#d33}
+  #fire:disabled{background:#555}
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <h2>증강 포트리스</h2>
+  <input id="name" maxlength="8" placeholder="닉네임 (최대 8자)" style="width:100%">
+  <div style="margin:10px 0"><button id="create" style="width:100%">방 만들기</button></div>
+  <div style="display:flex;gap:8px">
+    <input id="code" maxlength="4" placeholder="방 코드" style="flex:1;text-transform:uppercase">
+    <button id="join">입장</button>
+  </div>
+  <div id="msg"></div>
+  <h3>열린 방</h3>
+  <div id="rooms"></div>
+</div>
+
+<div id="room" hidden>
+  <h2 id="rt"></h2>
+  <div id="plist"></div>
+  <h3>맵 <span id="mapnote" style="font-size:12px;color:#aaa"></span></h3>
+  <div id="maps"></div>
+  <div style="margin-top:12px;display:flex;gap:8px">
+    <button id="start" style="flex:1">게임 시작</button>
+    <button id="leave" style="background:#a33">나가기</button>
+  </div>
+  <div id="rmsg" style="margin-top:8px;color:#aaa"></div>
+</div>
+
+<div id="game" hidden style="width:100%;display:flex;flex-direction:column;align-items:center">
+  <div id="info"></div>
+  <canvas id="c" width="1000" height="600"></canvas>
+  <div id="ctl">
+    <div id="pad"><div id="knob"></div></div>
+    <div id="rd"></div>
+    <button id="fire">발사!</button>
+  </div>
+</div>
+
+<script src="maps.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d'), W = 1000, H = 600;
+const COLORS = ['#2a6fdb', '#d33', '#2a2', '#e90'];
+const MAPS = FMAP.MAPS, RANDOM = MAPS.length;
+let ws, me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
+const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
+
+function el(tag, text, parent, css) {
+  const e = document.createElement(tag);
+  if (text != null) e.textContent = text;
+  if (css) e.style.cssText = css;
+  parent.appendChild(e);
+  return e;
+}
+function show(v) { ['menu', 'room', 'game'].forEach(x => { $(x).hidden = x !== v; }); }
+const sendMsg = m => ws.readyState === 1 && ws.send(JSON.stringify(m));
+function nick() {
+  const n = $('name').value.trim() || '플레이어';
+  try { localStorage.setItem('nick', n); } catch (e) {}
+  return n;
+}
+try { $('name').value = localStorage.getItem('nick') || ''; } catch (e) {}
+
+// ---------- 메뉴 ----------
+$('create').onclick = () => sendMsg({ type: 'create', name: nick() });
+$('join').onclick = () => joinRoom($('code').value);
+function joinRoom(code) { $('msg').textContent = ''; sendMsg({ type: 'join', name: nick(), code }); }
+
+function renderRooms() {
+  const box = $('rooms'); box.textContent = '';
+  if (!rooms.length) el('div', '열린 방이 없어요. 방을 만들어 보세요.', box, 'color:#aaa');
+  rooms.forEach(r => {
+    const label = `${r.code} · ${r.host}의 방 · ${r.count}/4 · ${r.map === RANDOM ? '랜덤' : MAPS[r.map].name}${r.playing ? ' (게임 중)' : ''}`;
+    const b = el('button', label, box, 'display:block;margin:6px 0;width:100%;text-align:left');
+    b.disabled = r.playing || r.count >= 4;
+    b.onclick = () => joinRoom(r.code);
+  });
+}
+
+// ---------- 대기실 ----------
+function preview(c, id) {
+  const x = c.getContext('2d');
+  if (id === RANDOM) {
+    x.fillStyle = '#333'; x.fillRect(0, 0, c.width, c.height);
+    x.fillStyle = '#fff'; x.font = '36px sans-serif'; x.textAlign = 'center'; x.fillText('?', c.width / 2, 46);
+    return;
+  }
+  const m = MAPS[id], t = FMAP.terrain(id), sx = c.width / W, sy = c.height / H;
+  const g = x.createLinearGradient(0, 0, 0, c.height);
+  g.addColorStop(0, m.sky[0]); g.addColorStop(1, m.sky[1]);
+  x.fillStyle = g; x.fillRect(0, 0, c.width, c.height);
+  x.fillStyle = m.ground; x.beginPath(); x.moveTo(0, c.height);
+  for (let i = 0; i < W; i += 5) x.lineTo(i * sx, t[i] * sy);
+  x.lineTo(c.width, c.height); x.fill();
+}
+const mapCards = [];
+for (let id = 0; id <= RANDOM; id++) {
+  const d = el('div', null, $('maps'), 'display:inline-block;margin:4px;padding:4px;border:2px solid #555;border-radius:8px;cursor:pointer;text-align:center');
+  const c = el('canvas', null, d); c.width = 120; c.height = 70;
+  preview(c, id);
+  el('div', id === RANDOM ? '랜덤' : MAPS[id].name, d);
+  d.onclick = () => { if (st && st.type === 'room' && me === st.host) sendMsg({ type: 'map', id }); };
+  mapCards.push(d);
+}
+
+function renderRoom() {
+  $('rt').textContent = '방 코드 ' + st.code;
+  const box = $('plist'); box.textContent = '';
+  st.names.forEach((n, i) => {
+    const label = n ? `P${i + 1} ${n}${i === st.host ? ' 👑' : ''}${i === me ? ' (나)' : ''}` : `P${i + 1} 비어 있음`;
+    el('div', label, box, `color:${n ? COLORS[i] : '#666'};margin:3px 0`);
+  });
+  const isHost = me === st.host, n = st.names.filter(Boolean).length;
+  mapCards.forEach((d, i) => { d.style.borderColor = i === st.mapId ? '#ff0' : '#555'; d.style.opacity = isHost || i === st.mapId ? 1 : 0.6; });
+  $('mapnote').textContent = isHost ? '(방장이 선택)' : '(방장이 선택해요)';
+  $('start').hidden = !isHost;
+  $('start').disabled = n < 2;
+  $('rmsg').textContent = n < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : '';
+}
+$('start').onclick = () => sendMsg({ type: 'start' });
+$('leave').onclick = () => { sendMsg({ type: 'leave' }); me = -1; st = null; show('menu'); };
+
+// ---------- 통신 ----------
+function connect() {
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === 'rooms') { rooms = m.rooms; renderRooms(); }
+    else if (m.type === 'joined') me = m.you;
+    else if (m.type === 'error') $('msg').textContent = m.msg;
+    else if (m.type === 'room' || m.type === 'state') { if (anim) anim.pending = m; else apply(m); }
+    else if (m.type === 'shot') { aims[m.by] = m.angle; anim = { path: m.path, i: 0, impact: m.impact, pending: m.state }; ui(); }
+  };
+  ws.onclose = () => {
+    show('menu'); me = -1; st = null; anim = null;
+    $('msg').textContent = '연결이 끊겼어요. 재접속 중...';
+    setTimeout(connect, 1500);
+  };
+}
+
+function apply(m) {
+  st = m;
+  if (m.type === 'room') { fresh = true; show('room'); renderRoom(); return; }
+  show('game');
+  if (fresh) {
+    fresh = false;
+    m.players.forEach((p, i) => { aims[i] = p.x < 500 ? 45 : 135; });
+    my.angle = aims[me]; my.power = 50; placeKnob();
+  }
+  ui();
+}
+
+function ui() {
+  if (!st || st.type !== 'state') return;
+  const mine = me >= 0 && st.players[me].on && st.players[me].hp > 0;
+  $('fire').disabled = !(mine && st.turn === me && st.winner === -1 && !anim);
+  $('rd').textContent = mine ? `각도 ${my.angle}° · 파워 ${my.power}` : '관전 중';
+  let t;
+  if (st.winner !== -1) t = (st.winner === -2 ? '무승부' : st.winner === me ? '승리!' : `${st.players[st.winner].name} 승리`) + ' (잠시 후 대기실로)';
+  else t = (st.turn === me ? '내 차례' : `${st.players[st.turn].name}의 차례`) + ' · 바람 ' + (st.wind > 0 ? '→ ' : st.wind < 0 ? '← ' : '') + Math.abs(st.wind);
+  $('info').textContent = t;
+}
+
+// ---------- 조이스틱: 방향 = 각도(0~180°), 당긴 거리 = 파워 ----------
+const pad = $('pad'), knob = $('knob'); let drag = false;
+function placeKnob() {
+  const d = my.power / 100 * 70, a = my.angle * Math.PI / 180;
+  knob.style.transform = `translate(${Math.cos(a) * d}px,${-Math.sin(a) * d}px)`;
+}
+function stick(e) {
+  if (me < 0) return;
+  const r = pad.getBoundingClientRect(), R = r.width / 2;
+  const dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+  let ang = Math.atan2(-dy, dx) * 180 / Math.PI;
+  if (ang < 0) ang = dx >= 0 ? 0 : 180;
+  my.angle = Math.round(ang);
+  my.power = Math.max(10, Math.min(100, Math.round(Math.hypot(dx, dy) / R * 100)));
+  aims[me] = my.angle; placeKnob(); ui();
+}
+pad.onpointerdown = e => { drag = true; pad.setPointerCapture(e.pointerId); stick(e); };
+pad.onpointermove = e => drag && stick(e);
+pad.onpointerup = pad.onpointercancel = () => { drag = false; };
+placeKnob();
+
+$('fire').onclick = () => {
+  if ($('fire').disabled) return;
+  sendMsg({ type: 'fire', angle: my.angle, power: my.power });
+  $('fire').disabled = true;
+};
+
+// ---------- 렌더링 ----------
+function draw() {
+  if (!st || st.type !== 'state') return;
+  const th = MAPS[st.map];
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, th.sky[0]); g.addColorStop(1, th.sky[1]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = th.ground; ctx.beginPath(); ctx.moveTo(0, H);
+  for (let x = 0; x < W; x++) ctx.lineTo(x, st.terrain[x]);
+  ctx.lineTo(W, H); ctx.fill();
+  ctx.strokeStyle = th.grass; ctx.lineWidth = 3; ctx.beginPath();
+  for (let x = 0; x < W; x++) x ? ctx.lineTo(x, st.terrain[x]) : ctx.moveTo(x, st.terrain[x]);
+  ctx.stroke();
+
+  ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
+  st.players.forEach((p, i) => {
+    if (!p.on || p.hp <= 0) return;
+    const a = aims[i] * Math.PI / 180;
+    ctx.fillStyle = COLORS[i]; ctx.fillRect(p.x - 14, p.y - 10, 28, 10);
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 5; ctx.beginPath();
+    ctx.moveTo(p.x, p.y - 12); ctx.lineTo(p.x + Math.cos(a) * 22, p.y - 12 - Math.sin(a) * 22); ctx.stroke();
+    ctx.fillStyle = '#000'; ctx.fillRect(p.x - 20, p.y - 34, 40, 6);
+    ctx.fillStyle = '#4f4'; ctx.fillRect(p.x - 20, p.y - 34, 40 * p.hp / 100, 6);
+    ctx.fillStyle = '#fff'; ctx.fillText(i === me ? '나' : p.name, p.x, p.y - 40);
+    if (st.turn === i && st.winner === -1) { ctx.fillStyle = '#ff0'; ctx.fillText('▼', p.x, p.y - 54); }
+  });
+
+  if (anim) {
+    const pt = anim.path[Math.min(anim.i, anim.path.length - 1)];
+    ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(pt[0], pt[1], 4, 0, 7); ctx.fill();
+    if (++anim.i >= anim.path.length) {
+      if (anim.impact) boom = { x: anim.impact[0], y: anim.impact[1], t: 0 };
+      const next = anim.pending; anim = null; apply(next);
+    }
+  }
+  if (boom) {
+    ctx.fillStyle = `rgba(255,170,0,${1 - boom.t / 20})`;
+    ctx.beginPath(); ctx.arc(boom.x, boom.y, 20 + boom.t * 1.5, 0, 7); ctx.fill();
+    if (++boom.t > 20) boom = null;
+  }
+}
+(function loop() { draw(); requestAnimationFrame(loop); })();
+connect();
+</script>
+</body>
+</html>
