@@ -593,13 +593,13 @@ function buildBg(th, mapId) {
   // 노란 빛 번짐
   for (let i = 0; i < 3; i++) {
     const x = rnd() * W, y = rnd() * H * .5, r = 110 + rnd() * 70, g = c.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, 'hsla(50,100,65,.22)'); g.addColorStop(1, 'hsla(50,100,60,0)');
+    g.addColorStop(0, hsl(50, 100, 65, .22)); g.addColorStop(1, hsl(50, 100, 60, 0));
     c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
   }
   // 반짝이는 먼지/별
   for (let i = 0; i < 190; i++) {
     const x = rnd() * W, y = rnd() * H * .78, r = .5 + rnd() * 1.1, al = .15 + rnd() * .5;
-    c.fillStyle = rnd() < .4 ? `hsla(50,100,75,${al})` : `rgba(255,255,255,${al})`; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+    c.fillStyle = rnd() < .4 ? hsl(50, 100, 75, al) : `rgba(255,255,255,${al})`; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
   }
   twink = Array.from({ length: 14 }, () => ({ x: 20 + rnd() * (W - 40), y: 12 + rnd() * 95, r: 1 + rnd() * 1.5, ph: rnd() * 6.28, sp: .8 + rnd() * 1.6 }));
   c.globalCompositeOperation = 'source-over';
@@ -676,7 +676,16 @@ function drawPreview(p) {
 function draw() {
   if (!st || st.type !== 'state') return;
   const th = MAPS[st.map];
-  if (sceneKey !== st.terrain) { buildScene(th, st.terrain, st.map); sceneKey = st.terrain; }
+  if (sceneKey !== st.terrain) {
+    try { buildScene(th, st.terrain, st.map); }
+    catch (e) {   // 배경 생성이 실패해도 게임은 보이게: 단순 배경 + 지형만 그려요
+      console.error('buildScene', e);
+      const c = sceneCv.getContext('2d'); c.setTransform(S, 0, 0, S, 0, 0); c.fillStyle = '#0a1030'; c.fillRect(0, 0, W, H);
+      c.fillStyle = th.neon; c.beginPath(); c.moveTo(0, H); st.terrain.forEach((y, x) => c.lineTo(x, y)); c.lineTo(W, H); c.closePath(); c.fill();
+      edgePath = new Path2D(); edgePath.moveTo(0, st.terrain[0]); st.terrain.forEach((y, x) => edgePath.lineTo(x, y));
+    }
+    sceneKey = st.terrain;
+  }
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(sceneCv, 0, 0);
   ctx.setTransform(S, 0, 0, S, 0, 0);
