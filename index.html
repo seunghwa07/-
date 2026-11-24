@@ -312,7 +312,7 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 2배 · 폭발 면적 3배'], ['pierce', '관통탄', '뾰족한 탄이 땅을 뚫고 날아가 바로 공격 · 피해는 기본탄보다 약간 약함 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 
 const ls = {
@@ -430,7 +430,7 @@ function onMsg(m) {
     else anim = { order: true, ranks: m.ranks, shells: m.shots.map(s => ({ path: s.path, impact: s.impact, by: s.by, boomed: false })), i: 0, pending: m.state, by: -1, kind: 'basic', dud: false };
     ui();
   }
-  else if (m.type === 'shot') { aims[m.by] = m.angle; fireFx(m.by, m.angle); anim = { shells: m.shells.map(s => ({ path: s.path, impact: s.impact, boomed: false, gen: s.gen || 0, splits: s.splits || [] })), i: 0, pending: m.state, by: m.by, kind: m.kind, dud: m.dud, carpet: m.carpet }; ui(); }
+  else if (m.type === 'shot') { aims[m.by] = m.angle; fireFx(m.by, m.angle); anim = { shells: m.shells.map(s => ({ path: s.path, impact: s.impact, hit: s.hit ?? null, hd: s.hd || 0, boomed: false, gen: s.gen || 0, splits: s.splits || [] })), i: 0, pending: m.state, by: m.by, kind: m.kind, dud: m.dud, carpet: m.carpet }; ui(); }
 }
 
 // ---------- 메뉴 ----------
@@ -1399,6 +1399,33 @@ function drawLaser(an) {
   ctx.restore();
 }
 
+const DRILL_FR = 50, DRILL_TICKS = [0, 16, 33];   // 드릴 갈기 길이(프레임) / 착탄 피해 → 드르륵 두 번 시점 (세 번째 드르륵은 끝날 때 결과와 함께)
+function pierceFx(A, s, an) {   // 관통탄: 땅속을 드릴로 파고 지나가며 흙을 튀기고, 탱크에 닿으면 그 자리에서 2씩 3번 갈아요
+  const L = s.path.length, idx = Math.min(A.i, L - 1), pt = ptAt(s.path, idx), q = ptAt(s.path, idx - 1.5);
+  const ang = Math.atan2(pt[1] - q[1], pt[0] - q[0]), under = underGround(pt[0], pt[1]);
+  an.under = under;
+  if (A.i < L) {
+    if (under !== !!s.wasUnder && A.i > 2) { drillBits(pt[0], pt[1], under ? ang : ang + Math.PI, 16, false); FX.shake = Math.max(FX.shake, 3); }   // 땅에 박힐 때 / 뚫고 나올 때 흙이 확 튀어요
+    s.wasUnder = under;
+    if (under) { drillBits(pt[0], pt[1], ang, 2, false); if (Math.random() < .25) drillBits(pt[0], pt[1], ang, 1, true); FX.shake = Math.max(FX.shake, 1.2); }
+    return;
+  }
+  if (s.hit == null) return;
+  an.grind = true;
+  const f = (A.i - L) / FMAP.SHOT_SPEED;   // 갈기 시작 후 지난 프레임
+  drillBits(pt[0], pt[1], ang, 3, true);
+  s.ticks = s.ticks || 0;
+  while (s.ticks < DRILL_TICKS.length && f >= DRILL_TICKS[s.ticks]) {   // 드르륵! 체력을 화면에서 먼저 2씩 깎아 보여줘요 (마지막 한 번은 결과가 올 때)
+    s.ticks++;
+    const p = st.players[s.hit], fin = A.pending && A.pending.players[s.hit] ? A.pending.players[s.hit].hp : 0;
+    if (!p) continue;
+    const amt = s.ticks === 1 ? s.hd : 2, nh = Math.max(fin, 1, p.hp - amt), d = p.hp - nh;   // 첫 번째는 착탄 피해(14), 그다음부터 드릴 2씩
+    if (d > 0) { p.hp = nh; FX.floats.push({ x: p.x + (s.ticks === 1 ? 0 : (s.ticks - 2.5) * 16), y: p.y - 120, t: 0, txt: '-' + d, big: s.ticks === 1 }); }
+    drillBits(pt[0], pt[1], ang, 14, true); FX.shake = Math.max(FX.shake, 5); FX.flash = Math.max(FX.flash, .06);
+  }
+  FX.shake = Math.max(FX.shake, 2.2);
+}
+
 function drawShell(an) {   // an: { path, i, by, kind, small, big }
   if (an.kind === 'laser') { drawLaser(an); return; }
   const idx = Math.min(an.i, an.path.length - 1), pt = ptAt(an.path, idx), L = an.small ? 18 : 34;
@@ -1424,12 +1451,54 @@ function drawShell(an) {   // an: { path, i, by, kind, small, big }
   if (red > 0) { const fl = .5 + .5 * Math.sin(performance.now() / 45); ctx.fillStyle = `rgba(255,40,30,${red * (.25 + .35 * fl)})`; ctx.beginPath(); ctx.arc(pt[0], pt[1], (26 + 10 * fl) * Z, 0, 7); ctx.fill(); }
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = red > 0 ? mixHex('#ffffff', '#ff5a4a', red) : '#fff'; ctx.beginPath(); ctx.arc(pt[0], pt[1], 3.4 * Z, 0, 7); ctx.fill();
-  if (an.kind === 'pierce' && idx > 0) {   // 관통탄: 진행 방향을 가리키는 뾰족한 촉
-    const q = ptAt(an.path, idx - 1), ang = Math.atan2(pt[1] - q[1], pt[0] - q[0]);
-    ctx.translate(pt[0], pt[1]); ctx.rotate(ang); ctx.scale(Z, Z);
-    ctx.fillStyle = '#e8f0ff'; ctx.strokeStyle = col; ctx.lineWidth = 1.4; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-6, -5); ctx.lineTo(-3, 0); ctx.lineTo(-6, 5); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (an.kind === 'pierce' && idx > 0) {   // 관통탄: 빙글빙글 도는 드릴 촉
+    const q = ptAt(an.path, idx - 1.5), ang = Math.atan2(pt[1] - q[1], pt[0] - q[0]);
+    drawDrill(pt[0], pt[1], ang, col, an.grind ? 2.4 : an.under ? 1.6 : 1, an.grind ? 1.6 : an.under ? .8 : 0);
   }
+  ctx.restore();
+}
+
+// ----- 관통탄 드릴 -----
+const underGround = (x, y) => { const xi = Math.floor(x); return xi >= 0 && xi < W && y > st.terrain[xi] + 3; };
+function drawDrill(x, y, ang, col, spin = 1, jit = 0) {   // 원뿔 드릴: 나선 홈이 흘러가며 회전하는 것처럼 보여요
+  const ph = performance.now() / 1000 * 5 * spin;
+  ctx.save();
+  ctx.translate(x + (Math.random() - .5) * jit * 2 * Z, y + (Math.random() - .5) * jit * 2 * Z); ctx.rotate(ang); ctx.scale(Z * 1.25, Z * 1.25);
+  ctx.globalCompositeOperation = 'source-over'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.fillStyle = col; ctx.strokeStyle = 'rgba(10,10,20,.8)'; ctx.lineWidth = 1;   // 뒤쪽 몸통(칼라)
+  ctx.beginPath(); ctx.rect(-13, -5, 7, 10); ctx.fill(); ctx.stroke();
+  const hx = u => -6 + 26 * u, hh = u => 6.5 * (1 - u);   // 원뿔: x = -6 → 20(끝), 반높이 6.5 → 0
+  const gr = ctx.createLinearGradient(0, -7, 0, 7); gr.addColorStop(0, '#ffffff'); gr.addColorStop(.35, '#c9d4e8'); gr.addColorStop(.7, '#6e7a92'); gr.addColorStop(1, '#3a4256');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(hx(0), -hh(0)); ctx.lineTo(20, 0); ctx.lineTo(hx(0), hh(0)); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.save(); ctx.clip();
+  ctx.strokeStyle = 'rgba(30,36,54,.85)'; ctx.lineWidth = 1.6;   // 나선 홈
+  for (let k = -1; k < 6; k++) {
+    const u = (k + ph % 1) / 5, x0 = hx(u), x1 = hx(u + .12);
+    ctx.beginPath(); ctx.moveTo(x0, -7); ctx.lineTo(x1, 7); ctx.stroke();
+  }
+  ctx.strokeStyle = rgba(col, .9); ctx.lineWidth = .9;
+  for (let k = -1; k < 6; k++) { const u = (k + ph % 1 + .5) / 5; ctx.beginPath(); ctx.moveTo(hx(u), -7); ctx.lineTo(hx(u + .12), 7); ctx.stroke(); }
+  ctx.restore();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(19, 0, 1.2, 0, 7); ctx.fill();
+  ctx.restore();
+}
+function drillBits(x, y, ang, n, spark) {   // 드릴이 튀기는 흙 부스러기(spark: 쇠를 갈 때 튀는 불꽃)
+  const R = Math.random; FX.bits = FX.bits || [];
+  for (let k = 0; k < n; k++) {
+    const a = ang + Math.PI + (R() - .5) * (spark ? 2.6 : 1.7), v = (spark ? 3 + R() * 6 : 1.5 + R() * 3.5);
+    FX.bits.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (spark ? 1.5 : 1), t: 0, l: spark ? 14 + R() * 12 : 22 + R() * 18, s: spark ? 1 : 1.6 + R() * 2.6, c: R(), spark });
+  }
+  if (FX.bits.length > 500) FX.bits.splice(0, FX.bits.length - 500);
+}
+function drawTunnel(path, upto, al) {   // 드릴이 지나간 땅속 굴: 어두운 구멍 + 가장자리가 붉게 달아올라요
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const seg = [];
+  for (let j = 1; j <= upto && j < path.length; j++) { const a = path[j - 1], b = path[j]; if (underGround(a[0], a[1]) || underGround(b[0], b[1])) seg.push([a, b]); }
+  if (!seg.length) { ctx.restore(); return; }
+  const line = w => { ctx.lineWidth = w * Z; ctx.beginPath(); seg.forEach(([a, b]) => { ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }); ctx.stroke(); };
+  ctx.strokeStyle = `rgba(255,90,60,${.35 * al})`; line(15);
+  ctx.strokeStyle = `rgba(8,6,14,${.92 * al})`; line(11);
+  ctx.strokeStyle = `rgba(40,30,50,${.6 * al})`; line(4);
   ctx.restore();
 }
 
@@ -1500,6 +1569,18 @@ function drawFx() {
     b.t += FS;
   }
   FX.booms = FX.booms.filter(b => b.t < 46);
+  if (FX.tunnels) { FX.tunnels.forEach(u => { drawTunnel(u.path, u.path.length - 1, Math.max(0, 1 - u.t / 90)); u.t += FS; }); FX.tunnels = FX.tunnels.filter(u => u.t < 90); }   // 드릴 굴은 천천히 메워져요
+  if (FX.bits) {
+    ctx.save();
+    FX.bits.forEach(b => {
+      const f = 1 - b.t / b.l;
+      if (b.spark) { ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(255,${200 + (b.c * 55 | 0)},${120 + (b.c * 100 | 0)},${f})`; ctx.lineWidth = (.6 + 1.4 * f) * Z; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 1.8, b.y - b.vy * 1.8); ctx.stroke(); }
+      else { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = Math.min(1, f * 1.8); ctx.fillStyle = hsl(TC ? TC.h : 150, 70, 26 + b.c * 26); ctx.fillRect(b.x - b.s * Z / 2, b.y - b.s * Z / 2, b.s * Z, b.s * Z * .8); ctx.globalAlpha = 1; }
+      b.x += b.vx * FS; b.y += b.vy * FS; b.vy += (b.spark ? .25 : .3) * FS; b.vx *= Math.pow(.97, FS); b.t += FS;
+    });
+    ctx.restore();
+    FX.bits = FX.bits.filter(b => b.t < b.l);
+  }
   ctx.textAlign = 'center'; ctx.lineJoin = 'round';
   FX.floats.forEach(f => {   // 피해 숫자
     const u = f.t / 70, al = Math.min(1, (1 - u) * 2.2);
@@ -1805,7 +1886,16 @@ function draw() {
   if (anim) {
     const A = anim; let maxLen = A.carpet ? A.carpet.total : 0;
     const tail = A.kind === 'laser' ? 36 : 0;   // 레이저는 머리가 끝난 뒤에도 꼬리가 사라질 때까지 그려요
-    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length + tail); if (A.i < s.path.length + tail) drawShell({ path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy', z: A.kind === 'bumper' ? [1.7, 1.3, 1][s.splits.filter(q => q <= A.i).length] : 0 }); });
+    const GR = DRILL_FR * FMAP.SHOT_SPEED;      // 관통탄이 탱크를 맞히면 그 자리에서 드릴로 갈아요
+    if (A.kind === 'pierce') A.shells.forEach(s => drawTunnel(s.path, Math.min(A.i, s.path.length - 1), 1));
+    A.shells.forEach(s => {
+      const tl = tail + (A.kind === 'pierce' && s.hit != null ? GR : 0);
+      maxLen = Math.max(maxLen, s.path.length + tl);
+      if (A.i >= s.path.length + tl) return;
+      const an = { path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy', z: A.kind === 'bumper' ? [1.7, 1.3, 1][s.splits.filter(q => q <= A.i).length] : 0 };
+      if (A.kind === 'pierce') pierceFx(A, s, an);
+      drawShell(an);
+    });
     if (A.carpet) drawCarpet(A);
     A.i += (A.kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED * FS;   // 광폭탄은 느리게 날아가요
     A.shells.forEach(s => {
@@ -1814,10 +1904,11 @@ function draw() {
       s.boomed = true;
       const e = s.path[s.path.length - 1];
       if (s.impact && A.order) spawnBoom(s.impact[0], s.impact[1], .9);   // 순서 정하기: 지형은 안 파여요
-      else if (s.impact) spawnBoom(s.impact[0], s.impact[1], A.kind === 'bumper' ? [1.6, 1.25, .95][s.gen || 0] : { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 2.6, pierce: 1, laser: .5 }[A.kind] || 1.5);
+      else if (s.impact && A.kind === 'pierce') spawnBoom(s.impact[0], s.impact[1], s.hit == null ? 1 : .8);
+      else if (s.impact) spawnBoom(s.impact[0], s.impact[1], A.kind === 'bumper' ? [1.6, 1.25, .95][s.gen || 0] : { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 3.4, pierce: 1, laser: .5 }[A.kind] || 1.5);
       else if (A.dud) { spawnBoom(e[0], e[1], 1.1, true); FX.floats.push({ x: e[0], y: e[1] - 30, t: 0, txt: '불발!', big: false }); }
     });
-    if (A.i >= maxLen) { const next = A.pending; fxFromDiff(st, next); anim = null; apply(next); if (A.order) showRank(A.ranks); else if (A.by === me) sendMsg({ type: 'landed' }); }
+    if (A.i >= maxLen) { const next = A.pending; if (A.kind === 'pierce') A.shells.forEach(s => (FX.tunnels = FX.tunnels || []).push({ path: s.path, t: 0 })); fxFromDiff(st, next); anim = null; apply(next); if (A.order) showRank(A.ranks); else if (A.by === me) sendMsg({ type: 'landed' }); }
   }
   drawFx();
   if (FX.flash > .01) { ctx.fillStyle = `rgba(255,255,255,${FX.flash})`; ctx.fillRect(-20, -20, W + 40, H + 40); FX.flash *= Math.pow(.78, FS); }

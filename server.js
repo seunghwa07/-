@@ -21,12 +21,13 @@ const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
   bumper0: { dmg: 20, rad: 52 }, bumper1: { dmg: 12, rad: 42 }, bumper2: { dmg: 8, rad: 34 },   // 범퍼: 첫 탄 20 / 한 번 튄 탄 12 / 두 번 튄 가장 작은 탄 8
-  pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함) / 레이저(직격만, 기본탄 17보다 센 22)
-  heavy: { dmg: 34, rad: Math.round(CRATER * Math.sqrt(3)) },   // 광폭탄: 피해 2배, 폭발 면적 3배(반지름 √3배)
+  pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함 · 맞은 탱크는 드릴로 2×3 추가 피해) / 레이저(직격만, 기본탄 17보다 센 22)
+  heavy: { dmg: 68, rad: Math.round(CRATER * Math.sqrt(6)) },   // 광폭탄: 피해 4배(기본탄 17의 4배), 폭발 면적 6배(반지름 √6배)
 };
 const SPEED = { heavy: Math.sqrt(0.7) };   // 광폭탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
 const PIERCE_HIT = HIT_R * 2;      // 관통탄 피격 범위: 기본 판정의 2배
+const DRILL_TICK = 2, DRILL_N = 3, DRILL_MS = 850;   // 관통탄 드릴: 맞은 탱크를 2 피해씩 3번 더 갈아요 / 화면에서 갈리는 시간
 const LASER_HIT = HIT_R * 1.9;     // 레이저 판정 범위: 기본 판정의 약 1.9배 (빔이 굵은 만큼 넓게)
 const MAX_CLIMB = 90;              // 한 걸음(6px)당 최대 오르막 높이 → 약 86° 경사까지 (거의 수직 절벽만 막혀요)
 const FIRE_R = 170, FIRE_MS = 3000, BURN_TICK = 500, BURN_DMG = 2;   // 소이탄: 불길 반경 / 3초 지속 / 0.5초마다 2 피해
@@ -253,6 +254,21 @@ function explode(g, shooter, impact, kind, delay = 0) {
   }
 }
 
+// 관통탄: 원래대로 착탄 피해(14, 주변은 줄어든 피해)를 주고, 맞은 탱크 하나는 드릴로 2 피해씩 3번 더 갈아요
+function drill(g, shooter, s, delay) {
+  let hit = -1, best = Infinity;
+  g.players.forEach((q, i) => {
+    if (q.hp <= 0 || isAlly(g, shooter, i)) return;
+    const d = Math.hypot(q.x - s.impact[0], tankY(g, q) - s.impact[1]);
+    if (d < PIERCE_HIT + 2 && d < best) { best = d; hit = i; }
+  });
+  const hp0 = hit >= 0 ? g.players[hit].hp : 0;
+  explode(g, shooter, s.impact, 'pierce', delay);
+  if (hit < 0) return;
+  s.hit = hit; s.hd = hp0 - g.players[hit].hp;   // hd: 착탄 피해 (화면에서 드릴 틱보다 먼저 보여줘요)
+  g.players[hit].hp = Math.max(0, g.players[hit].hp - DRILL_TICK * DRILL_N);
+}
+
 const fireList = g => g.fires.map(f => ({ x: f.x, y: f.y, r: f.r, life: Math.max(0, f.endsAt - Math.max(Date.now(), f.startAt)) }));
 
 // 소이탄 불길: 실시간으로 0.5초마다 불 위의 탱크에 2 피해, 3초 뒤 꺼져요
@@ -381,15 +397,15 @@ function fire(r, shooter, angle, power) {
 
   if (shells.length === 1 && shells[0].fizzled) dud = true;   // 맴돌다 사라진 포탄도 불발로 처리
   // 클라이언트 애니메이션(약 60프레임/초)이 끝나 폭발이 보일 때쯤 불길이 시작되도록 맞춰요
-  shells.forEach(s => { if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - SHELL.laser.dmg); } else if (s.impact) explode(g, shooter, s.impact, kind === 'bumper' ? 'bumper' + s.gen : kind, Math.round(s.path.length * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED)) + 300); });
+  shells.forEach(s => { if (kind === 'pierce') { if (s.impact) drill(g, shooter, s, Math.round(s.path.length * 1000 / 60 / FMAP.SHOT_SPEED) + 300); } else if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - SHELL.laser.dmg); } else if (s.impact) explode(g, shooter, s.impact, kind === 'bumper' ? 'bumper' + s.gen : kind, Math.round(s.path.length * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED)) + 300); });
   if (g.fires.length) startBurn(r);
 
   if (!checkEnd(r)) {   // 턴은 바로 넘기지 않고, 포탄이 끝날 때까지 기다려요
     g.busy = true;
-    const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED) + 2000;
+    const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED) + 2000 + (kind === 'pierce' ? DRILL_MS : 0);
     g.busyTimer = setTimeout(() => resolveShot(r, g), ms);
   }
-  return { type: 'shot', by: shooter, angle, kind, dud, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits })), state: snapshot(r) };
+  return { type: 'shot', by: shooter, angle, kind, dud, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd })), state: snapshot(r) };
 }
 
 function join(ws, r, name, icon) {
