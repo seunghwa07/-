@@ -5,6 +5,7 @@
   // 화면(카메라)은 이 월드의 일부(2000×1200)만 비춰요.
   const K = 2.5, DW = 2000, W = DW * K, H = 600 * K;
   const TS = 1.3;                      // 탱크 그리기/충돌 배율
+  const SHOT_SPEED = 0.8;              // 탄이 날아가는 속도 배율 (1 = 원래 속도). 서버 타이밍과 화면 연출이 같이 써요
   const FUEL = 500, STEP = 6;          // 턴마다 이동 가능한 거리(px), 한 번에 움직이는 거리
 
   // neon: 땅 테두리에서 빛나는 네온 색, sky: 어두운 밤하늘 그라데이션
@@ -26,7 +27,7 @@
       Math.round(Math.min(540 * K, Math.max(120 * K, m.gen(x / K, p, q) * K))));
   }
 
-  const api = { MAPS, terrain, K, W, H, TS, FUEL, STEP };
+  const api = { MAPS, terrain, K, W, H, TS, FUEL, STEP, SHOT_SPEED };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FMAP = api;
 })(this);

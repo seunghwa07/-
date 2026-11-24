@@ -268,12 +268,12 @@ function fire(r, shooter, angle, power) {
 
   if (shells.length === 1 && shells[0].fizzled) dud = true;   // 맴돌다 사라진 포탄도 불발로 처리
   // 클라이언트 애니메이션(약 60프레임/초)이 끝나 폭발이 보일 때쯤 불길이 시작되도록 맞춰요
-  shells.forEach(s => { if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - SHELL.laser.dmg); } else if (s.impact) explode(g, shooter, s.impact, kind, Math.round(s.path.length * 1000 / 60 / (kind === 'heavy' ? .6 : 1)) + 300); });
+  shells.forEach(s => { if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - SHELL.laser.dmg); } else if (s.impact) explode(g, shooter, s.impact, kind, Math.round(s.path.length * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED)) + 300); });
   if (g.fires.length) startBurn(r);
 
   if (!checkEnd(r)) {   // 턴은 바로 넘기지 않고, 포탄이 끝날 때까지 기다려요
     g.busy = true;
-    const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / (kind === 'heavy' ? .6 : 1) + 2000;
+    const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED) + 2000;
     g.busyTimer = setTimeout(() => resolveShot(r, g), ms);
   }
   return { type: 'shot', by: shooter, angle, kind, dud, shells: shells.map(s => ({ path: s.path, impact: s.impact })), state: snapshot(r) };
