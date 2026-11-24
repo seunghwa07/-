@@ -16,9 +16,10 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser'];
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
+  pierce: { dmg: 14, rad: 30 }, laser: { dmg: 15, rad: 0 },   // 관통탄(기본탄보다 약함) / 레이저(직격만)
   heavy: { dmg: 34, rad: Math.round(CRATER * Math.sqrt(3)) },   // 광폭탄: 피해 2배, 폭발 면적 3배(반지름 √3배)
 };
 const SPEED = { heavy: Math.sqrt(0.7) };   // 광폭탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
@@ -85,7 +86,7 @@ function newGame(r) {
 function snapshot(r) {
   const g = r.game;
   return {
-    type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam,
+    type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam, busy: !!g.busy,
     teams: g.players.map(p => p.team),
     fires: fireList(g),
     players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
@@ -125,7 +126,7 @@ function flight(g, shooter, angle, power, kind) {
   let x = p.x, y = g.terrain[p.x] - 14 * TS;
   let vx = v * Math.cos(a), vy = -v * Math.sin(a);
   const path = [[x, y]];
-  let impact = null, target = null;
+  let impact = null, target = null, out = false;
   if (kind === 'homing') {
     g.players.forEach((q, i) => {
       if (q.hp <= 0 || i === shooter || isAlly(g, shooter, i)) return;
@@ -143,13 +144,44 @@ function flight(g, shooter, angle, power, kind) {
     } else { vx += g.wind * 3 * K * dt; vy += G * dt; }
     x += vx * dt; y += vy * dt;
     if (t % 4 === 0) path.push([x, y]);
-    if (x < 0 || x >= W || y > H) break;
-    if (y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }
+    if (x < 0 || x >= W || y > H) { out = true; break; }
+    if (kind !== 'pierce' && y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }   // 관통탄은 땅을 그냥 통과해요
     if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) && !isAlly(g, shooter, i) &&
         Math.hypot(x - q.x, y - tankY(g, q)) < HIT_R)) { impact = [x, y]; break; }
   }
   if (impact) path.push(impact);
-  return { path, impact };
+  return { path, impact, fizzled: !impact && !out };   // fizzled: 30초 넘게 날다 소멸
+}
+
+// 레이저: 포물선 없이 직선으로 날아가고, 벽(지형)에 닿으면 반사돼요. 4번 반사한 뒤 또 닿으면 사라져요.
+const LASER_BOUNCES = 4;
+function laserFlight(g, shooter, angle) {
+  const p = g.players[shooter], a = angle * Math.PI / 180, STEP = 4, MAXLEN = 9000;
+  let x = p.x, y = g.terrain[p.x] - 20 * TS, dx = Math.cos(a), dy = -Math.sin(a);
+  let bounces = 0, len = 0, rec = 0, hit = null, impact = null;
+  const path = [[x, y]];
+  while (len < MAXLEN) {
+    const nx = x + dx * STEP, ny = y + dy * STEP;
+    if (nx < 0 || nx >= W || ny < -400) break;                                   // 맵 밖
+    const ti = g.players.findIndex((q, i) => q.hp > 0 && (i !== shooter || bounces > 0 || len > 90) && !isAlly(g, shooter, i) &&
+      Math.hypot(nx - q.x, ny - tankY(g, q)) < HIT_R);
+    if (ti >= 0) { hit = ti; impact = [nx, ny]; x = nx; y = ny; break; }          // 탱크 명중
+    if (ny >= g.terrain[Math.floor(nx)]) {                                       // 벽에 닿음
+      path.push([x, y]); rec = 0;
+      if (bounces >= LASER_BOUNCES) break;                                       // 5번째 접촉: 소멸
+      bounces++;
+      const xi = Math.floor(nx), xl = Math.max(0, xi - 6), xr = Math.min(W - 1, xi + 6);
+      const sl = (g.terrain[xr] - g.terrain[xl]) / ((xr - xl) || 1), nl = Math.hypot(sl, 1), nX = sl / nl, nY = -1 / nl;   // 지형 표면의 바깥쪽 법선
+      const dot = dx * nX + dy * nY;
+      if (dot < 0) { dx -= 2 * dot * nX; dy -= 2 * dot * nY; }
+      continue;
+    }
+    x = nx; y = ny; len += STEP; rec += STEP;
+    if (rec >= 50) { path.push([x, y]); rec = 0; }
+  }
+  const last = path[path.length - 1];
+  if (last[0] !== x || last[1] !== y) path.push([x, y]);
+  return { path, impact, hit, fizzled: false, bounces };
 }
 
 // 착탄: 땅 파임 + 피해(팀전에서는 아군 제외) + 소이탄이면 불길 생성 (delay: 클라이언트 화면에서 폭발이 보일 때까지의 시간)
@@ -190,9 +222,20 @@ function burnTick(r, g) {
   g.fires = g.fires.filter(f => now < f.endsAt);
   if (g.fires.length !== n) changed = true;
   if (died) {   // 화상으로 누군가 쓰러졌어요: 승패/차례를 다시 계산해서 전체 상태를 보내요
-    if (!checkEnd(r) && g.players[g.turn].hp <= 0) advance(r, g.turn);
+    if (!checkEnd(r) && !g.busy && g.players[g.turn].hp <= 0) advance(r, g.turn);
     toRoom(r, snapshot(r));
   } else if (changed) toRoom(r, { type: 'burn', hp: g.players.map(p => p.hp), fires: fireList(g) });
+}
+
+// 턴은 포탄이 명중 / 불발 / 맵 밖으로 사라진 뒤에만 넘어가요.
+// 쏜 사람의 화면에서 포탄이 끝나면 'landed'를 보내고, 안 오면 예상 시간 뒤에 서버가 넘겨요.
+function endBusy(g) { g.busy = false; clearTimeout(g.busyTimer); }
+function resolveShot(r, g) {
+  if (r.game !== g || !g.busy) return;
+  endBusy(g);
+  if (g.winner !== -1) return;
+  advance(r, g.turn);
+  toRoom(r, { type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel });
 }
 
 function advance(r, from) {   // 다음 차례로 넘겨요
@@ -210,13 +253,19 @@ function fire(r, shooter, angle, power) {
     const s = flight(g, shooter, angle, power, 'basic');
     s.path = s.path.slice(0, Math.max(3, Math.floor(s.path.length * (.35 + Math.random() * .4)))); s.impact = null;
     shells = [s]; dud = true;
-  } else shells = [flight(g, shooter, angle, power, kind)];
+  } else if (kind === 'laser') shells = [laserFlight(g, shooter, angle)];
+  else shells = [flight(g, shooter, angle, power, kind)];
 
+  if (shells.length === 1 && shells[0].fizzled) dud = true;   // 맴돌다 사라진 포탄도 불발로 처리
   // 클라이언트 애니메이션(약 60프레임/초)이 끝나 폭발이 보일 때쯤 불길이 시작되도록 맞춰요
-  shells.forEach(s => { if (s.impact) explode(g, shooter, s.impact, kind, Math.round(s.path.length * 1000 / 60 / (kind === 'heavy' ? .6 : 1)) + 300); });
+  shells.forEach(s => { if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - SHELL.laser.dmg); } else if (s.impact) explode(g, shooter, s.impact, kind, Math.round(s.path.length * 1000 / 60 / (kind === 'heavy' ? .6 : 1)) + 300); });
   if (g.fires.length) startBurn(r);
 
-  if (!checkEnd(r)) advance(r, shooter);
+  if (!checkEnd(r)) {   // 턴은 바로 넘기지 않고, 포탄이 끝날 때까지 기다려요
+    g.busy = true;
+    const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / (kind === 'heavy' ? .6 : 1) + 2000;
+    g.busyTimer = setTimeout(() => resolveShot(r, g), ms);
+  }
   return { type: 'shot', by: shooter, angle, kind, dud, shells: shells.map(s => ({ path: s.path, impact: s.impact })), state: snapshot(r) };
 }
 
@@ -239,7 +288,7 @@ function leave(ws) {
   else if (g) {
     if (g.players[i].on && g.winner === -1) {
       g.players[i].hp = 0;
-      if (!checkEnd(r) && g.turn === i) advance(r, i);
+      if (!checkEnd(r) && g.turn === i) { endBusy(g); advance(r, i); }
     }
     toRoom(r, snapshot(r));
   } else toRoom(r, roomMsg(r));
@@ -287,9 +336,12 @@ wss.on('connection', ws => {
         if (!t0 || !t1) return send(ws, { type: 'error', msg: '팀전은 양 팀에 최소 1명씩 필요해요' });
       }
       newGame(r); toRoom(r, snapshot(r)); pushList();
+    } else if (r && m.type === 'landed') {
+      const g = r.game;
+      if (g && g.busy && g.turn === ws.slot) resolveShot(r, g);
     } else if (r && m.type === 'move') {
       const g = r.game, now = Date.now();
-      if (!g || g.winner !== -1 || g.turn !== ws.slot || g.fuel <= 0 || now - (ws.lastMove || 0) < 30) return;
+      if (!g || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.fuel <= 0 || now - (ws.lastMove || 0) < 30) return;
       ws.lastMove = now;
       const dir = m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0, p = g.players[ws.slot];
       const nx = p.x + dir * STEP;
@@ -300,7 +352,7 @@ wss.on('connection', ws => {
       toRoom(r, { type: 'moved', i: ws.slot, x: nx, y: g.terrain[nx], fuel: g.fuel });
     } else if (r && m.type === 'fire') {
       const g = r.game;
-      if (!g || g.winner !== -1 || g.turn !== ws.slot || g.players[ws.slot].hp <= 0) return;
+      if (!g || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.players[ws.slot].hp <= 0) return;
       toRoom(r, fire(r, ws.slot,
         Math.min(180, Math.max(0, +m.angle || 0)),
         Math.min(100, Math.max(10, +m.power || 10))));

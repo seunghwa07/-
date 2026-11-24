@@ -183,7 +183,7 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 2배 · 폭발 면적 3배']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 2배 · 폭발 면적 3배'], ['pierce', '관통탄', '뾰족한 탄이 땅을 뚫고 날아가 바로 공격 · 피해는 기본탄보다 약간 약함'], ['laser', '레이저', '직선으로 날아가며 벽에 4번 반사 · 파워 무관 · 피해 15']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 
 const ls = {
@@ -271,6 +271,11 @@ function onMsg(m) {
   else if (m.type === 'moved') {
     const t = anim ? anim.pending : st;
     if (t && t.players) { const p = t.players[m.i]; p.x = m.x; p.y = m.y; t.fuel = m.fuel; }
+    ui();
+  }
+  else if (m.type === 'turn') {   // 포탄이 끝나서 차례가 넘어갔어요 (애니메이션 중이면 끝난 뒤 적용될 상태에 반영)
+    const t = anim ? anim.pending : st;
+    if (t && t.players) { t.turn = m.turn; t.wind = m.wind; t.fuel = m.fuel; t.busy = false; }
     ui();
   }
   else if (m.type === 'burn') {   // 불길 틱: 체력/불길 갱신 (애니메이션 중이면 끝난 뒤 적용될 상태에 반영)
@@ -399,7 +404,7 @@ function apply(m) {
 }
 
 function canAct() {
-  return st && st.type === 'state' && me >= 0 && st.turn === me && st.winner === -1 && !anim && st.players[me].hp > 0;
+  return st && st.type === 'state' && me >= 0 && st.turn === me && st.winner === -1 && !anim && !st.busy && st.players[me].hp > 0;
 }
 
 function ui() {
@@ -759,6 +764,22 @@ function drawTag(p, i, active) {
 
 // ----- 조준 점선 미리보기 (궤적 앞부분만, 서버와 같은 물리) -----
 function drawPreview(p, col) {
+  if (p.tank === 'laser') {   // 레이저는 직선: 첫 번째 벽까지만 점선으로 보여줘요 (파워 무관)
+    const a = my.angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), T = st.terrain, LM = 900 * K / 2.5, GP = 13 * K;
+    let x = p.x, y = T[Math.floor(p.x)] - 20 * TS, len = 0, next = 30 * K - GP + (performance.now() / 50) % GP;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    while (len < LM) {
+      x += dx * 4; y += dy * 4; len += 4;
+      if (x < 0 || x >= W || y >= T[Math.floor(x)]) break;
+      if (len >= next) {
+        next += GP; if (len < 30 * K) continue;
+        const al = Math.max(.15, 1 - len / LM);
+        ctx.fillStyle = rgba(col, .8 * al); ctx.beginPath(); ctx.arc(x, y, 5 * Z, 0, 7); ctx.fill();
+        ctx.fillStyle = `rgba(255,255,255,${al})`; ctx.beginPath(); ctx.arc(x, y, 1.8 * Z, 0, 7); ctx.fill();
+      }
+    }
+    ctx.restore(); return;
+  }
   const a = my.angle * Math.PI / 180, v = my.power * 8 * K * (p.tank === 'heavy' ? Math.sqrt(.7) : 1), dt = 1 / 120;
   let x = p.x, y = st.terrain[Math.floor(p.x)] - 14 * TS, vx = v * Math.cos(a), vy = -v * Math.sin(a), len = 0;
   const LMAX = (60 + my.power * 1.1) * K, START = 30 * K, GAP = 13 * K;
@@ -781,7 +802,25 @@ function drawPreview(p, col) {
 }
 
 // ----- 포탄: 쏜 사람 색의 꼬리 + 하얀 심지 -----
-function drawShell(an) {   // an: { path, i, by, small }
+// 레이저: 가늘고 밝은 직선 빔 (벽에서 꺾인 자리까지 그대로 이어 그려요)
+function drawLaser(an) {
+  const L = 36, hi = Math.min(an.i, an.path.length - 1), lo = Math.max(1, an.i - L), col = pc(an.by) || '#ffffff';
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let k = lo; k <= hi; k++) {
+    const f = Math.max(0, 1 - (an.i - k) / L), a = an.path[k - 1], b = an.path[k];
+    ctx.strokeStyle = rgba(col, .55 * f); ctx.lineWidth = 10 * Z * f + 2; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${.95 * f})`; ctx.lineWidth = 2.6 * Z * f + 1; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+  }
+  if (an.i < an.path.length) {
+    const pt = an.path[an.i], hg = ctx.createRadialGradient(pt[0], pt[1], 0, pt[0], pt[1], 16 * Z);
+    hg.addColorStop(0, 'rgba(255,255,255,1)'); hg.addColorStop(.4, rgba(col, .6)); hg.addColorStop(1, rgba(col, 0));
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(pt[0], pt[1], 16 * Z, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawShell(an) {   // an: { path, i, by, kind, small, big }
+  if (an.kind === 'laser') { drawLaser(an); return; }
   const idx = Math.min(an.i, an.path.length - 1), pt = an.path[idx], col = pc(an.by) || '#ffffff', L = an.small ? 18 : 34;
   ctx.save();
   if (an.small || an.big) { const z = an.small ? .55 : 1.6; ctx.translate(pt[0], pt[1]); ctx.scale(z, z); ctx.translate(-pt[0], -pt[1]); }   // 집속탄 소탄은 작게, 광폭탄은 크게   // 집속탄 소탄은 작게
@@ -799,6 +838,12 @@ function drawShell(an) {   // an: { path, i, by, small }
   ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(pt[0], pt[1], 20 * Z, 0, 7); ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(pt[0], pt[1], 3.4 * Z, 0, 7); ctx.fill();
+  if (an.kind === 'pierce' && idx > 0) {   // 관통탄: 진행 방향을 가리키는 뾰족한 촉
+    const q = an.path[idx - 1], ang = Math.atan2(pt[1] - q[1], pt[0] - q[0]);
+    ctx.translate(pt[0], pt[1]); ctx.rotate(ang); ctx.scale(Z, Z);
+    ctx.fillStyle = '#e8f0ff'; ctx.strokeStyle = col; ctx.lineWidth = 1.4; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-6, -5); ctx.lineTo(-3, 0); ctx.lineTo(-6, 5); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -992,16 +1037,17 @@ function draw() {
 
   if (anim) {
     const A = anim; let maxLen = 0;
-    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length); if (A.i < s.path.length) drawShell({ path: s.path, i: Math.floor(A.i), by: A.by, small: A.kind === 'cluster', big: A.kind === 'heavy' }); });
+    const tail = A.kind === 'laser' ? 36 : 0;   // 레이저는 머리가 끝난 뒤에도 꼬리가 사라질 때까지 그려요
+    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length + tail); if (A.i < s.path.length + tail) drawShell({ path: s.path, i: Math.floor(A.i), by: A.by, kind: A.kind, small: A.kind === 'cluster', big: A.kind === 'heavy' }); });
     A.i += A.kind === 'heavy' ? .6 : 1;   // 광폭탄은 느리게 날아가요
     A.shells.forEach(s => {
       if (s.boomed || A.i < s.path.length) return;
       s.boomed = true;
       const e = s.path[s.path.length - 1];
-      if (s.impact) spawnBoom(s.impact[0], s.impact[1], { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 2.6 }[A.kind] || 1.5);
+      if (s.impact) spawnBoom(s.impact[0], s.impact[1], { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 2.6, pierce: 1, laser: .5 }[A.kind] || 1.5);
       else if (A.dud) FX.floats.push({ x: e[0], y: e[1] - 30, t: 0, txt: '불발!', big: false });
     });
-    if (A.i >= maxLen) { const next = A.pending; fxFromDiff(st, next); anim = null; apply(next); }
+    if (A.i >= maxLen) { const next = A.pending; fxFromDiff(st, next); anim = null; apply(next); if (A.by === me) sendMsg({ type: 'landed' }); }
   }
   drawFx();
   if (FX.flash > .01) { ctx.fillStyle = `rgba(255,255,255,${FX.flash})`; ctx.fillRect(-20, -20, W + 40, H + 40); FX.flash *= .78; }
