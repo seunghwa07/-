@@ -45,7 +45,7 @@
 
   /* 컨트롤 크기는 화면 높이에 맞춰 자동 조절 */
   #game{--g:#00bf63;--gl:#4dffa8;--bk:#050a08}
-  .pad,#fire,#fuel,#rd,#pw{--s:clamp(96px,calc(var(--ch) * .36),150px);--hh:clamp(66px,calc(var(--ch) * .22),96px);--mw:calc(var(--hh) * 2.3);--fw:calc(var(--s) * .66);--m:max(14px,env(safe-area-inset-left,0px));--b:max(14px,env(safe-area-inset-bottom,0px));--bw:6px}
+  .pad,#fire,#fuel,#rd,#pw{--s:clamp(96px,calc(var(--ch) * .36),150px);--hh:clamp(66px,calc(var(--ch) * .22),96px);--mw:calc(var(--hh) * 2.3);--aw:calc(var(--s) * 1.15);--fw:calc(var(--s) * .74);--m:max(14px,env(safe-area-inset-left,0px));--b:max(14px,env(safe-area-inset-bottom,0px));--bw:6px}
 
   /* ---------- 육각형 프레임 (검정 바탕 + 초록 테두리) ---------- */
   .hexpad,#pw{--hexc:polygon(28% 0,72% 0,100% 50%,72% 100%,28% 100%,0 50%)}
@@ -59,7 +59,16 @@
   .pad{position:absolute;bottom:var(--b);touch-action:none;z-index:5}
   .pad::after,#pw::after{content:attr(data-l);position:absolute;top:-27px;left:50%;transform:translateX(-50%);padding:2px 12px;border-radius:10px;background:#050a08ee;border:1px solid var(--g);color:#d8ffe9;font-size:12px;font-weight:bold;letter-spacing:2px;white-space:nowrap;pointer-events:none}
   #mv{left:var(--m);width:var(--mw);height:var(--hh);--k:calc(var(--hh) * .74)}
-  #am{right:var(--m);width:var(--s);height:var(--s);--k:calc(var(--s) * .28)}
+  #am{right:var(--m);width:var(--aw);height:calc(var(--aw) * .866);--k:calc(var(--aw) * .24)}  /* 정육각형: 높이 = 폭 × √3/2 */
+
+  #mv::after{top:-48px}
+  #am::after{top:auto;bottom:9%;padding:0;background:none;border:0;font-size:11px;color:#4dffa8aa;letter-spacing:3px}
+  #pw::after{top:50%;padding:0;background:none;border:0;font-size:clamp(12px,calc(var(--ch) * .036),15px);color:#fff;letter-spacing:1px;transform:translate(-50%,-50%);text-shadow:0 0 3px #000,0 0 3px #000,0 1px 3px #000;z-index:2}
+
+  /* 연료바: 이동 육각형 위쪽 세 면을 따라 꺾이는 게이지 */
+  .fuelsvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 0 5px #00bf6388)}
+  .fuelsvg.low #fuelf{stroke:#ff5a3c}
+  .fuelsvg.low{filter:drop-shadow(0 0 6px #ff5a3caa)}
 
   /* 이동 조이스틱: 육각형 안에서 좌우로 미끄러지는 회색 원형 노브 */
   .ar{position:absolute;top:50%;margin-top:-.62em;font-style:normal;font-size:calc(var(--hh) * .2);color:var(--g);pointer-events:none;text-shadow:0 0 6px #00bf63}
@@ -78,14 +87,14 @@
   #am .knob::after{border-color:#04210f88}
 
   /* ---------- 파워 바: 육각형 안이 노랑 → 주황 그라데이션으로 차올라요 ---------- */
-  #pw{position:absolute;left:calc(var(--m) + var(--mw) + 16px);right:calc(var(--m) + var(--s) + var(--fw) + 44px);bottom:var(--b);height:var(--hh);z-index:5;touch-action:none}
+  #pw{--bw:4px;position:absolute;right:var(--m);width:var(--aw);height:calc(var(--aw) / 2.3);bottom:calc(var(--b) + var(--aw) * .866 + 10px);z-index:5;touch-action:none}
   .pw-inner{position:absolute;inset:calc(var(--bw) * 2.3) calc(var(--bw) * 4.2);clip-path:var(--hexc);overflow:hidden;pointer-events:none}
   .pw-fill{position:absolute;inset:0;background:linear-gradient(90deg,#ffff1f 0,#ffe21a 28%,#ffc01f 58%,#ff9b1f 100%);clip-path:inset(0 50% 0 0)}
   .pw-inner::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,#0000 0 calc(10% - 1.5px),#0007 calc(10% - 1.5px) 10%)}
   .pw-mark{position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:#fff;box-shadow:0 0 8px #fff,0 0 14px #ffd54a}
 
   /* ---------- 발사 버튼 (조이스틱과 분리된 독립 버튼) ---------- */
-  #fire{position:absolute;right:calc(var(--m) + var(--s) + 20px);bottom:calc(var(--b) + 4px);width:var(--fw);height:var(--fw);padding:0;border:0;border-radius:50%;
+  #fire{position:absolute;right:calc(var(--m) + var(--aw) + 22px);bottom:calc(var(--b) + 6px);width:var(--fw);height:var(--fw);padding:0;border:0;border-radius:50%;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--gl);touch-action:none;z-index:5;
     background:radial-gradient(circle at 50% 28%,#1d3329 0,#07100c 60%,#000 100%);
     box-shadow:0 0 0 3px var(--g),0 0 0 6px #030806,0 0 0 8px #0b6b3a,0 8px 16px 4px #000b,inset 0 0 18px #00bf6366,inset 0 6px 8px #ffffff1c;
@@ -96,12 +105,10 @@
   #fire:active:not(:disabled) .fi,#fire:active:not(:disabled) b{filter:none;text-shadow:none}
   #fire:disabled{animation:none;filter:grayscale(.85) brightness(.55)}
   @keyframes fpulse{0%,100%{filter:drop-shadow(0 0 4px #00bf6366)}50%{filter:drop-shadow(0 0 16px #4dffa8)}}
-  @media (max-width:640px){#pw{left:calc(var(--m) + var(--mw) + 10px);right:calc(var(--m) + var(--s) + var(--fw) + 30px)}#fire{right:calc(var(--m) + var(--s) + 10px)}}
+  @media (max-width:640px){#fire{right:calc(var(--m) + var(--aw) + 10px)}}
 
   /* ---------- 상태 표시 ---------- */
-  #fuel{position:absolute;left:var(--m);bottom:calc(var(--b) + var(--hh) + 40px);width:var(--mw);height:12px;background:#050a08ee;border:1px solid var(--g);border-radius:7px;overflow:hidden;z-index:5;box-shadow:0 0 8px #00bf6355,inset 0 2px 4px #000a}
-  #fb{display:block;height:100%;width:0;background:linear-gradient(#ffe27a,#f0a010);border-radius:7px;box-shadow:0 0 6px #fc3a}
-  #rd{position:absolute;right:var(--m);bottom:calc(var(--b) + var(--s) + 40px);color:#d8ffe9;background:#050a08ee;border:1px solid var(--g);padding:3px 10px;border-radius:10px;font-size:13px;font-weight:bold;z-index:5;box-shadow:0 0 8px #00bf6355}
+  #rd{position:absolute;right:var(--m);top:8px;color:#d8ffe9;background:#050a08ee;border:1px solid var(--g);padding:3px 10px;border-radius:10px;font-size:13px;font-weight:bold;z-index:5;box-shadow:0 0 8px #00bf6355}
   #fs{display:none;position:absolute;inset:0;background:#000d;color:#fff;align-items:center;justify-content:center;text-align:center;font-size:20px;padding:20px;line-height:1.6;z-index:20}
 </style>
 </head>
@@ -145,10 +152,9 @@
 <div id="game" hidden>
   <canvas id="c" width="1000" height="600"></canvas>
   <div id="info"></div>
-  <div id="fuel"><i id="fb"></i></div>
-  <div id="mv" class="pad hexpad" data-l="이동"><div class="hexbg"></div><i class="ar l">◀</i><i class="ar r">▶</i><div class="knob"></div></div>
+  <div id="mv" class="pad hexpad" data-l="이동"><div class="hexbg"></div><svg id="fuelsvg" class="fuelsvg" viewBox="0 0 230 100" preserveAspectRatio="none"><defs><linearGradient id="fg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="230" y2="0"><stop offset="0" stop-color="#d9ff3d"/><stop offset="1" stop-color="#00d46f"/></linearGradient></defs><path d="M -6.1 42.1 L 61 -10 L 169 -10 L 236.1 42.1" pathLength="100" fill="none" stroke="#00bf63" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="M -6.1 42.1 L 61 -10 L 169 -10 L 236.1 42.1" pathLength="100" fill="none" stroke="#050a08" stroke-width="8.6" stroke-linecap="round" stroke-linejoin="round"/><path id="fuelf" d="M -6.1 42.1 L 61 -10 L 169 -10 L 236.1 42.1" pathLength="100" fill="none" stroke="url(#fg)" stroke-width="5" stroke-linejoin="round" stroke-dasharray="0 100"/></svg><i class="ar l">◀</i><i class="ar r">▶</i><div class="knob"></div></div>
   <div id="rd"></div>
-  <div id="am" class="pad" data-l="조준"><div class="hexbg"></div><svg class="arc" viewBox="-50 -50 100 100"><path d="M -29 0 A 29 29 0 0 1 29 0" fill="none" stroke="#4dffa8" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="1.6 3.4" stroke-linecap="round"/></svg><i id="beam" class="beam"></i><div class="knob"></div></div>
+  <div id="am" class="pad" data-l="조준"><div class="hexbg"></div><svg class="arc" viewBox="-50 -43.3 100 86.6"><path d="M -27 0 A 27 27 0 0 1 27 0" fill="none" stroke="#4dffa8" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="1.6 3.4" stroke-linecap="round"/></svg><i id="beam" class="beam"></i><div class="knob"></div></div>
   <button id="fire"><svg class="fi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg><b>발사</b></button>
   <div id="pw" data-l="파워 50"><div class="hexbg"></div><div class="pw-inner"><div class="pw-fill" id="pwf"></div><div class="pw-mark" id="pwm"></div></div></div>
   <div id="fs">👆 화면을 터치하면<br>가로 전체화면으로 시작해요</div>
@@ -283,9 +289,17 @@ function preview(c, id) {
   const g = x.createLinearGradient(0, 0, 0, c.height);
   g.addColorStop(0, m.sky[0]); g.addColorStop(1, m.sky[1]);
   x.fillStyle = g; x.fillRect(0, 0, c.width, c.height);
-  x.fillStyle = m.ground; x.beginPath(); x.moveTo(0, c.height);
-  for (let i = 0; i < W; i += 5) x.lineTo(i * sx, t[i] * sy);
-  x.lineTo(c.width, c.height); x.fill();
+  const P = new Path2D(); P.moveTo(0, c.height);
+  const E = new Path2D();
+  for (let i = 0; i < W; i += 4) { P.lineTo(i * sx, t[i] * sy); i ? E.lineTo(i * sx, t[i] * sy) : E.moveTo(0, t[0] * sy); }
+  P.lineTo(c.width, c.height);
+  x.fillStyle = '#03050c'; x.fill(P);
+  const gf = x.createLinearGradient(0, 10, 0, c.height); gf.addColorStop(0, rgba(m.neon, .4)); gf.addColorStop(1, rgba(m.neon, .05));
+  x.fillStyle = gf; x.fill(P);
+  x.lineJoin = 'round'; x.globalCompositeOperation = 'lighter';
+  x.lineWidth = 6; x.strokeStyle = rgba(m.neon, .25); x.stroke(E);
+  x.lineWidth = 2.5; x.strokeStyle = rgba(m.neon, .9); x.stroke(E);
+  x.globalCompositeOperation = 'source-over';
 }
 const mapCards = [];
 for (let id = 0; id <= RANDOM; id++) {
@@ -342,7 +356,8 @@ function ui() {
   const mine = me >= 0 && st.players[me].on && st.players[me].hp > 0;
   $('fire').disabled = !canAct();
   $('rd').textContent = mine ? `각도 ${my.angle}° · 파워 ${my.power}` : '관전 중';
-  $('fb').style.width = (st.turn === me && st.winner === -1 ? Math.max(0, st.fuel) / 200 * 100 : 0) + '%';
+  const fp = st.turn === me && st.winner === -1 ? Math.max(0, st.fuel) / 200 * 100 : 0;
+  $('fuelf').setAttribute('stroke-dasharray', `${fp} 100`); $('fuelsvg').classList.toggle('low', fp > 0 && fp <= 20);
   let t;
   if (st.winner !== -1) t = (st.winner === -2 ? '무승부' : st.winner === me ? '승리!' : `${st.players[st.winner].name} 승리`) + ' (잠시 후 대기실로)';
   else t = (st.turn === me ? '내 차례' : `${st.players[st.turn].name}의 차례`) + ' · 바람 ' + (st.wind > 0 ? '→ ' : st.wind < 0 ? '← ' : '') + Math.abs(st.wind);
@@ -414,7 +429,7 @@ makePad($('am'), (dx, dy, Rm, h) => {   // 조준 조이스틱: 각도만 담당
   if (ang < 0) ang = dx >= 0 ? 0 : 180;
   my.angle = Math.round(ang);
   aims[me] = my.angle; placeAim(); ui();
-}, false, { rm: p => p.offsetWidth * 0.29 });
+}, false, { rm: p => p.offsetWidth * 0.27 });
 
 // 파워 막대: 막대를 직접 터치/드래그해서 조절
 function setPower(p) {
@@ -436,12 +451,12 @@ function setPower(p) {
   pw.onpointerup = pw.onpointercancel = () => { drag = false; pw.classList.remove('on'); };
 })();
 function placeAim() {
-  const pad = $('am'), d = pad.offsetWidth * 0.29, a = my.angle * Math.PI / 180;
+  const pad = $('am'), d = pad.offsetWidth * 0.27, a = my.angle * Math.PI / 180;
   pad.querySelector('.knob').style.transform = `translate(${Math.cos(a) * d}px,${-Math.sin(a) * d}px)`;
   setBeam();
 }
 function setBeam() {
-  const pad = $('am'), d = pad.offsetWidth * 0.29, b = $('beam');
+  const pad = $('am'), d = pad.offsetWidth * 0.27, b = $('beam');
   b.style.width = d + 'px'; b.style.transform = `rotate(${-my.angle}deg)`;
 }
 
@@ -526,25 +541,91 @@ function drawTank(p, i, deg) {
   }
 }
 
+// ---------- 네온 맵 렌더링 ----------
+// 밤하늘·격자·별·지형(네온 테두리 + 안쪽 등고선)을 한 번 그려 캐시해 두고, 지형이 바뀔 때(포탄 구덩이)만 다시 그려요.
+const sceneCv = document.createElement('canvas'); sceneCv.width = W; sceneCv.height = H;
+let sceneKey = null, edgePath = null;
+function rgba(hex, a) {
+  let h = hex.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const n = parseInt(h, 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
+}
+function buildScene(th, T, mapId) {
+  const c = sceneCv.getContext('2d'), N = th.neon;
+  let seed = 1234 + mapId * 977; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  // 밤하늘
+  const sky = c.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, th.sky[0]); sky.addColorStop(1, th.sky[1]);
+  c.fillStyle = sky; c.fillRect(0, 0, W, H);
+  // 은은한 네온 후광(지평선) + 큰 달
+  const hz = c.createRadialGradient(W / 2, H * .8, 0, W / 2, H * .8, 650);
+  hz.addColorStop(0, rgba(N, .22)); hz.addColorStop(1, rgba(N, 0)); c.fillStyle = hz; c.fillRect(0, 0, W, H);
+  const mx = 140 + rnd() * 720, my = 90 + rnd() * 80;
+  const moon = c.createRadialGradient(mx, my, 0, mx, my, 170);
+  moon.addColorStop(0, rgba(N, .35)); moon.addColorStop(.25, rgba(N, .14)); moon.addColorStop(1, rgba(N, 0));
+  c.fillStyle = moon; c.fillRect(0, 0, W, H);
+  c.fillStyle = rgba(N, .55); c.beginPath(); c.arc(mx, my, 20, 0, 7); c.fill();
+  // 격자
+  c.strokeStyle = rgba(N, .07); c.lineWidth = 1; c.beginPath();
+  for (let x = 0; x <= W; x += 50) { c.moveTo(x + .5, 0); c.lineTo(x + .5, H); }
+  for (let y = 0; y <= H; y += 50) { c.moveTo(0, y + .5); c.lineTo(W, y + .5); }
+  c.stroke();
+  // 별
+  for (let i = 0; i < 90; i++) {
+    const x = rnd() * W, y = rnd() * H * .75, r = .6 + rnd() * 1.5;
+    c.fillStyle = rnd() < .35 ? rgba(N, .35 + rnd() * .5) : `rgba(255,255,255,${.2 + rnd() * .55})`;
+    c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+  }
+  // 지형 경로
+  const fillP = new Path2D(); fillP.moveTo(0, H);
+  edgePath = new Path2D();
+  for (let x = 0; x < W; x++) { fillP.lineTo(x, T[x]); x ? edgePath.lineTo(x, T[x]) : edgePath.moveTo(x, T[x]); }
+  fillP.lineTo(W - 1, H); fillP.closePath();
+  // 땅 채우기: 어두운 바탕 + 위쪽일수록 네온이 스며든 그라데이션
+  c.fillStyle = '#03050c'; c.fill(fillP);
+  const gf = c.createLinearGradient(0, 120, 0, H);
+  gf.addColorStop(0, rgba(N, .38)); gf.addColorStop(.45, rgba(N, .10)); gf.addColorStop(1, rgba(N, .03));
+  c.fillStyle = gf; c.fill(fillP);
+  // 안쪽 등고선
+  c.save(); c.clip(fillP); c.lineJoin = 'round'; c.lineWidth = 2;
+  for (let k = 1; k <= 6; k++) {
+    c.save(); c.translate(0, k * 20); c.strokeStyle = rgba(N, .30 / Math.pow(k, .8)); c.stroke(edgePath); c.restore();
+  }
+  c.restore();
+  // 테두리 네온 글로우 (겹쳐 그려 번지는 빛)
+  c.lineJoin = 'round'; c.lineCap = 'round'; c.globalCompositeOperation = 'lighter';
+  [[20, .08], [12, .16], [7, .32], [4, .6]].forEach(([w, a]) => { c.lineWidth = w; c.strokeStyle = rgba(N, a); c.stroke(edgePath); });
+  c.globalCompositeOperation = 'source-over';
+  c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,.85)'; c.stroke(edgePath);
+  c.lineWidth = 2; c.strokeStyle = rgba(N, .55); c.stroke(edgePath);
+}
+
+// 현재 각도·파워로 쏠 때의 궤적 "앞부분"만 점선으로 보여줘요 (서버와 같은 물리, 파워가 셀수록 조금 더 길게)
+function drawPreview(p) {
+  const a = my.angle * Math.PI / 180, v = my.power * 8, dt = 1 / 60;
+  let x = p.x, y = st.terrain[Math.floor(p.x)] - 14, vx = v * Math.cos(a), vy = -v * Math.sin(a), len = 0;
+  const LMAX = 60 + my.power * 1.1, START = 30, GAP = 13;           // 포구 밖에서 시작, 일정 길이까지만
+  let next = START - GAP + (performance.now() / 50) % GAP;           // 점이 포구 쪽에서 흘러나가는 느낌
+  for (let t = 0; t < 400 && len < LMAX; t++) {
+    vx += st.wind * 3 * dt; vy += 500 * dt;
+    const nx = x + vx * dt, ny = y + vy * dt;
+    len += Math.hypot(nx - x, ny - y); x = nx; y = ny;
+    if (len >= next) {
+      next += GAP;
+      if (len < START) continue;
+      const al = Math.max(0.12, 1 - (len - START) / (LMAX - START) * 0.88);
+      ctx.fillStyle = `rgba(77,255,168,${al})`; ctx.strokeStyle = `rgba(0,0,0,${al * .55})`; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(x, y, 2 + al * 1.8, 0, 7); ctx.fill(); ctx.stroke();
+    }
+  }
+}
+
 function draw() {
   if (!st || st.type !== 'state') return;
   const th = MAPS[st.map];
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, th.sky[0]); g.addColorStop(1, th.sky[1]);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-  const gg = ctx.createLinearGradient(0, 120, 0, H);
-  gg.addColorStop(0, shade(th.ground, .12)); gg.addColorStop(1, shade(th.ground, -.4));
-  ctx.fillStyle = gg; ctx.beginPath(); ctx.moveTo(0, H);
-  for (let x = 0; x < W; x++) ctx.lineTo(x, st.terrain[x]);
-  ctx.lineTo(W, H); ctx.fill();
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = shade(th.grass, -.35); ctx.lineWidth = 6; ctx.beginPath();
-  for (let x = 0; x < W; x++) x ? ctx.lineTo(x, st.terrain[x] + 1.5) : ctx.moveTo(x, st.terrain[x] + 1.5);
-  ctx.stroke();
-  ctx.strokeStyle = th.grass; ctx.lineWidth = 4; ctx.beginPath();
-  for (let x = 0; x < W; x++) x ? ctx.lineTo(x, st.terrain[x]) : ctx.moveTo(x, st.terrain[x]);
-  ctx.stroke();
+  if (sceneKey !== st.terrain) { buildScene(th, st.terrain, st.map); sceneKey = st.terrain; }
+  ctx.drawImage(sceneCv, 0, 0);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .10 + .08 * Math.sin(performance.now() / 450);  // 숨쉬는 듯한 네온 맥동
+  ctx.strokeStyle = th.neon; ctx.lineWidth = 14; ctx.lineJoin = 'round'; ctx.stroke(edgePath); ctx.restore();
 
   ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
   st.players.forEach((p, i) => {
@@ -563,6 +644,8 @@ function draw() {
       ctx.beginPath(); ctx.moveTo(p.x - 6, hy - 26 + bob); ctx.lineTo(p.x + 6, hy - 26 + bob); ctx.lineTo(p.x, hy - 17 + bob); ctx.closePath(); ctx.stroke(); ctx.fill();
     }
   });
+
+  if (!anim && st.winner === -1 && st.turn === me && me >= 0 && st.players[me].on && st.players[me].hp > 0) drawPreview(st.players[me]);
 
   if (anim) {
     const idx = Math.min(anim.i, anim.path.length - 1), pt = anim.path[idx];
