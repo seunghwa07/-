@@ -430,18 +430,14 @@ function fitLobby() {   // 무대를 화면에 맞춰 키워요 (세로로 들�
   $('lobby').style.transform = rot ? `translate(${ox + 720 * sc}px,${oy}px) rotate(90deg) scale(${sc})` : `translate(${ox}px,${oy}px) scale(${sc})`;
 }
 addEventListener('resize', fitLobby); addEventListener('orientationchange', fitLobby);
-const tankSvg = (w, h, col, acc, style = '') => `<svg width="${w}" height="${h}" viewBox="0 0 130 76" style="${style}" aria-hidden="true">
-  <ellipse cx="62" cy="68" rx="52" ry="5" fill="${col}" opacity=".4"/><rect x="8" y="46" width="104" height="18" rx="9" fill="#0b0e1a" stroke="${col}" stroke-opacity=".7"/>
-  <circle cx="24" cy="55" r="4" fill="#2a3556"/><circle cx="48" cy="55" r="4" fill="#2a3556"/><circle cx="72" cy="55" r="4" fill="#2a3556"/><circle cx="96" cy="55" r="4" fill="#2a3556"/>
-  <path d="M12 46 L17 33 L100 33 L110 46 Z" fill="${col}"/><path d="M17 33 L100 33" stroke="#fff" stroke-opacity=".7" stroke-width="2"/>
-  <rect x="74" y="22" width="46" height="7" rx="3.5" fill="${acc}" transform="rotate(-16 74 25)"/>
-  <path d="M36 33 L42 18 L72 18 L80 33 Z" fill="${col}"/><path d="M36 33 L42 18 L72 18 L80 33 Z" fill="#fff" opacity=".2"/><circle cx="58" cy="26" r="3" fill="${acc}"/></svg>`;
+const tankSvg = (w, h, col, kind, style = '') => `<canvas class="tkc" data-k="${kind}" data-c="${col}" width="304" height="208" style="width:${w}px;height:${Math.round(w * 104 / 152)}px;${style}"></canvas>`;   // 게임 안의 탱크 그림(paintTank)을 그대로 써요
+const drawTanks = root => root.querySelectorAll('canvas.tkc').forEach(c => tankThumb(c, c.dataset.k, c.dataset.c, 4));
 const tankChip = (name, acc, css) => `<span style="display:flex;align-items:center;gap:8px;${css}"><span style="width:10px;height:10px;border-radius:50%;flex:none;background:${acc};box-shadow:0 0 8px ${acc}"></span>${esc(name)}</span>`;
 
 // 내 탱크 / 맵 버튼은 한 번만 만들고, 선택 표시만 바꿔요
 const tankBtns = TANKS.map(([k, n]) => {
   const b = el('button', null, $('tanks')); b.className = 'tk';
-  b.innerHTML = tankSvg(54, 32, '#8e9bc4', TANKC[k]).replace('fill="#8e9bc4"', 'fill="#8e9bc4"') + `<span>${esc(n)}</span>`;
+  b.innerHTML = tankSvg(58, 40, '#8e9bc4', k) + `<span>${esc(n)}</span>`;
   b.onclick = () => sendMsg({ type: 'tank', kind: k });
   return b;
 });
@@ -468,7 +464,7 @@ function slotCard(i, col, team) {   // 개인전(큰 카드) / 팀전(가로 카
       ${host ? `<span style="display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:#ffd23a">${CROWN(16)}방장</span>` : ''}
       ${mine ? `<span style="margin-left:auto;font-size:14px;font-weight:900;color:#04061a;background:${col};padding:3px 12px;border-radius:999px">나</span>` : ''}
     </div>
-    <div style="position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">${tankSvg(168, 98, col, acc)}</div>
+    <div style="position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">${tankSvg(170, 116, col, k)}</div>
     <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px">
       <span style="font-size:26px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</span>
       ${tankChip(tn, acc, 'padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid #3a4770;font-size:15px;font-weight:700;white-space:nowrap')}
@@ -476,7 +472,7 @@ function slotCard(i, col, team) {   // 개인전(큰 카드) / 팀전(가로 카
   const t = st.teams[i], can = mine || me === st.host, dense = team === 2;
   return `<div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:18px;background:#0d1433;border:1px solid #2a3556;border-left:6px solid ${col};padding:${dense ? '8px 14px' : '14px 16px'};display:flex;align-items:center;gap:14px">
     <div style="position:absolute;left:-40px;top:-50px;width:220px;height:220px;border-radius:50%;background:${col};opacity:.16;filter:blur(40px)"></div>
-    ${tankSvg(dense ? 96 : 132, dense ? 57 : 78, col, acc, 'position:relative;flex-shrink:0')}
+    ${tankSvg(dense ? 100 : 140, 0, col, k, 'position:relative;flex-shrink:0')}
     <div style="position:relative;flex:1;min-width:0;display:flex;flex-direction:column;gap:${dense ? 4 : 8}px">
       <div style="display:flex;align-items:center;gap:8px;min-width:0">
         <span style="font-size:${dense ? 20 : 24}px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</span>
@@ -521,12 +517,14 @@ function renderRoom() {
         ${m.map(i => slotCard(i, TEAMC[k], dense)).join('')}${Array(rows - m.length).fill(emptyCard(1, rows > 2)).join('')}</div></div>`).join('');
     box.querySelectorAll('[data-sw]').forEach(b => { const i = +b.dataset.sw; b.onclick = () => sendMsg({ type: 'team', slot: i, team: 1 - st.teams[i] }); });
   }
+  drawTanks(box);
   // 내 탱크
   const mk = st.tanks[me] || 'basic', macc = TANKC[mk];
-  tankBtns.forEach((b, i) => { const sel = TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
+  tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const sel = TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
   $('tdesc').style.cssText += `;background:${hexA(macc, .08)};border:1px solid ${hexA(macc, .35)}`;
   const td = TANKS.find(t => t[0] === mk);
   $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${esc(td[1])}</b> · ${esc(td[2])}</span>`;
+  drawTanks($('tanks'));
   // 맵
   $('mapnote').textContent = isHost ? '눌러서 선택해요' : '방장이 선택해요';
   mapCards.forEach((d, i) => { const sel = i === st.mapId; d.style.borderColor = sel ? '#ffe94a' : '#2a3556'; d.style.background = sel ? 'rgba(255,233,74,.1)' : '#0d1433'; d.style.opacity = isHost || sel ? 1 : .6; d.style.pointerEvents = isHost ? '' : 'none'; });
@@ -1141,9 +1139,9 @@ function drawTank(p, i, deg, active) {
 }
 
 // 대기실 탱크 선택 버튼용 작은 미리보기
-function tankThumb(cnv, kind, col) {
+function tankThumb(cnv, kind, col, k = 2) {
   const g = cnv.getContext('2d'); g.clearRect(0, 0, cnv.width, cnv.height);
-  C = g; C.save(); C.translate(cnv.width * .4, cnv.height - 14); C.scale(2, 2);
+  C = g; C.save(); C.translate(cnv.width * (k > 2 ? .46 : .4), cnv.height - 7 * k); C.scale(k, k);
   C.save(); C.scale(1, .26);
   const ug = C.createRadialGradient(0, 0, 0, 0, 0, 40); ug.addColorStop(0, rgba(col, .6)); ug.addColorStop(1, rgba(col, 0));
   C.fillStyle = ug; C.beginPath(); C.arc(0, 0, 40, 0, 7); C.fill(); C.restore();
