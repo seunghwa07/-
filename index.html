@@ -155,6 +155,48 @@
 
   /* ---------- 상태 표시 ---------- */
   #rd{position:absolute;right:var(--m);top:8px;color:#d8ffe9;background:#050a08ee;border:1px solid var(--g);padding:3px 10px;border-radius:10px;font-size:13px;font-weight:bold;z-index:5;box-shadow:0 0 8px #00bf6355}
+  /* ---------- 시작 연출: 로딩 화면 → 문이 열리며 전장이 나타나요 ---------- */
+  #intro{position:absolute;inset:0;z-index:30;overflow:hidden;pointer-events:auto}
+  #intro[hidden]{display:none}
+  #intro .half{position:absolute;left:0;right:0;height:50.5%;background:radial-gradient(900px 400px at 50% 100%,#1b2a6b 0%,rgba(27,42,107,0) 70%),#05081c;transition:transform .85s cubic-bezier(.77,0,.18,1)}
+  #intro .half.t{top:0;border-bottom:2px solid #4dd2ff;box-shadow:0 6px 30px rgba(77,210,255,.55)}
+  #intro .half.b{bottom:0;background:radial-gradient(900px 400px at 50% 0%,#2a1060 0%,rgba(42,16,96,0) 70%),#05081c;border-top:2px solid #4dd2ff;box-shadow:0 -6px 30px rgba(77,210,255,.55)}
+  #intro.open .half.t{transform:translateY(-102%)}
+  #intro.open .half.b{transform:translateY(102%)}
+  #intro .core{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#eaf0ff;font-family:'Noto Sans KR',system-ui,sans-serif;text-align:center;transition:opacity .4s,transform .6s}
+  #intro.open .core{opacity:0;transform:scale(1.35)}
+  #intro .logo2{width:92px;height:92px;border-radius:26px;border:2px solid #4dd2ff;background:#0d1433;display:flex;align-items:center;justify-content:center;font-size:50px;box-shadow:0 0 30px rgba(77,210,255,.6);animation:inpulse 1s ease-in-out infinite}
+  #intro .ttl{font:700 clamp(26px,6vh,44px)/1 'Chakra Petch','Noto Sans KR',sans-serif;letter-spacing:.2em;text-shadow:0 0 18px rgba(77,210,255,.7);padding-left:.2em}
+  #intro .isub{font-size:clamp(13px,2.6vh,17px);color:#a9b8de;min-height:1.4em}
+  #intro .ibar{width:min(340px,60vw);height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+  #intro .ibar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#4dd2ff,#5dffb0,#ffe94a);box-shadow:0 0 12px #5dffb0}
+  #intro.load .ibar i{animation:infill 1.85s cubic-bezier(.45,.05,.3,1) forwards}
+  #intro .tip{font-size:clamp(11px,2.2vh,14px);color:#7f8db8;margin-top:6px;max-width:80vw}
+  @keyframes infill{0%{width:0}35%{width:42%}60%{width:58%}100%{width:100%}}
+  @keyframes inpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+  #c.zoomin{animation:czoom 1.3s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes czoom{0%{transform:scale(1.22);filter:brightness(2.2) blur(3px)}100%{transform:scale(1);filter:none}}
+  /* 가운데 큰 안내 문구 / 순서 결과 카드 / 순서 표시 */
+  #banner{position:absolute;left:0;right:0;top:24%;z-index:12;text-align:center;pointer-events:none;color:#fff;font-family:'Noto Sans KR',system-ui,sans-serif;opacity:0}
+  #banner b{display:block;font:700 clamp(28px,8vh,60px)/1.1 'Chakra Petch','Noto Sans KR',sans-serif;letter-spacing:.08em;text-shadow:0 0 24px rgba(255,233,74,.8),0 4px 12px #000}
+  #banner span{display:block;margin-top:8px;font-size:clamp(13px,3vh,20px);text-shadow:0 2px 8px #000;color:#d8ffe9}
+  #banner.on{animation:banin 2.2s ease both}
+  @keyframes banin{0%{opacity:0;transform:scale(1.7)}14%{opacity:1;transform:scale(1)}78%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.96) translateY(-10px)}}
+  #rank{position:absolute;left:50%;top:15%;transform:translateX(-50%);z-index:12;min-width:min(380px,70vw);padding:14px 20px 16px;border-radius:22px;background:rgba(5,10,24,.9);border:2px solid #ffe94a;box-shadow:0 0 30px rgba(255,233,74,.35),0 10px 30px #000a;color:#fff;font-family:'Noto Sans KR',system-ui,sans-serif;pointer-events:none}
+  #rank[hidden]{display:none}
+  #rank h4{margin:0 0 8px;text-align:center;font-size:clamp(16px,3.6vh,24px);color:#ffe94a;letter-spacing:.05em}
+  #rank .rw{display:flex;align-items:center;gap:10px;padding:6px 10px;margin-top:6px;border-radius:12px;background:rgba(255,255,255,.07);border-left:6px solid var(--c);font-size:clamp(13px,3vh,19px);font-weight:700;opacity:0;animation:rwin .45s ease forwards;animation-delay:calc(var(--n) * .28s)}
+  #rank .rw .no{font:700 1.2em 'Chakra Petch',sans-serif;width:1.6em;color:var(--c)}
+  #rank .rw .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #rank .rw .ds{font:700 .95em 'Chakra Petch',sans-serif;color:#cfd9f5}
+  #rank .rw.first{background:rgba(255,233,74,.16)}
+  @keyframes rwin{0%{opacity:0;transform:translateX(-30px)}100%{opacity:1;transform:none}}
+  #ol{position:absolute;top:6px;left:max(10px,env(safe-area-inset-left,0px));display:flex;gap:5px;z-index:5;pointer-events:none;font-family:'Noto Sans KR',system-ui,sans-serif}
+  #ol:empty{display:none}
+  #ol .oc{display:flex;align-items:center;gap:4px;padding:3px 9px 3px 7px;border-radius:12px;background:#050a08ee;border:1.5px solid var(--c);color:#fff;font-size:13px;font-weight:700;white-space:nowrap;opacity:.55}
+  #ol .oc i{font:700 12px 'Chakra Petch',sans-serif;font-style:normal;color:var(--c)}
+  #ol .oc.cur{opacity:1;box-shadow:0 0 10px var(--c);transform:scale(1.08)}
+  #ol .oc.dead{opacity:.25;text-decoration:line-through}
   #fs{display:none;position:absolute;inset:0;background:#000d;color:#fff;align-items:center;justify-content:center;text-align:center;font-size:20px;padding:20px;line-height:1.6;z-index:20}
 </style>
 </head>
@@ -250,6 +292,11 @@
   <div id="am" class="pad" data-l="조준"><div class="glass"></div><svg class="arc" viewBox="-50 -43.3 100 86.6"><path class="orbit" d="M -27 0 A 27 27 0 0 1 27 0"/><path class="ticks" d="M37.60 -0.00L41.40 -0.00M37.48 -10.04L39.02 -10.46M33.60 -19.40L34.99 -20.20M27.44 -27.44L28.57 -28.57M19.40 -33.60L20.20 -34.99M10.04 -37.48L10.46 -39.02M0.00 -37.60L0.00 -41.40M-10.04 -37.48L-10.46 -39.02M-19.40 -33.60L-20.20 -34.99M-27.44 -27.44L-28.57 -28.57M-33.60 -19.40L-34.99 -20.20M-37.48 -10.04L-39.02 -10.46M-37.60 -0.00L-41.40 -0.00"/><circle class="dot" r="1.8"/></svg><i id="beam" class="beam"></i><div class="knob"></div></div>
   <button id="fire"><svg class="fi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg><b>발사</b></button>
   <div id="pw" data-l="파워 50"><div class="glass"></div><div class="pw-inner"><div class="pw-track"><div class="pw-fill" id="pwf"></div></div><div class="pw-mark" id="pwm"></div></div></div>
+  <div id="ol"></div>
+  <div id="banner"><b></b><span></span></div>
+  <div id="rank" hidden></div>
+  <div id="intro" hidden><div class="half t"></div><div class="half b"></div>
+    <div class="core"><div class="logo2">💥</div><div class="ttl">APEX FORTRESS</div><div class="isub" id="isub"></div><div class="ibar"><i></i></div><div class="tip" id="itip"></div></div></div>
   <div id="fs">👆 화면을 터치하면<br>가로 전체화면으로 시작해요</div>
 </div>
 
@@ -359,6 +406,7 @@ function onMsg(m) {
   else if (m.type === 'turn') {   // 포탄이 끝나서 차례가 넘어갔어요 (애니메이션 중이면 끝난 뒤 적용될 상태에 반영)
     const t = anim ? anim.pending : st;
     if (t && t.players) { t.turn = m.turn; t.wind = m.wind; t.fuel = m.fuel; t.busy = false; }
+    hideRank();
     ui();
   }
   else if (m.type === 'burn') {   // 불길 틱: 체력/불길 갱신 (애니메이션 중이면 끝난 뒤 적용될 상태에 반영)
@@ -368,6 +416,18 @@ function onMsg(m) {
       m.hp.forEach((h, i) => { if (t.players[i]) t.players[i].hp = h; });
       t.fires = m.fires; const now = performance.now(); t.fires.forEach(f => { f.at = now; });
     }
+    ui();
+  }
+  else if (m.type === 'ofired') {   // 누군가 조준을 확정했어요
+    const t = anim ? anim.pending : st;
+    if (t && t.ofired) t.ofired[m.i] = true;
+    ui();
+  }
+  else if (m.type === 'oshot') {   // 순서 정하기: 모두의 포탄이 동시에 날아가요
+    m.shots.forEach(sh => { aims[sh.by] = sh.angle; fireFx(sh.by, sh.angle); });
+    setOrderMarks(m.shots);
+    if (!m.shots.length) { fxFromDiff(st, m.state); apply(m.state); showRank(m.ranks); }
+    else anim = { order: true, ranks: m.ranks, shells: m.shots.map(s => ({ path: s.path, impact: s.impact, by: s.by, boomed: false })), i: 0, pending: m.state, by: -1, kind: 'basic', dud: false };
     ui();
   }
   else if (m.type === 'shot') { aims[m.by] = m.angle; fireFx(m.by, m.angle); anim = { shells: m.shells.map(s => ({ path: s.path, impact: s.impact, boomed: false })), i: 0, pending: m.state, by: m.by, kind: m.kind, dud: m.dud }; ui(); }
@@ -547,8 +607,9 @@ function apply(m) {
   if (m.fires) { const now = performance.now(); m.fires.forEach(f => { f.at = now; }); }   // 남은 시간을 화면에서 줄여가요
   if (m.type === 'room') { fresh = true; show('room'); renderRoom(); return; }
   show('game');
+  if (m.phase === 'order') { const n = performance.now(); m.goAt = n + m.orderGo; m.endAt = n + m.orderLeft; }
   if (fresh) {
-    fresh = false; cam.snap = true;
+    fresh = false; cam.snap = true; startIntro(); hideRank(); orderMarks = [];
     m.players.forEach((p, i) => { aims[i] = p.x < W / 2 ? 45 : 135; });
     my.angle = aims[me]; placeAim(); setPower(50); showFsPrompt();
   }
@@ -556,21 +617,45 @@ function apply(m) {
 }
 
 function canAct() {
-  return st && st.type === 'state' && me >= 0 && st.turn === me && st.winner === -1 && !anim && !st.busy && st.players[me].hp > 0;
+  return st && st.type === 'state' && st.phase !== 'order' && me >= 0 && st.turn === me && st.winner === -1 && !anim && !st.busy && st.players[me].hp > 0;
+}
+// 순서 정하기: 시작 연출이 끝난 뒤 한 번만 조준을 확정할 수 있어요
+function canOrderFire() {
+  return st && st.type === 'state' && st.phase === 'order' && st.winner === -1 && me >= 0 && !anim && st.players[me].on && st.players[me].hp > 0 && !st.ofired[me] && performance.now() >= st.goAt - 100;
+}
+const isTurn = i => st.phase !== 'order' && st.turn === i && st.winner === -1;
+function orderText() {
+  const now = performance.now();
+  if (now < st.goAt) return '🎯 순서 정하기 · 준비...';
+  const left = Math.max(0, Math.ceil((st.endAt - now) / 1000)), tot = st.players.filter(p => p.on && p.hp > 0).length, done = st.players.filter((p, i) => p.on && p.hp > 0 && st.ofired[i]).length;
+  return `🎯 ${me >= 0 && st.ofired[me] ? '확정 완료! 다른 사람 기다리는 중' : '목표물에 가장 가깝게!'} · ${done}/${tot} · ${left}초`;
+}
+setInterval(() => {   // 순서 정하기 카운트다운 + 시간이 끝나면 지금 조준으로 자동 확정
+  if (!st || st.type !== 'state' || st.phase !== 'order' || anim) return;
+  $('info').textContent = orderText();
+  $('fire').disabled = !canOrderFire();
+  if (canOrderFire() && performance.now() >= st.endAt - 200) $('fire').onclick();
+}, 100);
+function renderOL() {   // 정해진 차례 표시 (왼쪽 위)
+  const box = $('ol');
+  if (!st || st.type !== 'state' || !st.order || st.phase === 'order') { box.textContent = ''; return; }
+  box.innerHTML = st.order.map((i, n) => `<span class="oc${st.turn === i && st.winner === -1 ? ' cur' : ''}${st.players[i].hp <= 0 ? ' dead' : ''}" style="--c:${pc(i)}"><i>${n + 1}</i>${esc(st.players[i].icon || '')} ${esc(st.players[i].name)}</span>`).join('');
 }
 
 function ui() {
   if (!st || st.type !== 'state') return;
   const mine = me >= 0 && st.players[me].on && st.players[me].hp > 0;
-  $('fire').disabled = !canAct();
-  $('rd').textContent = mine ? `${TN[st.players[me].tank] || ''} · 각도 ${my.angle}° · 파워 ${my.power}` : '관전 중';
-  const fp = st.turn === me && st.winner === -1 ? Math.max(0, st.fuel) / FMAP.FUEL * 100 : 0;
+  const ordering = st.phase === 'order';
+  $('fire').disabled = !(canAct() || canOrderFire());
+  $('rd').textContent = mine ? `${ordering ? '순서 정하기' : TN[st.players[me].tank] || ''} · 각도 ${my.angle}° · 파워 ${my.power}` : '관전 중';
+  const fp = !ordering && st.turn === me && st.winner === -1 ? Math.max(0, st.fuel) / FMAP.FUEL * 100 : 0;
   $('fuelf').setAttribute('stroke-dasharray', `${fp} 100`); $('fuelf').style.opacity = fp > 0 ? 1 : 0; $('fuelsvg').classList.toggle('low', fp > 0 && fp <= 20);
   let t;
   if (st.winner !== -1) t = (st.winner === -2 ? '무승부' : st.mode === 'team' ? (st.winTeam === st.teams[me] ? '승리!' : `${TEAMN[st.winTeam]} 승리`) : st.winner === me ? '승리!' : `${st.players[st.winner].name} 승리`) + ' (잠시 후 대기실로)';
+  else if (ordering) t = orderText();
   else t = st.turn === me ? '내 차례' : `${st.players[st.turn].name}의 차례`;
   if (laserTurn()) t += ' · 드래그로 시야 이동';
-  $('info').textContent = t; setWind(st.wind);
+  $('info').textContent = t; setWind(st.wind); renderOL();
 }
 
 // ---------- 가로 전체화면 ----------
@@ -686,6 +771,10 @@ function setBeam() {
 
 // 발사: 별도 버튼
 $('fire').onclick = () => {
+  if (canOrderFire()) {   // 순서 정하기: 조준 확정 (모두 확정하면 한꺼번에 발사돼요)
+    sendMsg({ type: 'ofire', angle: my.angle, power: my.power });
+    st.ofired[me] = true; ui(); return;
+  }
   if (!canAct()) return;
   sendMsg({ type: 'fire', angle: my.angle, power: my.power });
   $('fire').disabled = true;
@@ -1164,6 +1253,10 @@ function drawTag(p, i, active) {
     rrect(sx, y + 1, sw, 4.5, 2); ctx.fillStyle = 'rgba(4,6,16,.8)'; ctx.fill();
     if (f > 0) { rrect(sx, y + 1, sw * f, 4.5, 2); ctx.fillStyle = hc; ctx.fill(); }
   }
+  if (st.phase === 'order' && st.ofired && st.ofired[i]) {   // 순서 정하기: 조준 확정 표시
+    ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    rrect(x - 25, y - 38, 50, 16, 8); ctx.fillStyle = 'rgba(30,200,110,.95)'; ctx.fill(); ctx.fillStyle = '#04210f'; ctx.fillText('✔ 확정', x, y - 30); ctx.textBaseline = 'alphabetic';
+  }
   if (active) {   // 위아래로 흔들리는 빛나는 화살표
     const bob = Math.sin(now / 200) * 3, ay = y - 30 + bob;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -1305,7 +1398,7 @@ function spawnBoom(x, y, n = 1, red = false) {
 function fireFx(by, deg) {
   const p = st && st.players && st.players[by]; if (!p) return;
   const dir = deg <= 90 ? 1 : -1, a = deg * Math.PI / 180;
-  FX.muzzle = { x: p.x + (8 * dir + Math.cos(a) * 26) * TS, y: p.y - (19.5 + Math.sin(a) * 26) * TS, a, t: 0, col: pc(by) };
+  (FX.muzzles = FX.muzzles || []).push({ x: p.x + (8 * dir + Math.cos(a) * 26) * TS, y: p.y - (19.5 + Math.sin(a) * 26) * TS, a, t: 0, col: pc(by) });
   FX.shake = Math.max(FX.shake, 3);
 }
 function fxFromDiff(prev, next) {   // 포탄 결과로 체력이 깎인 탱크: 피해 숫자, 파괴되면 큰 폭발
@@ -1318,16 +1411,16 @@ function fxFromDiff(prev, next) {   // 포탄 결과로 체력이 깎인 탱크:
   });
 }
 function drawFx() {
-  const m = FX.muzzle;
-  if (m) {
+  for (const m of FX.muzzles || []) {
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const f = 1 - m.t / 9, r = (8 + 14 * f) * Z;
     const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r); g.addColorStop(0, `rgba(255,255,255,${f})`); g.addColorStop(.4, rgba(m.col, .7 * f)); g.addColorStop(1, rgba(m.col, 0));
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(m.x, m.y, r, 0, 7); ctx.fill();
     ctx.strokeStyle = `rgba(255,255,255,${.8 * f})`; ctx.lineWidth = 2 * Z; ctx.lineCap = 'round';
     for (let k = -1; k <= 1; k++) { const aa = m.a + k * .35; ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x + Math.cos(aa) * 18 * Z * f, m.y - Math.sin(aa) * 18 * Z * f); ctx.stroke(); }
-    ctx.restore(); m.t += FS; if (m.t > 9) FX.muzzle = null;
+    ctx.restore(); m.t += FS;
   }
+  if (FX.muzzles) FX.muzzles = FX.muzzles.filter(m => m.t <= 9);
   for (const b of FX.booms) {
     const t = b.t, n = b.n;
     ctx.save();
@@ -1370,6 +1463,56 @@ function drawFx() {
   FX.floats = FX.floats.filter(f => f.t < 70);
 }
 
+// ----- 시작 연출 / 안내 문구 / 순서 결과 카드 -----
+const TIPS = ['💡 바람 방향을 보고 포탄이 휘는 것을 계산해 보세요', '💡 지형을 부수면 적의 발밑이 무너져요', '💡 화면 밖 적은 가장자리 화살표와 거리(m)로 알 수 있어요', '💡 탱크마다 포탄 성능이 달라요. 상대의 탱크를 확인하세요'];
+let introT = [], rankT = 0, orderMarks = [], rankUntil = 0;
+function startIntro() {
+  const el = $('intro'); introT.forEach(clearTimeout); introT = [];
+  el.hidden = false; el.className = ''; void el.offsetWidth; el.className = 'load';   // 로딩 바 애니메이션을 처음부터 다시
+  $('itip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
+  [['지형을 만드는 중…', 0], ['탱크를 배치하는 중…', 650], ['포탄을 장전하는 중…', 1300]].forEach(([t, d]) => introT.push(setTimeout(() => { $('isub').textContent = t; }, d)));
+  introT.push(setTimeout(() => { $('isub').textContent = '전투 개시!'; el.className = 'open'; cv.classList.remove('zoomin'); void cv.offsetWidth; cv.classList.add('zoomin'); }, 2000));
+  introT.push(setTimeout(() => { el.hidden = true; cv.classList.remove('zoomin'); showBanner('🎯 순서 정하기', '목표물에 가장 가깝게 쏜 순서대로 차례가 정해져요 · 모두 동시에 발사!'); }, 2950));
+}
+function showBanner(t, sub) {
+  const b = $('banner'); b.firstChild.textContent = t; b.lastChild.textContent = sub || '';
+  b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
+}
+function setOrderMarks(shots) { orderMarks = shots.filter(s => s.impact).map(s => ({ x: s.impact[0], y: s.impact[1], by: s.by })); }
+function showRank(ranks) {
+  const box = $('rank'); clearTimeout(rankT); rankUntil = performance.now() + 3800;
+  box.innerHTML = '<h4>🏁 차례가 정해졌어요!</h4>' + ranks.map((r, n) => {
+    const p = st.players[r.i], d = r.dist == null ? '실패' : (r.dist / MPP).toFixed(1) + 'm';
+    return `<div class="rw${n ? '' : ' first'}" style="--c:${pc(r.i)};--n:${n}"><span class="no">${n + 1}</span><span class="nm">${esc(p.icon || '')} ${esc(r.i === me ? p.name + ' (나)' : p.name)}</span><span class="ds">${d}</span></div>`;
+  }).join('');
+  box.hidden = false; rankT = setTimeout(hideRank, 3800);
+}
+function hideRank() { clearTimeout(rankT); $('rank').hidden = true; rankUntil = 0; orderMarks = []; }
+
+// 목표물: 땅에 꽂힌 깃발 + 과녁 링 + 하늘로 뻗는 빛기둥
+function drawTarget() {
+  const tx = st.target.x, ty = st.terrain[tx], now = performance.now();
+  if (tx < cam.x - 250 || tx > cam.x + VW + 250) return;
+  const pul = (now / 1100) % 1, R = 170;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const bg = ctx.createLinearGradient(0, ty - 800, 0, ty); bg.addColorStop(0, 'rgba(255,233,74,0)'); bg.addColorStop(1, 'rgba(255,233,74,.32)');
+  ctx.fillStyle = bg; ctx.fillRect(tx - 18, ty - 800, 36, 800);
+  [1, .68, .36].forEach((k, n) => { ctx.lineWidth = 7; ctx.strokeStyle = n % 2 ? 'rgba(255,255,255,.85)' : 'rgba(255,70,90,.9)'; ctx.beginPath(); ctx.ellipse(tx, ty - 3, R * k, R * k * .26, 0, 0, 7); ctx.stroke(); });
+  ctx.lineWidth = 5; ctx.strokeStyle = `rgba(255,233,74,${1 - pul})`; ctx.beginPath(); ctx.ellipse(tx, ty - 3, R * (.3 + pul * .9), R * (.3 + pul * .9) * .26, 0, 0, 7); ctx.stroke();
+  ctx.restore();
+  ctx.save(); ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx, ty - 150); ctx.stroke();
+  const wv = Math.sin(now / 260) * 8;
+  ctx.fillStyle = '#ff3b5c'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(tx, ty - 150); ctx.lineTo(tx + 70, ty - 128 + wv); ctx.lineTo(tx, ty - 104); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.font = 'bold 34px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(4,6,16,.9)'; ctx.strokeText('🎯 목표물', tx, ty - 172); ctx.fillStyle = '#ffe94a'; ctx.fillText('🎯 목표물', tx, ty - 172);
+  if (now < rankUntil) orderMarks.forEach(o => {   // 각자 포탄이 떨어진 자리
+    const col = pc(o.by), p = st.players[o.by];
+    ctx.fillStyle = rgba(col, .95); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(o.x, o.y - 6, 12, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.font = 'bold 26px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText(p.icon || '●', o.x, o.y - 26);
+  });
+  ctx.restore();
+}
+
 // ----- 카메라: 지금 차례인 탱크(포탄이 날아가는 동안엔 포탄)를 부드럽게 따라가요 -----
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // 레이저는 아주 멀리까지 날아가니까, 내 차례에 화면을 드래그해서 적을 찾아볼 수 있어요. (두 번 탭하면 내 탱크로 돌아와요)
@@ -1396,8 +1539,9 @@ function updateCam() {
   let fx = W / 2, fy = H / 2, k = .1;
   if (anim) { const pts = anim.shells.filter(s => anim.i < s.path.length).map(s => ptAt(s.path, anim.i)), L0 = anim.shells[0].path, use = pts.length ? pts : [L0[L0.length - 1]]; fx = use.reduce((t, q) => t + q[0], 0) / use.length; fy = use.reduce((t, q) => t + q[1], 0) / use.length; k = .22; }
   else {
-    const ti = st.winner >= 0 ? st.winner : st.turn, p = vis[ti] ? { ...st.players[ti], x: vis[ti].x, y: vis[ti].y } : st.players[ti];
+    const ord = st.phase === 'order' && st.winner < 0 && me >= 0, ti = st.winner >= 0 ? st.winner : ord ? me : st.turn, p = vis[ti] ? { ...st.players[ti], x: vis[ti].x, y: vis[ti].y } : st.players[ti];
     if (p && p.on) { fx = p.x; fy = p.y - 20 * TS; }
+    if (ord && st.target && p && p.on) { fx = p.x + clamp(st.target.x - p.x, -700, 700); fy = (p.y + st.terrain[st.target.x]) / 2 - 20 * TS; }   // 내 탱크가 화면 안에 남는 범위에서 목표물 쪽으로 비춰요
   }
   let tx = clamp(fx - VW / 2, 0, W - VW), ty = clamp(fy - VH * .6, 0, H - VH);
   if (laserTurn()) {   // 드래그한 만큼 시야를 옮겨요 (월드 밖으로는 못 나가요)
@@ -1416,9 +1560,11 @@ function drawOffscreen() {
   const L = 110, R = VW - 110, T = 170, B = VH - 560, cx = VW / 2, cy = VH / 2;   // 컨트롤(파워/조준)·상단 표시줄을 피하는 안쪽 사각형
   const placed = [];
   ctx.setTransform(SV, 0, 0, SV, 0, 0);
-  st.players.forEach((p, i) => {
-    if (i === me || !p.on || p.hp <= 0) return;
-    const sx = p.x - cam.x, sy = p.y - 20 * TS - cam.y;
+  const items = [];
+  st.players.forEach((p, i) => { if (i === me || !p.on || p.hp <= 0) return; items.push({ x: p.x, y: p.y - 20 * TS, col: pc(i), i, label: `${p.icon || ''} ${Math.round(Math.hypot(p.x - ref.x, p.y - ref.y) / MPP)}m` }); });
+  if (st.phase === 'order' && st.target) { const ty = st.terrain[st.target.x]; items.push({ x: st.target.x, y: ty - 60, col: '#ffe94a', i: 7, label: `🎯 ${Math.round(Math.hypot(st.target.x - ref.x, ty - ref.y) / MPP)}m` }); }
+  items.forEach(it => {
+    const i = it.i, sx = it.x - cam.x, sy = it.y - cam.y;
     if (sx > L && sx < R && sy > T && sy < B) return;   // 화면 안에 잘 보이면 표시하지 않아요
     const dx = sx - cx, dy = sy - cy;
     const tx = dx ? (dx > 0 ? R - cx : L - cx) / dx : Infinity, ty = dy ? (dy > 0 ? B - cy : T - cy) / dy : Infinity;
@@ -1426,14 +1572,14 @@ function drawOffscreen() {
     let y = cy + dy * t;
     for (let n = 0, hit = true; hit && n < 4; n++) { hit = false; for (const q of placed) if (Math.abs(q.x - x) < 170 && Math.abs(q.y - y) < 46) { y = q.y + 46; hit = true; } }   // 같은 쪽 화살표끼리 겹치지 않게 아래로 밀어요
     placed.push({ x, y });
-    const m = Math.round(Math.hypot(p.x - ref.x, p.y - ref.y) / MPP), col = pc(i);
+    const col = it.col;
     ctx.save(); ctx.translate(x, y);
     ctx.save(); ctx.rotate(ang); ctx.globalAlpha = .75 + .25 * Math.sin(performance.now() / 260 + i);
     ctx.shadowColor = col; ctx.shadowBlur = 14; ctx.lineJoin = 'round';
     ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(-14, -20); ctx.lineTo(-4, 0); ctx.lineTo(-14, 20); ctx.closePath();
     ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
     ctx.restore();
-    const label = `${p.icon || ''} ${m}m`;
+    const label = it.label;
     ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const w = ctx.measureText(label).width + 24, ca = Math.cos(ang), sa = Math.sin(ang);
     const ox = -ca * (36 + w / 2 * Math.abs(ca)), oy = -sa * (36 + 17 * Math.abs(sa));
@@ -1548,25 +1694,28 @@ function draw() {
   ctx.restore();
 
   drawFires();
+  if (st.target && (st.phase === 'order' || performance.now() < rankUntil)) drawTarget();
   const alive = st.players.map((p, i) => p.on && p.hp > 0);
   const rp = st.players.map((p, i) => vis[i] ? { ...p, x: vis[i].x, y: vis[i].y } : p);
-  rp.forEach((p, i) => { if (alive[i]) drawTank(p, i, aimVis[i] ?? aims[i], st.turn === i && st.winner === -1); });
-  rp.forEach((p, i) => { if (alive[i]) drawTag(p, i, st.turn === i && st.winner === -1); });
-  if (!anim && st.winner === -1 && st.turn === me && me >= 0 && alive[me]) drawPreview(rp[me], pc(me));
+  rp.forEach((p, i) => { if (alive[i]) drawTank(p, i, aimVis[i] ?? aims[i], isTurn(i)); });
+  rp.forEach((p, i) => { if (alive[i]) drawTag(p, i, isTurn(i)); });
+  const ordering = st.phase === 'order';
+  if (!anim && st.winner === -1 && me >= 0 && alive[me] && (ordering ? canOrderFire() : st.turn === me)) drawPreview(ordering ? { ...rp[me], tank: 'basic' } : rp[me], pc(me));   // 순서 정하기는 모두 기본탄 물리
 
   if (anim) {
     const A = anim; let maxLen = 0;
     const tail = A.kind === 'laser' ? 36 : 0;   // 레이저는 머리가 끝난 뒤에도 꼬리가 사라질 때까지 그려요
-    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length + tail); if (A.i < s.path.length + tail) drawShell({ path: s.path, i: A.i, by: A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy' }); });
+    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length + tail); if (A.i < s.path.length + tail) drawShell({ path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy' }); });
     A.i += (A.kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED * FS;   // 광폭탄은 느리게 날아가요
     A.shells.forEach(s => {
       if (s.boomed || A.i < s.path.length) return;
       s.boomed = true;
       const e = s.path[s.path.length - 1];
-      if (s.impact) spawnBoom(s.impact[0], s.impact[1], { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 2.6, pierce: 1, laser: .5 }[A.kind] || 1.5);
+      if (s.impact && A.order) spawnBoom(s.impact[0], s.impact[1], .9);   // 순서 정하기: 지형은 안 파여요
+      else if (s.impact) spawnBoom(s.impact[0], s.impact[1], { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 2.6, pierce: 1, laser: .5 }[A.kind] || 1.5);
       else if (A.dud) { spawnBoom(e[0], e[1], 1.1, true); FX.floats.push({ x: e[0], y: e[1] - 30, t: 0, txt: '불발!', big: false }); }
     });
-    if (A.i >= maxLen) { const next = A.pending; fxFromDiff(st, next); anim = null; apply(next); if (A.by === me) sendMsg({ type: 'landed' }); }
+    if (A.i >= maxLen) { const next = A.pending; fxFromDiff(st, next); anim = null; apply(next); if (A.order) showRank(A.ranks); else if (A.by === me) sendMsg({ type: 'landed' }); }
   }
   drawFx();
   if (FX.flash > .01) { ctx.fillStyle = `rgba(255,255,255,${FX.flash})`; ctx.fillRect(-20, -20, W + 40, H + 40); FX.flash *= Math.pow(.78, FS); }

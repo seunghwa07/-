@@ -29,6 +29,7 @@ const LASER_HIT = HIT_R * 1.9;     // 레이저 판정 범위: 기본 판정의 
 const MAX_CLIMB = 90;              // 한 걸음(6px)당 최대 오르막 높이 → 약 86° 경사까지 (거의 수직 절벽만 막혀요)
 const FIRE_R = 170, FIRE_MS = 3000, BURN_TICK = 500, BURN_DMG = 2;   // 소이탄: 불길 반경 / 3초 지속 / 0.5초마다 2 피해
 const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
+const ORDER_GO = 3600, ORDER_MS = 15000;   // 순서 정하기: 시작 연출(로딩+등장) 시간 / 조준·발사 제한시간
 const DUD = 0.3, HOMING_TURN = 2.2; // 유도탄 불발 확률 / 초당 최대 회전각(rad)
 
 const send = (ws, m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
@@ -55,9 +56,10 @@ function newCode() {
 
 const alive = g => g.players.map((p, i) => (p.on && p.hp > 0 ? i : -1)).filter(i => i >= 0);
 
-function nextTurn(g, from) {
-  for (let k = 1; k <= MAX; k++) {
-    const i = (from + k) % MAX;
+function nextTurn(g, from) {   // 순서 정하기로 정해진 차례(g.order)를 따라 돌아요
+  const o = g.order && g.order.length ? g.order : [0, 1, 2, 3], pos = o.indexOf(from);
+  for (let k = 1; k <= o.length; k++) {
+    const i = o[(pos + k + o.length) % o.length];
     if (g.players[i].on && g.players[i].hp > 0) return i;
   }
   return from;
@@ -81,14 +83,22 @@ function newGame(r) {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [],
     players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? r.slots[i].tank : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
-  r.game.turn = r.game.players.findIndex(p => p.on);
-  r.game.fuel = FUEL;
+  const g = r.game;
+  g.turn = g.players.findIndex(p => p.on);
+  g.fuel = FUEL;
+  // 순서 정하기: 목표물 하나를 맵 가운데 쪽 랜덤 위치에 세우고, 모두 동시에 한 발씩 쏴서 가장 가까운 순서대로 차례를 정해요
+  g.phase = 'order'; g.order = null; g.oshots = {};
+  g.target = { x: Math.round(W * (.4 + Math.random() * .2)) };
+  g.orderGoAt = Date.now() + ORDER_GO; g.orderEnd = g.orderGoAt + ORDER_MS;
+  g.orderTimer = setTimeout(() => resolveOrder(r, g), ORDER_GO + ORDER_MS + 1500);   // 시간이 지나면 못 쏜 사람은 꼴찌 처리
 }
 
 function snapshot(r) {
   const g = r.game;
   return {
     type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam, busy: !!g.busy,
+    phase: g.phase, target: g.target, order: g.order, ofired: g.players.map((_, i) => !!g.oshots[i]),
+    orderGo: Math.max(0, g.orderGoAt - Date.now()), orderLeft: Math.max(0, g.orderEnd - Date.now()),
     teams: g.players.map(p => p.team),
     fires: fireList(g),
     players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
@@ -103,6 +113,7 @@ function checkEnd(r) {
     g.winTeam = ts.size ? [...ts][0] : -1;
   } else if (a.length > 1) return false;
   g.winner = a.length ? a[0] : -2; // -2: 무승부
+  clearTimeout(g.orderTimer);
   setTimeout(() => {
     if (r.game === g) { r.game = null; toRoom(r, roomMsg(r)); pushList(); }
   }, 5000);
@@ -122,7 +133,7 @@ const isAlly = (g, a, b) => g.mode === 'team' && a !== b && g.players[a].team ==
 const tankY = (g, q) => g.terrain[q.x] - 10 * TS;
 
 // 포탄 한 발의 비행 계산. 유도탄은 가장 가까운 적 쪽으로 휘어져요.
-function flight(g, shooter, angle, power, kind) {
+function flight(g, shooter, angle, power, kind, free = false) {   // free: 탱크에 맞지 않고 지형에만 닿아요 (순서 정하기용)
   const p = g.players[shooter];
   const a = angle * Math.PI / 180, v = power * 8 * K * (SPEED[kind] || 1), dt = 1 / 120;
   let x = p.x, y = g.terrain[p.x] - 14 * TS;
@@ -148,7 +159,7 @@ function flight(g, shooter, angle, power, kind) {
     if (t % 4 === 0) path.push([x, y]);
     if (x < 0 || x >= W || y > H) { out = true; break; }
     if (kind !== 'pierce' && y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }   // 관통탄은 땅을 그냥 통과해요
-    if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) && !isAlly(g, shooter, i) &&
+    if (!free && g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) && !isAlly(g, shooter, i) &&
         Math.hypot(x - q.x, y - tankY(g, q)) < (kind === 'pierce' ? PIERCE_HIT : HIT_R))) { impact = [x, y]; break; }
   }
   if (impact) path.push(impact);
@@ -239,13 +250,47 @@ function burnTick(r, g) {
 
 // 턴은 포탄이 명중 / 불발 / 맵 밖으로 사라진 뒤에만 넘어가요.
 // 쏜 사람의 화면에서 포탄이 끝나면 'landed'를 보내고, 안 오면 예상 시간 뒤에 서버가 넘겨요.
-function endBusy(g) { g.busy = false; clearTimeout(g.busyTimer); }
+function endBusy(g) { g.busy = false; g.orderBusy = false; clearTimeout(g.busyTimer); }
 function resolveShot(r, g) {
   if (r.game !== g || !g.busy) return;
   endBusy(g);
   if (g.winner !== -1) return;
   advance(r, g.turn);
   toRoom(r, { type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel });
+}
+
+const allFired = g => g.players.every((p, i) => !p.on || p.hp <= 0 || g.oshots[i]);
+const SHOT_MS = len => len * 1000 / 60 / FMAP.SHOT_SPEED;   // 화면 애니메이션 길이와 같은 계산
+
+// 순서 정하기 결과: 모두의 포탄을 한꺼번에 날리고, 목표물에 가까운 순서대로 g.order 를 정해요
+function resolveOrder(r, g) {
+  if (r.game !== g || g.phase !== 'order' || g.winner !== -1) return;
+  clearTimeout(g.orderTimer);
+  g.phase = 'play';
+  const tx = g.target.x, ty = g.terrain[tx];
+  const res = [];
+  g.players.forEach((p, i) => {
+    if (!p.on || p.hp <= 0) return;
+    const s = g.oshots[i], e = { i, angle: s ? s.angle : 90, path: null, impact: null, dist: Infinity, tb: Math.random() };
+    if (s) { const f = flight(g, i, s.angle, s.power, 'basic', true); e.path = f.path; e.impact = f.impact; if (f.impact) e.dist = Math.hypot(f.impact[0] - tx, f.impact[1] - ty); }
+    res.push(e);
+  });
+  const rank = [...res].sort((a, b) => a.dist < b.dist ? -1 : a.dist > b.dist ? 1 : a.tb - b.tb);
+  g.order = rank.map(e => e.i);
+  g.turn = g.order[0] ?? g.turn; g.wind = rndWind(); g.fuel = FUEL;
+  g.busy = true; g.orderBusy = true;
+  const ms = Math.max(0, ...res.filter(e => e.path).map(e => SHOT_MS(e.path.length))) + 4800;   // 포탄 비행 + 결과 카드 시간
+  g.busyTimer = setTimeout(() => {
+    if (r.game !== g || !g.busy) return;
+    endBusy(g);
+    toRoom(r, { type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel });
+  }, ms);
+  toRoom(r, {
+    type: 'oshot', order: g.order,
+    shots: res.filter(e => e.path).map(e => ({ by: e.i, angle: e.angle, path: e.path, impact: e.impact })),
+    ranks: rank.map(e => ({ i: e.i, dist: isFinite(e.dist) ? Math.round(e.dist) : null })),
+    state: snapshot(r),
+  });
 }
 
 function advance(r, from) {   // 다음 차례로 넘겨요
@@ -298,7 +343,10 @@ function leave(ws) {
   else if (g) {
     if (g.players[i].on && g.winner === -1) {
       g.players[i].hp = 0;
-      if (!checkEnd(r) && g.turn === i) { endBusy(g); advance(r, i); }
+      if (!checkEnd(r)) {
+        if (g.phase === 'order') { if (allFired(g)) { toRoom(r, snapshot(r)); resolveOrder(r, g); pushList(); return; } }
+        else if (g.turn === i) { endBusy(g); advance(r, i); }
+      }
     }
     toRoom(r, snapshot(r));
   } else toRoom(r, roomMsg(r));
@@ -348,10 +396,10 @@ wss.on('connection', ws => {
       newGame(r); toRoom(r, snapshot(r)); pushList();
     } else if (r && m.type === 'landed') {
       const g = r.game;
-      if (g && g.busy && g.turn === ws.slot) resolveShot(r, g);
+      if (g && g.busy && !g.orderBusy && g.phase !== 'order' && g.turn === ws.slot) resolveShot(r, g);
     } else if (r && m.type === 'move') {
       const g = r.game, now = Date.now();
-      if (!g || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.fuel <= 0 || now - (ws.lastMove || 0) < 30) return;
+      if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.fuel <= 0 || now - (ws.lastMove || 0) < 30) return;
       ws.lastMove = now;
       const dir = m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0, p = g.players[ws.slot];
       const nx = p.x + dir * STEP;
@@ -360,9 +408,15 @@ wss.on('connection', ws => {
       if (g.players.some((q, i) => i !== ws.slot && q.hp > 0 && Math.abs(q.x - nx) < 40)) return;
       p.x = nx; g.fuel -= STEP;
       toRoom(r, { type: 'moved', i: ws.slot, x: nx, y: g.terrain[nx], fuel: g.fuel });
+    } else if (r && m.type === 'ofire') {   // 순서 정하기: 각자 동시에 조준을 확정해요 (모두 확정하거나 시간이 끝나면 한꺼번에 발사)
+      const g = r.game;
+      if (!g || g.phase !== 'order' || g.winner !== -1 || !g.players[ws.slot].on || g.players[ws.slot].hp <= 0 || g.oshots[ws.slot] || Date.now() < g.orderGoAt - 400) return;
+      g.oshots[ws.slot] = { angle: Math.min(180, Math.max(0, +m.angle || 0)), power: Math.min(100, Math.max(10, +m.power || 10)) };
+      toRoom(r, { type: 'ofired', i: ws.slot });
+      if (allFired(g)) resolveOrder(r, g);
     } else if (r && m.type === 'fire') {
       const g = r.game;
-      if (!g || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.players[ws.slot].hp <= 0) return;
+      if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.players[ws.slot].hp <= 0) return;
       toRoom(r, fire(r, ws.slot,
         Math.min(180, Math.max(0, +m.angle || 0)),
         Math.min(100, Math.max(10, +m.power || 10))));
