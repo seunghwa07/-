@@ -20,7 +20,7 @@ const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'l
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
-  bumper0: { dmg: 20, rad: 36 }, bumper1: { dmg: 12, rad: 28 }, bumper2: { dmg: 8, rad: 22 },   // 범퍼: 첫 탄 20 / 한 번 튄 탄 12 / 두 번 튄 가장 작은 탄 8
+  bumper0: { dmg: 20, rad: 52 }, bumper1: { dmg: 12, rad: 42 }, bumper2: { dmg: 8, rad: 34 },   // 범퍼: 첫 탄 20 / 한 번 튄 탄 12 / 두 번 튄 가장 작은 탄 8
   pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함) / 레이저(직격만, 기본탄 17보다 센 22)
   heavy: { dmg: 34, rad: Math.round(CRATER * Math.sqrt(3)) },   // 광폭탄: 피해 2배, 폭발 면적 3배(반지름 √3배)
 };
@@ -35,7 +35,8 @@ const ORDER_GO = 3600, ORDER_MS = 15000;   // 순서 정하기: 시작 연출(�
 // 융단 폭격: 가벼운 신호탄(피해 없음)이 날아가 땅에서 조금 구른 뒤, 붉은 연기가 피어나고 위에서 미사일 3발이 수직으로 떨어져요. (시간 단위 = 화면 애니메이션 프레임)
 const CARPET_GLOW = 70, CARPET_GAP = 16, CARPET_FALL = 34, CARPET_SPREAD = 110, CARPET_WIND = 1.6;   // 신호탄은 가벼워서 바람을 1.6배 더 타요
 const CARPET_GRAZE = 13;           // 융단 폭격 미사일에 스쳐 맞았을 때 피해
-const BUMPER_BOUNCES = 2;          // 범퍼탄이 튀는 횟수 (튈 때마다 좌우로 2개씩 쪼개져요)
+const BUMPER_BOUNCES = 2, BUMPER_HIT = Math.min(HIT_R * 1.4, DIRECT - 1);   // 범퍼탄은 커진 만큼 탱크 피격 범위도 넓어요
+const BUMPER_SPREAD = .2;          // 범퍼탄이 튀는 횟수 (튈 때마다 좌우로 2개씩 쪼개져요)
 const DUD = 0.3, HOMING_TURN = 2.2; // 유도탄 불발 확률 / 초당 최대 회전각(rad)
 
 const send = (ws, m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
@@ -183,14 +184,14 @@ function bumperFlight(g, shooter, angle, power) {
       if (t % 4 === 0) path.push([x, y]);
       if (x < 0 || x >= W || y > H) break;
       if (y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }
-      if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || gen > 0 || t > 40) && !isAlly(g, shooter, i) && Math.hypot(x - q.x, y - tankY(g, q)) < HIT_R)) { impact = [x, y]; hitTank = true; break; }
+      if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || gen > 0 || t > 40) && !isAlly(g, shooter, i) && Math.hypot(x - q.x, y - tankY(g, q)) < BUMPER_HIT)) { impact = [x, y]; hitTank = true; break; }
     }
     if (impact) path.push(impact);
     const full = prefix.concat(path);
     if (impact && !hitTank && gen < BUMPER_BOUNCES) {   // 땅에 닿음 → 튀면서 좌우로 쪼개져요 (이 지점에서는 폭발·피해 없음)
       for (const dir of [-1, 1]) {
-        const sx = Math.max(2, Math.min(W - 3, Math.round(impact[0] + dir * 10))), sy = Math.min(impact[1], g.terrain[sx]) - 4;
-        run(sx, sy, dir * Math.max(Math.abs(vx) * .5, v * .18), -Math.max(Math.abs(vy) * .55, v * .3), gen + 1, full, splits.concat(full.length - 1));
+        const sx = Math.max(2, Math.min(W - 3, Math.round(impact[0] + dir * 5))), sy = Math.min(impact[1], g.terrain[sx]) - 4;
+        run(sx, sy, dir * Math.max(Math.abs(vx) * .22, v * .06) * BUMPER_SPREAD / .2, -Math.max(Math.abs(vy) * .5, v * .27), gen + 1, full, splits.concat(full.length - 1));
       }
     } else out.push({ path: full, impact, gen, splits, fizzled: false });
   };

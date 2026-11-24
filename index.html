@@ -1805,16 +1805,16 @@ function draw() {
   if (anim) {
     const A = anim; let maxLen = A.carpet ? A.carpet.total : 0;
     const tail = A.kind === 'laser' ? 36 : 0;   // 레이저는 머리가 끝난 뒤에도 꼬리가 사라질 때까지 그려요
-    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length + tail); if (A.i < s.path.length + tail) drawShell({ path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy', z: A.kind === 'bumper' ? [1, .75, .55][s.splits.filter(q => q <= A.i).length] : 0 }); });
+    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length + tail); if (A.i < s.path.length + tail) drawShell({ path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy', z: A.kind === 'bumper' ? [1.7, 1.3, 1][s.splits.filter(q => q <= A.i).length] : 0 }); });
     if (A.carpet) drawCarpet(A);
     A.i += (A.kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED * FS;   // 광폭탄은 느리게 날아가요
     A.shells.forEach(s => {
-      if (A.kind === 'bumper') { A.bset = A.bset || new Set(); s.splits.forEach(q => { const key = s.path[q][0] + ',' + q; if (A.i >= q && !A.bset.has(key)) { A.bset.add(key); spawnBoom(s.path[q][0], s.path[q][1], .22); } }); }   // 튈 때마다 작은 불꽃
+      if (A.kind === 'bumper') { A.bset = A.bset || new Set(); s.splits.forEach(q => { const key = s.path[q][0] + ',' + q; if (A.i >= q && !A.bset.has(key)) { A.bset.add(key); spawnBoom(s.path[q][0], s.path[q][1], .3); } }); }   // 튈 때마다 작은 불꽃
       if (s.boomed || A.i < s.path.length) return;
       s.boomed = true;
       const e = s.path[s.path.length - 1];
       if (s.impact && A.order) spawnBoom(s.impact[0], s.impact[1], .9);   // 순서 정하기: 지형은 안 파여요
-      else if (s.impact) spawnBoom(s.impact[0], s.impact[1], A.kind === 'bumper' ? [1.1, .8, .6][s.gen || 0] : { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 2.6, pierce: 1, laser: .5 }[A.kind] || 1.5);
+      else if (s.impact) spawnBoom(s.impact[0], s.impact[1], A.kind === 'bumper' ? [1.6, 1.25, .95][s.gen || 0] : { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 2.6, pierce: 1, laser: .5 }[A.kind] || 1.5);
       else if (A.dud) { spawnBoom(e[0], e[1], 1.1, true); FX.floats.push({ x: e[0], y: e[1] - 30, t: 0, txt: '불발!', big: false }); }
     });
     if (A.i >= maxLen) { const next = A.pending; fxFromDiff(st, next); anim = null; apply(next); if (A.order) showRank(A.ranks); else if (A.by === me) sendMsg({ type: 'landed' }); }
