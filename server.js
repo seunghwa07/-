@@ -153,7 +153,7 @@ function flight(g, shooter, angle, power, kind) {
   return { path, impact, fizzled: !impact && !out };   // fizzled: 30초 넘게 날다 소멸
 }
 
-// 레이저: 포물선 없이 직선으로 날아가고, 벽(지형)에 닿으면 반사돼요. 4번 반사한 뒤 또 닿으면 사라져요.
+// 레이저: 포물선 없이 직선으로 날아가고, 벽(지형)과 맵 경계(왼쪽·오른쪽·위)에 닿으면 반사돼요. 4번 반사한 뒤 또 닿으면 사라져요.
 const LASER_BOUNCES = 4;
 function laserFlight(g, shooter, angle) {
   const p = g.players[shooter], a = angle * Math.PI / 180, STEP = 4, MAXLEN = 9000;
@@ -162,7 +162,14 @@ function laserFlight(g, shooter, angle) {
   const path = [[x, y]];
   while (len < MAXLEN) {
     const nx = x + dx * STEP, ny = y + dy * STEP;
-    if (nx < 0 || nx >= W || ny < -400) break;                                   // 맵 밖
+    if (nx < 0 || nx >= W || ny < 0) {                                           // 맵 경계(왼쪽·오른쪽·위)도 벽처럼 반사
+      path.push([x, y]); rec = 0;
+      if (bounces >= LASER_BOUNCES) break;                                       // 5번째 접촉: 소멸
+      bounces++;
+      if (nx < 0 || nx >= W) dx = -dx;
+      if (ny < 0) dy = -dy;
+      continue;
+    }
     const ti = g.players.findIndex((q, i) => q.hp > 0 && (i !== shooter || bounces > 0 || len > 90) && !isAlly(g, shooter, i) &&
       Math.hypot(nx - q.x, ny - tankY(g, q)) < HIT_R);
     if (ti >= 0) { hit = ti; impact = [nx, ny]; x = nx; y = ny; break; }          // 탱크 명중
