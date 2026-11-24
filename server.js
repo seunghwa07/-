@@ -16,11 +16,15 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing'];
-const SHELL = { basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 } };
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy'];
+const SHELL = {
+  basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
+  heavy: { dmg: 34, rad: Math.round(CRATER * Math.sqrt(3)) },   // 광폭탄: 피해 2배, 폭발 면적 3배(반지름 √3배)
+};
+const SPEED = { heavy: Math.sqrt(0.7) };   // 광폭탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
-const MAX_CLIMB = 30;              // 한 걸음(6px)당 최대 오르막 높이 → 약 78° 경사까지 (이전 8 ≈ 53°)
-const FIRE_R = 90, BURN = 8;       // 소이탄 불길 반경 / 불 위 탱크가 자기 차례 시작 때 받는 피해
+const MAX_CLIMB = 90;              // 한 걸음(6px)당 최대 오르막 높이 → 약 86° 경사까지 (거의 수직 절벽만 막혀요)
+const FIRE_R = 90, FIRE_MS = 3000, BURN_TICK = 500, BURN_DMG = 2;   // 소이탄: 불길 반경 / 3초 지속 / 0.5초마다 2 피해
 const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
 const DUD = 0.3, HOMING_TURN = 2.2; // 유도탄 불발 확률 / 초당 최대 회전각(rad)
 
@@ -83,7 +87,7 @@ function snapshot(r) {
   return {
     type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam,
     teams: g.players.map(p => p.team),
-    fires: g.fires.map(f => ({ x: f.x, y: f.y, r: f.r, life: f.life })),
+    fires: fireList(g),
     players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
   };
 }
@@ -117,7 +121,7 @@ const tankY = (g, q) => g.terrain[q.x] - 10 * TS;
 // 포탄 한 발의 비행 계산. 유도탄은 가장 가까운 적 쪽으로 휘어져요.
 function flight(g, shooter, angle, power, kind) {
   const p = g.players[shooter];
-  const a = angle * Math.PI / 180, v = power * 8 * K, dt = 1 / 120;
+  const a = angle * Math.PI / 180, v = power * 8 * K * (SPEED[kind] || 1), dt = 1 / 120;
   let x = p.x, y = g.terrain[p.x] - 14 * TS;
   let vx = v * Math.cos(a), vy = -v * Math.sin(a);
   const path = [[x, y]];
@@ -148,8 +152,8 @@ function flight(g, shooter, angle, power, kind) {
   return { path, impact };
 }
 
-// 착탄: 땅 파임 + 피해(팀전에서는 아군 제외) + 소이탄이면 불길 생성
-function explode(g, shooter, impact, kind) {
+// 착탄: 땅 파임 + 피해(팀전에서는 아군 제외) + 소이탄이면 불길 생성 (delay: 클라이언트 화면에서 폭발이 보일 때까지의 시간)
+function explode(g, shooter, impact, kind, delay = 0) {
   const { dmg, rad } = SHELL[kind], reach = rad + 25;
   crater(g, impact[0], impact[1], rad);
   g.players.forEach((q, i) => {
@@ -157,25 +161,43 @@ function explode(g, shooter, impact, kind) {
     q.hp = Math.max(0, q.hp - dmgAt(dmg, Math.hypot(q.x - impact[0], tankY(g, q) - impact[1]), reach));
   });
   if (kind === 'incendiary') {
-    const fx = Math.max(0, Math.min(W - 1, Math.round(impact[0])));
-    g.fires.push({ x: fx, y: g.terrain[fx], r: FIRE_R, life: 2 * alive(g).length + 1, by: shooter });
+    const fx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), t0 = Date.now() + delay;
+    g.fires.push({ x: fx, y: g.terrain[fx], r: FIRE_R, by: shooter, startAt: t0, endsAt: t0 + FIRE_MS, next: t0 + BURN_TICK });
   }
 }
 
-// 다음 차례로 넘기고, 불길의 수명을 줄이고, 불 위에 선 탱크에 화상 피해를 줘요
-function advance(r, from) {
+const fireList = g => g.fires.map(f => ({ x: f.x, y: f.y, r: f.r, life: Math.max(0, f.endsAt - Math.max(Date.now(), f.startAt)) }));
+
+// 소이탄 불길: 실시간으로 0.5초마다 불 위의 탱크에 2 피해, 3초 뒤 꺼져요
+function startBurn(r) {
+  const g = r.game;
+  if (!g.burnTimer) g.burnTimer = setInterval(() => burnTick(r, g), 100);
+}
+function burnTick(r, g) {
+  if (r.game !== g || g.winner !== -1 || !g.fires.length) { clearInterval(g.burnTimer); g.burnTimer = null; return; }
+  const now = Date.now(); let changed = false, died = false;
+  g.fires.forEach(f => {
+    while (now >= f.next && f.next <= f.endsAt) {
+      f.next += BURN_TICK; changed = true;
+      g.players.forEach((q, i) => {
+        if (q.hp <= 0 || isAlly(g, f.by, i) || Math.hypot(q.x - f.x, tankY(g, q) - f.y) >= f.r) return;
+        q.hp = Math.max(0, q.hp - BURN_DMG);
+        if (q.hp <= 0) died = true;
+      });
+    }
+  });
+  const n = g.fires.length;
+  g.fires = g.fires.filter(f => now < f.endsAt);
+  if (g.fires.length !== n) changed = true;
+  if (died) {   // 화상으로 누군가 쓰러졌어요: 승패/차례를 다시 계산해서 전체 상태를 보내요
+    if (!checkEnd(r) && g.players[g.turn].hp <= 0) advance(r, g.turn);
+    toRoom(r, snapshot(r));
+  } else if (changed) toRoom(r, { type: 'burn', hp: g.players.map(p => p.hp), fires: fireList(g) });
+}
+
+function advance(r, from) {   // 다음 차례로 넘겨요
   const g = r.game;
   g.turn = nextTurn(g, from); g.wind = rndWind(); g.fuel = FUEL;
-  g.fires.forEach(f => f.life--);
-  g.fires = g.fires.filter(f => f.life > 0);
-  for (let n = 0; n < MAX; n++) {
-    const qi = g.turn, q = g.players[qi];
-    const burn = g.fires.filter(f => !isAlly(g, f.by, qi) && Math.hypot(q.x - f.x, tankY(g, q) - f.y) < f.r).length;
-    if (!burn) return;
-    q.hp = Math.max(0, q.hp - BURN * burn);
-    if (q.hp > 0 || checkEnd(r)) return;
-    g.turn = nextTurn(g, qi);
-  }
 }
 
 function fire(r, shooter, angle, power) {
@@ -190,7 +212,9 @@ function fire(r, shooter, angle, power) {
     shells = [s]; dud = true;
   } else shells = [flight(g, shooter, angle, power, kind)];
 
-  shells.forEach(s => { if (s.impact) explode(g, shooter, s.impact, kind); });
+  // 클라이언트 애니메이션(약 60프레임/초)이 끝나 폭발이 보일 때쯤 불길이 시작되도록 맞춰요
+  shells.forEach(s => { if (s.impact) explode(g, shooter, s.impact, kind, Math.round(s.path.length * 1000 / 60 / (kind === 'heavy' ? .6 : 1)) + 300); });
+  if (g.fires.length) startBurn(r);
 
   if (!checkEnd(r)) advance(r, shooter);
   return { type: 'shot', by: shooter, angle, kind, dud, shells: shells.map(s => ({ path: s.path, impact: s.impact })), state: snapshot(r) };

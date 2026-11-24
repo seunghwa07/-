@@ -183,7 +183,7 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점을 불태워요 · 불 위의 탱크는 자기 차례마다 화상'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 2배 · 폭발 면적 3배']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 
 const ls = {
@@ -271,6 +271,15 @@ function onMsg(m) {
   else if (m.type === 'moved') {
     const t = anim ? anim.pending : st;
     if (t && t.players) { const p = t.players[m.i]; p.x = m.x; p.y = m.y; t.fuel = m.fuel; }
+    ui();
+  }
+  else if (m.type === 'burn') {   // 불길 틱: 체력/불길 갱신 (애니메이션 중이면 끝난 뒤 적용될 상태에 반영)
+    const t = anim ? anim.pending : st;
+    if (t && t.players) {
+      if (!anim) m.hp.forEach((h, i) => { const p = t.players[i]; if (p && p.on && h < p.hp) FX.floats.push({ x: p.x, y: p.y - 120, t: 0, txt: '-' + (p.hp - h), big: false }); });
+      m.hp.forEach((h, i) => { if (t.players[i]) t.players[i].hp = h; });
+      t.fires = m.fires; const now = performance.now(); t.fires.forEach(f => { f.at = now; });
+    }
     ui();
   }
   else if (m.type === 'shot') { aims[m.by] = m.angle; fireFx(m.by, m.angle); anim = { shells: m.shells.map(s => ({ path: s.path, impact: s.impact, boomed: false })), i: 0, pending: m.state, by: m.by, kind: m.kind, dud: m.dud }; ui(); }
@@ -378,6 +387,7 @@ $('leave').onclick = () => { sendMsg({ type: 'leave' }); me = -1; st = null; sho
 
 function apply(m) {
   st = m;
+  if (m.fires) { const now = performance.now(); m.fires.forEach(f => { f.at = now; }); }   // 남은 시간을 화면에서 줄여가요
   if (m.type === 'room') { fresh = true; show('room'); renderRoom(); return; }
   show('game');
   if (fresh) {
@@ -749,7 +759,7 @@ function drawTag(p, i, active) {
 
 // ----- 조준 점선 미리보기 (궤적 앞부분만, 서버와 같은 물리) -----
 function drawPreview(p, col) {
-  const a = my.angle * Math.PI / 180, v = my.power * 8 * K, dt = 1 / 120;
+  const a = my.angle * Math.PI / 180, v = my.power * 8 * K * (p.tank === 'heavy' ? Math.sqrt(.7) : 1), dt = 1 / 120;
   let x = p.x, y = st.terrain[Math.floor(p.x)] - 14 * TS, vx = v * Math.cos(a), vy = -v * Math.sin(a), len = 0;
   const LMAX = (60 + my.power * 1.1) * K, START = 30 * K, GAP = 13 * K;
   let next = START - GAP + (performance.now() / 50) % GAP;
@@ -774,7 +784,7 @@ function drawPreview(p, col) {
 function drawShell(an) {   // an: { path, i, by, small }
   const idx = Math.min(an.i, an.path.length - 1), pt = an.path[idx], col = pc(an.by) || '#ffffff', L = an.small ? 18 : 34;
   ctx.save();
-  if (an.small) { ctx.translate(pt[0], pt[1]); ctx.scale(.55, .55); ctx.translate(-pt[0], -pt[1]); }   // 집속탄 소탄은 작게
+  if (an.small || an.big) { const z = an.small ? .55 : 1.6; ctx.translate(pt[0], pt[1]); ctx.scale(z, z); ctx.translate(-pt[0], -pt[1]); }   // 집속탄 소탄은 작게, 광폭탄은 크게   // 집속탄 소탄은 작게
   ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
   for (let j = L - 1; j >= 0; j--) {
     const p0 = an.path[Math.max(0, idx - j - 1)], p1 = an.path[Math.max(0, idx - j)], f = 1 - j / L;
@@ -872,7 +882,7 @@ function drawFx() {
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function updateCam() {
   let fx = W / 2, fy = H / 2, k = .1;
-  if (anim) { const pts = anim.shells.filter(s => anim.i < s.path.length).map(s => s.path[anim.i]), L0 = anim.shells[0].path, use = pts.length ? pts : [L0[L0.length - 1]]; fx = use.reduce((t, q) => t + q[0], 0) / use.length; fy = use.reduce((t, q) => t + q[1], 0) / use.length; k = .22; }
+  if (anim) { const pts = anim.shells.filter(s => anim.i < s.path.length).map(s => s.path[Math.floor(anim.i)]), L0 = anim.shells[0].path, use = pts.length ? pts : [L0[L0.length - 1]]; fx = use.reduce((t, q) => t + q[0], 0) / use.length; fy = use.reduce((t, q) => t + q[1], 0) / use.length; k = .22; }
   else {
     const p = st.players[st.winner >= 0 ? st.winner : st.turn];
     if (p && p.on) { fx = p.x; fy = p.y - 20 * TS; }
@@ -934,7 +944,8 @@ function drawFires() {
   const now = performance.now(), gy = x => st.terrain[Math.max(0, Math.min(W - 1, Math.round(x)))];
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   st.fires.forEach((f, fi) => {
-    const fade = Math.min(1, f.life / 3), y0 = gy(f.x);
+    const rem = f.life - (now - (f.at || now)); if (rem <= 0) return;
+    const fade = Math.min(1, rem / 1000), y0 = gy(f.x);
     const gl = ctx.createRadialGradient(f.x, y0, 0, f.x, y0, f.r);
     gl.addColorStop(0, `rgba(255,120,30,${.4 * fade})`); gl.addColorStop(1, 'rgba(255,60,20,0)');
     ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(f.x, y0, f.r, f.r * .45, 0, 0, 7); ctx.fill();
@@ -981,13 +992,13 @@ function draw() {
 
   if (anim) {
     const A = anim; let maxLen = 0;
-    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length); if (A.i < s.path.length) drawShell({ path: s.path, i: A.i, by: A.by, small: A.kind === 'cluster' }); });
-    A.i++;
+    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length); if (A.i < s.path.length) drawShell({ path: s.path, i: Math.floor(A.i), by: A.by, small: A.kind === 'cluster', big: A.kind === 'heavy' }); });
+    A.i += A.kind === 'heavy' ? .6 : 1;   // 광폭탄은 느리게 날아가요
     A.shells.forEach(s => {
       if (s.boomed || A.i < s.path.length) return;
       s.boomed = true;
       const e = s.path[s.path.length - 1];
-      if (s.impact) spawnBoom(s.impact[0], s.impact[1], { cluster: .55, incendiary: 1.2, homing: 1.3 }[A.kind] || 1.5);
+      if (s.impact) spawnBoom(s.impact[0], s.impact[1], { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 2.6 }[A.kind] || 1.5);
       else if (A.dud) FX.floats.push({ x: e[0], y: e[1] - 30, t: 0, txt: '불발!', big: false });
     });
     if (A.i >= maxLen) { const next = A.pending; fxFromDiff(st, next); anim = null; apply(next); }
