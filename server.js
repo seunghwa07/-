@@ -8,13 +8,14 @@ app.use(express.static(__dirname));
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-const W = 1000, H = 600, G = 500, CRATER = 40, HIT_R = 18, MAX = 4, RANDOM_MAP = 4;
-const SPAWN = [100, 366, 633, 900];
+const { K, W, H, TS, FUEL, STEP } = FMAP;
+const G = 500 * K, CRATER = 60, HIT_R = 18 * TS, MAX = 4, RANDOM_MAP = 4;
+const SPAWN = [100, 366, 633, 900].map(x => Math.round(x * K));
 const ICONS = ['🪖', '🐸', '🚀', '🐱', '🤖', '🦖'];
 const rooms = new Map();
 
 const send = (ws, m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
-const FUEL = 200, STEP = 3; // 턴마다 이동 가능한 거리(px), 한 번에 움직이는 거리
+// FUEL, STEP 은 maps.js 에서 가져와요
 const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
@@ -82,28 +83,28 @@ function crater(g, cx, cy) {
 
 function fire(r, shooter, angle, power) {
   const g = r.game, p = g.players[shooter];
-  const a = angle * Math.PI / 180, v = power * 8, dt = 1 / 60;
-  let x = p.x, y = g.terrain[p.x] - 14;
+  const a = angle * Math.PI / 180, v = power * 8 * K, dt = 1 / 120;
+  let x = p.x, y = g.terrain[p.x] - 14 * TS;
   let vx = v * Math.cos(a), vy = -v * Math.sin(a);
   const path = [[x, y]];
   let impact = null;
 
-  for (let t = 0; t < 1800; t++) {
-    vx += g.wind * 3 * dt; vy += G * dt; x += vx * dt; y += vy * dt;
-    if (t % 2 === 0) path.push([x, y]);
+  for (let t = 0; t < 3600; t++) {
+    vx += g.wind * 3 * K * dt; vy += G * dt; x += vx * dt; y += vy * dt;
+    if (t % 4 === 0) path.push([x, y]);
     if (x < 0 || x >= W || y > H) break;
     if (y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }
-    if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 20) &&
-        Math.hypot(x - q.x, y - (g.terrain[q.x] - 10)) < HIT_R)) { impact = [x, y]; break; }
+    if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) &&
+        Math.hypot(x - q.x, y - (g.terrain[q.x] - 10 * TS)) < HIT_R)) { impact = [x, y]; break; }
   }
 
   if (impact) {
     path.push(impact);
     crater(g, impact[0], impact[1]);
-    const reach = CRATER + 20;
+    const reach = CRATER + 25;
     g.players.forEach(q => {
       if (q.hp <= 0) return;
-      const d = Math.hypot(q.x - impact[0], g.terrain[q.x] - 10 - impact[1]);
+      const d = Math.hypot(q.x - impact[0], g.terrain[q.x] - 10 * TS - impact[1]);
       if (d < reach) q.hp = Math.max(0, q.hp - Math.max(5, Math.round(40 * (1 - d / reach))));
     });
   }
@@ -171,9 +172,9 @@ wss.on('connection', ws => {
       ws.lastMove = now;
       const dir = m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0, p = g.players[ws.slot];
       const nx = p.x + dir * STEP;
-      if (!dir || nx < 15 || nx > W - 15) return;
-      if (g.terrain[nx] < g.terrain[p.x] - 5) return; // 너무 가파른 오르막은 못 올라감
-      if (g.players.some((q, i) => i !== ws.slot && q.hp > 0 && Math.abs(q.x - nx) < 28)) return;
+      if (!dir || nx < 40 || nx > W - 40) return;
+      if (g.terrain[nx] < g.terrain[p.x] - 8) return; // 너무 가파른 오르막은 못 올라감
+      if (g.players.some((q, i) => i !== ws.slot && q.hp > 0 && Math.abs(q.x - nx) < 40)) return;
       p.x = nx; g.fuel -= STEP;
       toRoom(r, { type: 'moved', i: ws.slot, x: nx, y: g.terrain[nx], fuel: g.fuel });
     } else if (r && m.type === 'fire') {
