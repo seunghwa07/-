@@ -312,7 +312,7 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 2배 · 폭발 면적 3배'], ['pierce', '관통탄', '뾰족한 탄이 땅을 뚫고 날아가 바로 공격 · 피해는 기본탄보다 약간 약함 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 2배 · 폭발 면적 3배'], ['pierce', '관통탄', '뾰족한 탄이 땅을 뚫고 날아가 바로 공격 · 피해는 기본탄보다 약간 약함 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 13 피해']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 
 const ls = {
@@ -430,7 +430,7 @@ function onMsg(m) {
     else anim = { order: true, ranks: m.ranks, shells: m.shots.map(s => ({ path: s.path, impact: s.impact, by: s.by, boomed: false })), i: 0, pending: m.state, by: -1, kind: 'basic', dud: false };
     ui();
   }
-  else if (m.type === 'shot') { aims[m.by] = m.angle; fireFx(m.by, m.angle); anim = { shells: m.shells.map(s => ({ path: s.path, impact: s.impact, boomed: false })), i: 0, pending: m.state, by: m.by, kind: m.kind, dud: m.dud }; ui(); }
+  else if (m.type === 'shot') { aims[m.by] = m.angle; fireFx(m.by, m.angle); anim = { shells: m.shells.map(s => ({ path: s.path, impact: s.impact, boomed: false })), i: 0, pending: m.state, by: m.by, kind: m.kind, dud: m.dud, carpet: m.carpet }; ui(); }
 }
 
 // ---------- 메뉴 ----------
@@ -479,7 +479,7 @@ function preview(c, id) {
   x.lineWidth = 1.4; x.strokeStyle = TC.lite(.6); x.stroke(E);
 }
 // ---- 대기실 (1280×720 디자인 무대) ----
-const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', homing: '#4dffe0', heavy: '#d0a15a', pierce: '#ff4d6a', laser: '#7df3ff' };   // 탱크 종류별 포인트 색
+const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', homing: '#4dffe0', heavy: '#d0a15a', pierce: '#ff4d6a', laser: '#7df3ff', carpet: '#ff5a3c' };   // 탱크 종류별 포인트 색
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
 const CROWN = w => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="currentColor" aria-label="방장" role="img"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"></path></svg>`;
@@ -958,6 +958,7 @@ const TK = {   // acc/acc2: 종류별 포인트 색
   heavy:      { acc: '#d0a15a', acc2: '#8e97ad' },   // 중장갑: 두꺼운 포신 + 장갑 스커트
   pierce:     { acc: '#ff4d6a', acc2: '#eef4ff' },   // 저격: 낮고 날렵한 차체 + 스파이크 포신
   laser:      { acc: '#7df3ff', acc2: '#d28bff' },   // 미래형: 부유 + 에너지 코어
+  carpet:     { acc: '#ff5a3c', acc2: '#ffd9b0' },   // 융단 폭격: 등에 진 미사일 3발 + 짧은 신호탄 박격포
 };
 const poly = pts => { const q = new Path2D(); pts.forEach(([x, y], n) => n ? q.lineTo(x, y) : q.moveTo(x, y)); q.closePath(); return q; };
 const TPK = {
@@ -967,6 +968,7 @@ const TPK = {
   homing: { hull: poly([[-22, -7], [-22, -12], [-14, -14.5], [8, -14.5], [23, -9.5], [23, -7]]), turret: poly([[-9, -14.5], [-6, -20.5], [4, -20.5], [9, -14.5]]) },
   heavy: { hull: poly([[-23, -7], [-23, -12], [-19, -17], [16, -17], [24, -11.5], [24, -7]]), turret: poly([[-14, -17], [-12, -24], [-6, -27], [9, -27], [15, -22], [16, -17]]) },
   pierce: { hull: poly([[-21, -7], [-21, -11], [-12, -14], [14, -14], [24, -8.5], [24, -7]]), turret: poly([[-10, -14], [-6, -20.5], [8, -20.5], [16, -14]]) },
+  carpet: { hull: poly([[-22, -7], [-22, -12], [-17, -15], [15, -15], [22, -10.5], [22, -7]]), turret: poly([[-10, -15], [-8, -20.5], [4, -20.5], [9, -15]]) },
   laser: { hull: poly([[-20, -10], [-17, -15], [13, -15], [21, -11], [20, -10]]), turret: poly([[-8, -15], [-5, -22], [6, -22], [10, -15]]) },
 };
 const HF = [.35, 0, -.5], TF = [.65, .2, -.25];   // 차체/포탑 명암
@@ -1045,6 +1047,12 @@ const BARREL = {
     C.fillStyle = lg(-2.8, 2.8, [[0, '#ffffff'], [.5, '#dce6fa'], [1, '#8794b0']]);
     C.beginPath(); C.moveTo(22.4, -2.8); C.lineTo(32, 0); C.lineTo(22.4, 2.8); C.closePath(); C.fill(); C.lineWidth = .8; C.strokeStyle = o.edge; C.stroke();
     glow(31.5, 0, 4.5, o.k.acc, .55 + .3 * Math.sin(o.now / 260));
+  },
+  carpet(o) {   // 짧고 가는 박격포 + 끝에 물린 붉은 신호탄
+    C.fillStyle = lg(-2.2, 2.2, STEEL); C.fillRect(-2, -2.2, 15, 4.4);
+    C.fillStyle = o.k.acc; C.fillRect(8, -3, 1.8, 6); C.fillStyle = '#2f364c'; C.fillRect(12, -3, 3, 6);
+    const pu = .6 + .4 * Math.sin(o.now / 240 + o.i);
+    glow(17, 0, 6, o.k.acc, .5 * pu + .2); C.fillStyle = o.k.acc; C.beginPath(); C.arc(16.8, 0, 2.2, 0, 7); C.fill(); C.fillStyle = '#fff'; C.beginPath(); C.arc(16.4, -.4, .8, 0, 7); C.fill();
   },
   laser(o) {   // 이중 레일 + 에너지 + 수정 렌즈
     const pu = .6 + .4 * Math.sin(o.now / 220 + o.i);
@@ -1159,6 +1167,22 @@ const BODY = {
     paint(o, o.tp.turret, -20.5, -14, TF);
     rr(1.5, -19.2, 9, 2.4, 1.2); C.fillStyle = '#10131f'; C.fill();   // 붉은 스코프 눈
     glow(8, -18, 6, k.acc, .6 * pu); C.fillStyle = rgba(k.acc, .6 + .4 * pu); C.fillRect(5, -18.8, 5, 1.2);
+  },
+  carpet(o) {
+    const k = o.k;
+    for (let n = 0; n < 3; n++) {   // 등에 진 미사일 3발 (끝이 붉은 탄두)
+      const mx = -21 + n * 6.2, my = -19 - n * 1.2;
+      rr(mx - 2, my - 11, 4, 11, 1.4); C.fillStyle = lg(my - 11, my, [[0, '#f3f6ff'], [.5, '#aab4cc'], [1, '#5a6580']]); C.fill(); C.lineWidth = .8; C.strokeStyle = o.edge; C.stroke();
+      C.fillStyle = k.acc; C.beginPath(); C.moveTo(mx - 2, my - 11); C.lineTo(mx, my - 15.5); C.lineTo(mx + 2, my - 11); C.closePath(); C.fill();
+      C.fillStyle = k.acc; C.fillRect(mx - 3.4, my - 2.6, 1.4, 2.6); C.fillRect(mx + 2, my - 2.6, 1.4, 2.6);
+    }
+    tracks(o, -23, 46, 8.5, 4.2, [-17, -8.5, 0, 8.5, 17]);
+    paint(o, o.tp.hull, -15, -7, HF);
+    C.save(); C.clip(o.tp.hull); C.fillStyle = k.acc; C.fillRect(-23, -11.6, 46, 2.2); C.fillStyle = k.acc2; for (let x = -20; x < 22; x += 8) C.fillRect(x, -11.6, 3, 2.2); C.restore();
+    lamp(20, -11.8, '#ffb090');
+    paint(o, o.tp.turret, -20.5, -15, TF);
+    rr(2, -19, 5, 2.6, 1); C.fillStyle = shade(o.col, -.3); C.fill(); C.stroke();
+    beacon(o, 6, -23.5, k.acc);
   },
   laser(o) {
     const k = o.k, pu = .6 + .4 * Math.sin(o.now / 220 + o.i);
@@ -1299,7 +1323,7 @@ function drawPreview(p, col) {
   let next = START - GAP + (performance.now() / 50) % GAP;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   for (let t = 0; t < 1200 && len < LMAX; t++) {
-    vx += st.wind * 3 * K * dt; vy += 500 * K * dt;
+    vx += st.wind * 3 * K * dt * (p.tank === 'carpet' ? 1.6 : 1); vy += 500 * K * dt;
     const nx = x + vx * dt, ny = y + vy * dt, l0 = len, sl = Math.hypot(nx - x, ny - y);
     len += sl;
     while (len >= next) {   // 점을 정확한 거리 위치에 찍어서 흐를 때 걸음 단위로 덜덜거리지 않게 해요
@@ -1513,6 +1537,58 @@ function drawTarget() {
   ctx.restore();
 }
 
+// ----- 융단 폭격: 신호탄 → 붉은 연기·빛 → 수직 미사일 3발 -----
+function carpetFocus(A) {
+  const c = A.carpet, P = c.path, n = P.length, rest = P[n - 1];
+  if (c.landIdx < 0 || A.i < c.landIdx) return ptAt(P, Math.min(A.i, n - 1));
+  return [rest[0], rest[1] - 120];   // 구르는 동안과 미사일이 떨어지는 동안 신호탄 자리를 비춰요
+}
+function drawCarpet(A) {
+  const c = A.carpet, P = c.path, n = P.length, i = A.i, now = performance.now();
+  if (i < n) drawShell({ path: P, i, by: A.by, kind: 'basic', small: true });   // 작고 가벼운 탄: 작은 꼬리
+  if (c.landIdx >= 0 && i >= c.landIdx) {
+    const fp = ptAt(P, Math.min(i, n - 1)), age = i - c.landIdx, it = Math.min(1, age / 24), pu = .75 + .25 * Math.sin(now / 130);
+    if (!A.landed) { A.landed = true; spawnBoom(P[c.landIdx][0], P[c.landIdx][1], .5, true); }   // 땅에 닿는 순간 먼지
+    ctx.save();
+    for (let k = 0; k < 18; k++) {   // 피어오르는 붉은 연기
+      const u = (now / 1500 + k / 18) % 1, x = fp[0] + Math.sin(k * 2.1 + u * 4) * 16 * u + st.wind * u * 9, y = fp[1] - u * 300, r = (7 + u * 30) * (.6 + .4 * it);
+      ctx.fillStyle = `rgba(190,30,30,${.5 * (1 - u) * it})`; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    const bg = ctx.createLinearGradient(0, fp[1] - 520, 0, fp[1]); bg.addColorStop(0, 'rgba(255,60,40,0)'); bg.addColorStop(1, `rgba(255,70,45,${.45 * it * pu})`);
+    ctx.fillStyle = bg; ctx.fillRect(fp[0] - 9 * it, fp[1] - 520, 18 * it, 520);   // 하늘로 뻗는 붉은 빛줄기
+    const gr = ctx.createRadialGradient(fp[0], fp[1], 0, fp[0], fp[1], 120 * it * pu);
+    gr.addColorStop(0, 'rgba(255,200,170,.95)'); gr.addColorStop(.3, 'rgba(255,70,45,.55)'); gr.addColorStop(1, 'rgba(255,40,30,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(fp[0], fp[1], 120 * it * pu, 0, 7); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#ff5a3c'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(fp[0], fp[1], 9, 0, 7); ctx.fill(); ctx.stroke();   // 신호탄 본체
+    ctx.restore();
+  }
+  if (!c.missiles.length) return;
+  const t0 = c.path.length + c.glow;
+  c.missiles.forEach((m, k) => {
+    const start = t0 + k * c.gap, p = (i - start) / c.fall, warn = Math.min(1, Math.max(0, (i - c.path.length) / 30));
+    if (p < 1 && warn > 0) {   // 떨어질 자리 경고 링 + 점선
+      const gy = st.terrain[m.x], bl = .5 + .5 * Math.sin(now / 90 + k);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(255,70,50,${.8 * warn * bl})`; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(m.x, gy - 3, 48, 13, 0, 0, 7); ctx.stroke();
+      ctx.setLineDash([16, 14]); ctx.strokeStyle = `rgba(255,120,90,${.35 * warn})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(m.x, Math.max(0, gy - 1400)); ctx.lineTo(m.x, gy); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+    }
+    if (p >= 1) { if (!m.boomed) { m.boomed = true; spawnBoom(m.x, m.y1, 1.8); } return; }
+    if (p <= 0) return;
+    const y = m.y0 + (m.y1 - m.y0) * Math.pow(p, 1.7);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const tg = ctx.createLinearGradient(0, y - 220, 0, y); tg.addColorStop(0, 'rgba(255,90,40,0)'); tg.addColorStop(1, 'rgba(255,170,80,.85)');
+    ctx.fillStyle = tg; ctx.fillRect(m.x - 13, y - 300, 26, 300);   // 위쪽으로 길게 늘어난 불꽃 꼬리
+    ctx.restore();
+    ctx.save(); ctx.translate(m.x, y); ctx.scale(1.9, 1.9); ctx.lineJoin = 'round';
+    ctx.fillStyle = '#e8edf8'; ctx.strokeStyle = '#6b7690'; ctx.lineWidth = 2; ctx.beginPath(); ctx.rect(-6, -34, 12, 30); ctx.fill(); ctx.stroke();   // 몸통 (아래를 향해요)
+    ctx.fillStyle = '#ff3b3b'; ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(0, 12); ctx.lineTo(6, -4); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff5a3c'; ctx.beginPath(); ctx.moveTo(-6, -34); ctx.lineTo(-13, -42); ctx.lineTo(-6, -22); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(6, -34); ctx.lineTo(13, -42); ctx.lineTo(6, -22); ctx.closePath(); ctx.fill();   // 꼬리 날개
+    ctx.restore();
+  });
+}
+
 // ----- 카메라: 지금 차례인 탱크(포탄이 날아가는 동안엔 포탄)를 부드럽게 따라가요 -----
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // 레이저는 아주 멀리까지 날아가니까, 내 차례에 화면을 드래그해서 적을 찾아볼 수 있어요. (두 번 탭하면 내 탱크로 돌아와요)
@@ -1537,7 +1613,8 @@ const endLook = e => {
 cv.addEventListener('pointerup', endLook); cv.addEventListener('pointercancel', endLook);
 function updateCam() {
   let fx = W / 2, fy = H / 2, k = .1;
-  if (anim) { const pts = anim.shells.filter(s => anim.i < s.path.length).map(s => ptAt(s.path, anim.i)), L0 = anim.shells[0].path, use = pts.length ? pts : [L0[L0.length - 1]]; fx = use.reduce((t, q) => t + q[0], 0) / use.length; fy = use.reduce((t, q) => t + q[1], 0) / use.length; k = .22; }
+  if (anim && anim.carpet) { const f = carpetFocus(anim); fx = f[0]; fy = f[1]; k = .22; }
+  else if (anim) { const pts = anim.shells.filter(s => anim.i < s.path.length).map(s => ptAt(s.path, anim.i)), L0 = anim.shells[0].path, use = pts.length ? pts : [L0[L0.length - 1]]; fx = use.reduce((t, q) => t + q[0], 0) / use.length; fy = use.reduce((t, q) => t + q[1], 0) / use.length; k = .22; }
   else {
     const ord = st.phase === 'order' && st.winner < 0 && me >= 0, ti = st.winner >= 0 ? st.winner : ord ? me : st.turn, p = vis[ti] ? { ...st.players[ti], x: vis[ti].x, y: vis[ti].y } : st.players[ti];
     if (p && p.on) { fx = p.x; fy = p.y - 20 * TS; }
@@ -1703,9 +1780,10 @@ function draw() {
   if (!anim && st.winner === -1 && me >= 0 && alive[me] && (ordering ? canOrderFire() : st.turn === me)) drawPreview(ordering ? { ...rp[me], tank: 'basic' } : rp[me], pc(me));   // 순서 정하기는 모두 기본탄 물리
 
   if (anim) {
-    const A = anim; let maxLen = 0;
+    const A = anim; let maxLen = A.carpet ? A.carpet.total : 0;
     const tail = A.kind === 'laser' ? 36 : 0;   // 레이저는 머리가 끝난 뒤에도 꼬리가 사라질 때까지 그려요
     A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length + tail); if (A.i < s.path.length + tail) drawShell({ path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy' }); });
+    if (A.carpet) drawCarpet(A);
     A.i += (A.kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED * FS;   // 광폭탄은 느리게 날아가요
     A.shells.forEach(s => {
       if (s.boomed || A.i < s.path.length) return;

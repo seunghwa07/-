@@ -16,9 +16,10 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet'];
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
+  carpet: { dmg: 13, rad: 40 },   // 융단 폭격: 미사일 1발 13 피해 (신호탄 자체는 피해 없음)
   pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함) / 레이저(직격만, 기본탄 17보다 센 22)
   heavy: { dmg: 34, rad: Math.round(CRATER * Math.sqrt(3)) },   // 광폭탄: 피해 2배, 폭발 면적 3배(반지름 √3배)
 };
@@ -30,6 +31,8 @@ const MAX_CLIMB = 90;              // 한 걸음(6px)당 최대 오르막 높이
 const FIRE_R = 170, FIRE_MS = 3000, BURN_TICK = 500, BURN_DMG = 2;   // 소이탄: 불길 반경 / 3초 지속 / 0.5초마다 2 피해
 const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
 const ORDER_GO = 3600, ORDER_MS = 15000;   // 순서 정하기: 시작 연출(로딩+등장) 시간 / 조준·발사 제한시간
+// 융단 폭격: 가벼운 신호탄(피해 없음)이 날아가 땅에서 조금 구른 뒤, 붉은 연기가 피어나고 위에서 미사일 3발이 수직으로 떨어져요. (시간 단위 = 화면 애니메이션 프레임)
+const CARPET_GLOW = 70, CARPET_GAP = 16, CARPET_FALL = 34, CARPET_SPREAD = 110, CARPET_WIND = 1.6;   // 신호탄은 가벼워서 바람을 1.6배 더 타요
 const DUD = 0.3, HOMING_TURN = 2.2; // 유도탄 불발 확률 / 초당 최대 회전각(rad)
 
 const send = (ws, m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
@@ -154,7 +157,7 @@ function flight(g, shooter, angle, power, kind, free = false) {   // free: 탱�
       while (d < -Math.PI) d += 2 * Math.PI;
       const na = cur + Math.max(-HOMING_TURN * dt, Math.min(HOMING_TURN * dt, d));
       vx = sp * Math.cos(na) + g.wind * 1.5 * K * dt; vy = sp * Math.sin(na) + G * .3 * dt;
-    } else { vx += g.wind * 3 * K * dt; vy += G * dt; }
+    } else { vx += g.wind * 3 * K * dt * (kind === 'carpet' ? CARPET_WIND : 1); vy += G * dt; }
     x += vx * dt; y += vy * dt;
     if (t % 4 === 0) path.push([x, y]);
     if (x < 0 || x >= W || y > H) { out = true; break; }
@@ -163,7 +166,7 @@ function flight(g, shooter, angle, power, kind, free = false) {   // free: 탱�
         Math.hypot(x - q.x, y - tankY(g, q)) < (kind === 'pierce' ? PIERCE_HIT : HIT_R))) { impact = [x, y]; break; }
   }
   if (impact) path.push(impact);
-  return { path, impact, fizzled: !impact && !out };   // fizzled: 30초 넘게 날다 소멸
+  return { path, impact, fizzled: !impact && !out, vx, vy };   // fizzled: 30초 넘게 날다 소멸
 }
 
 // 레이저: 포물선 없이 직선으로 날아가고, 벽(지형)과 맵 경계(왼쪽·오른쪽·위)에 닿으면 반사돼요. 4번 반사한 뒤 또 닿으면 사라져요.
@@ -298,8 +301,41 @@ function advance(r, from) {   // 다음 차례로 넘겨요
   g.turn = nextTurn(g, from); g.wind = rndWind(); g.fuel = FUEL;
 }
 
+function fireCarpet(r, shooter, angle, power) {
+  const g = r.game, f = flight(g, shooter, angle, power, 'carpet', true);   // 신호탄은 탱크에 맞지 않고 땅에만 닿아요
+  const path = f.path.slice(), missiles = [];
+  let landIdx = -1;
+  if (f.impact) {
+    landIdx = path.length - 1;
+    // 던진 물건처럼 날아오던 방향으로 통통 튀며 조금 굴러가요 (가파른 오르막이면 멈춰요)
+    const dir = f.vx >= 0 ? 1 : -1, want = Math.min(200, Math.abs(f.vx) * .1), N = Math.max(6, Math.round(want / 5));
+    let px = f.impact[0];
+    for (let k = 1; k <= N; k++) {
+      const u = k / N, nx = Math.round(f.impact[0] + dir * want * (1 - (1 - u) * (1 - u)));
+      if (nx < 20 || nx > W - 20 || g.terrain[nx] < g.terrain[Math.round(px)] - 14) break;
+      px = nx;
+      path.push([nx, g.terrain[nx] - 6 - 16 * Math.abs(Math.sin(u * Math.PI * 2.5)) * (1 - u)]);
+    }
+    const rest = path[path.length - 1];
+    for (const k of [-1, 0, 1]) {   // 신호탄 위치와 양옆, 위에서 수직으로 떨어져요
+      const x = Math.max(2, Math.min(W - 3, Math.round(rest[0] + k * CARPET_SPREAD))), y0 = Math.max(-300, g.terrain[x] - 1100);
+      let y1 = g.terrain[x], hit = false;
+      for (let y = y0; y < g.terrain[x]; y += 5) {
+        if (g.players.some((q, i) => q.hp > 0 && !isAlly(g, shooter, i) && Math.hypot(x - q.x, y - tankY(g, q)) < HIT_R)) { y1 = y; hit = true; break; }
+      }
+      explode(g, shooter, [x, y1], 'carpet');   // 앞 미사일이 판 땅과 입은 피해가 다음 미사일에 바로 반영돼요
+      missiles.push({ x, y0, y1, hit });
+    }
+  }
+  const total = path.length + (missiles.length ? CARPET_GLOW + CARPET_GAP * 2 + CARPET_FALL : 20);
+  if (!checkEnd(r)) { g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), SHOT_MS(total) + 2000); }
+  return { type: 'shot', by: shooter, angle, kind: 'carpet', dud: false, shells: [],
+    carpet: { path, landIdx, missiles, glow: CARPET_GLOW, gap: CARPET_GAP, fall: CARPET_FALL, total }, state: snapshot(r) };
+}
+
 function fire(r, shooter, angle, power) {
   const g = r.game, kind = g.players[shooter].tank;
+  if (kind === 'carpet') return fireCarpet(r, shooter, angle, power);
   let shells, dud = false;
   if (kind === 'cluster') {
     shells = Array.from({ length: CLUSTER_N }, () =>
