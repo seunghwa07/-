@@ -182,6 +182,33 @@
   #banner span{display:block;margin-top:8px;font-size:clamp(13px,3vh,20px);text-shadow:0 2px 8px #000;color:#d8ffe9}
   #banner.on{animation:banin 2.2s ease both}
   @keyframes banin{0%{opacity:0;transform:scale(1.7)}14%{opacity:1;transform:scale(1)}78%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.96) translateY(-10px)}}
+  /* 패배 연출 */
+  #c.dead{filter:grayscale(.85) brightness(.8) contrast(1.1);transition:filter 1.4s ease}
+  #defeat{position:absolute;inset:0;z-index:13;pointer-events:none;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;font-family:'Noto Sans KR',system-ui,sans-serif}
+  #defeat[hidden]{display:none}
+  #defeat .dv{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(90,0,10,0) 25%,rgba(70,0,8,.55) 65%,rgba(20,0,4,.92) 100%);opacity:0;animation:dvin 4.2s ease both}
+  #defeat .dt{position:relative;animation:dtshake .5s .35s 1 both}
+  #defeat small{display:block;font:700 clamp(12px,2.8vh,18px)/1 'Chakra Petch','Noto Sans KR',sans-serif;letter-spacing:.35em;color:#ff8a8a;text-shadow:0 0 12px #f00;opacity:0;animation:dsmall 4.2s .4s ease both}
+  #defeat b{display:block;margin:6px 0;font:900 clamp(54px,18vh,130px)/1 'Chakra Petch','Noto Sans KR',sans-serif;letter-spacing:.12em;color:#ff3b3b;text-shadow:0 0 30px rgba(255,40,40,.9),0 0 70px rgba(255,0,0,.55),0 6px 0 #5a0000,0 10px 18px #000;opacity:0;animation:dslam 4.2s .35s cubic-bezier(.2,.9,.2,1) both}
+  #defeat span{display:block;font-size:clamp(13px,3vh,20px);color:#ffd9d9;text-shadow:0 2px 8px #000;opacity:0;animation:dsmall 4.2s .9s ease both}
+  @keyframes dvin{0%{opacity:0}15%{opacity:1}100%{opacity:1}}
+  @keyframes dslam{0%{opacity:0;transform:scale(3.2);filter:blur(10px)}14%{opacity:1;transform:scale(.94);filter:none}20%{transform:scale(1.03)}26%{transform:scale(1)}100%{opacity:1;transform:scale(1.02)}}
+  @keyframes dsmall{0%{opacity:0;transform:translateY(12px)}14%{opacity:1;transform:none}100%{opacity:1;transform:none}}
+  @keyframes dtshake{0%,100%{transform:translate(0,0)}15%{transform:translate(-9px,5px)}30%{transform:translate(8px,-6px)}45%{transform:translate(-6px,-3px)}60%{transform:translate(5px,4px)}80%{transform:translate(-2px,1px)}}
+  /* 승리 연출 */
+  #victory{position:absolute;inset:0;z-index:13;pointer-events:none;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;overflow:hidden;font-family:'Noto Sans KR',system-ui,sans-serif}
+  #victory[hidden]{display:none}
+  #victory .vv{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(255,220,90,.28) 0%,rgba(255,170,40,.12) 45%,rgba(30,10,0,.55) 100%);opacity:0;animation:vvin 4.2s ease both}
+  #victory .vr{position:absolute;left:50%;top:50%;width:140vmax;height:140vmax;margin:-70vmax 0 0 -70vmax;background:repeating-conic-gradient(rgba(255,230,120,.16) 0 7deg,transparent 7deg 18deg);animation:vspin 14s linear infinite,vvin 4.2s ease both;-webkit-mask:radial-gradient(circle,#000 0,transparent 55%);mask:radial-gradient(circle,#000 0,transparent 55%)}
+  #victory .vt{position:relative;animation:vpop .6s .15s both}
+  #victory small{display:block;font:700 clamp(12px,2.8vh,18px)/1 'Chakra Petch','Noto Sans KR',sans-serif;letter-spacing:.35em;color:#fff1b0;text-shadow:0 0 12px #fb0;opacity:0;animation:dsmall 4.2s .35s ease both}
+  #victory b{display:block;margin:6px 0;font:900 clamp(54px,18vh,130px)/1 'Chakra Petch','Noto Sans KR',sans-serif;letter-spacing:.12em;background:linear-gradient(#fff6c2,#ffd23a 55%,#ff9d1a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 22px rgba(255,200,40,.9)) drop-shadow(0 6px 0 #7a4300) drop-shadow(0 10px 14px #000);opacity:0;animation:dslam 4.2s .15s cubic-bezier(.2,.9,.2,1) both}
+  #victory span.vs{display:block;font-size:clamp(13px,3vh,20px);color:#fff7d6;text-shadow:0 2px 8px #000;opacity:0;animation:dsmall 4.2s .8s ease both}
+  #victory .cf i{position:absolute;top:-6vh;width:var(--w);height:calc(var(--w)*1.6);background:var(--c);left:var(--x);opacity:0;animation:vfall var(--d) var(--dl) linear both}
+  @keyframes vvin{0%{opacity:0}15%{opacity:1}100%{opacity:1}}
+  @keyframes vspin{to{transform:rotate(360deg)}}
+  @keyframes vpop{0%{transform:scale(.6)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+  @keyframes vfall{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:1;transform:translateY(112vh) rotate(var(--r))}}
   #rank{position:absolute;left:50%;top:15%;transform:translateX(-50%);z-index:12;min-width:min(380px,70vw);padding:14px 20px 16px;border-radius:22px;background:rgba(5,10,24,.9);border:2px solid #ffe94a;box-shadow:0 0 30px rgba(255,233,74,.35),0 10px 30px #000a;color:#fff;font-family:'Noto Sans KR',system-ui,sans-serif;pointer-events:none}
   #rank[hidden]{display:none}
   #rank h4{margin:0 0 8px;text-align:center;font-size:clamp(16px,3.6vh,24px);color:#ffe94a;letter-spacing:.05em}
@@ -264,7 +291,7 @@
     <div style="width:420px;flex-shrink:0;display:flex;flex-direction:column;gap:18px">
       <div style="display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#4dd2ff"></span><span class="sec">내 탱크</span></div>
-        <div id="tanks" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px"></div>
+        <div id="tanks" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px"></div>
         <div id="tdesc" style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;min-height:44px"></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px">
@@ -295,6 +322,8 @@
   <div id="ol"></div>
   <div id="banner"><b></b><span></span></div>
   <div id="rank" hidden></div>
+  <div id="victory" hidden><div class="vv"></div><div class="vr"></div><div class="cf"></div><div class="vt"><small>VICTORY</small><b>승리</b><span class="vs"></span></div></div>
+  <div id="defeat" hidden><div class="dv"></div><div class="dt"><small>TANK DESTROYED</small><b>패배</b><span></span></div></div>
   <div id="intro" hidden><div class="half t"></div><div class="half b"></div>
     <div class="core"><div class="logo2">💥</div><div class="ttl">APEX FORTRESS</div><div class="isub" id="isub"></div><div class="ibar"><i></i></div><div class="tip" id="itip"></div></div></div>
   <div id="fs">👆 화면을 터치하면<br>가로 전체화면으로 시작해요</div>
@@ -312,7 +341,7 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 75 · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 
 const ls = {
@@ -328,6 +357,7 @@ function el(tag, text, parent, css) {
 }
 function show(v) {
   const was = !$('game').hidden;
+  if (v !== 'game') { hideDefeat(); hideVictory(); }
   ['menu', 'room', 'game'].forEach(x => { $(x).hidden = x !== v; });
   fitLobby();
   if (was && v !== 'game') exitFS();
@@ -413,6 +443,7 @@ function onMsg(m) {
     const t = anim ? anim.pending : st;
     if (t && t.players) {
       if (!anim) m.hp.forEach((h, i) => { const p = t.players[i]; if (p && p.on && h < p.hp) FX.floats.push({ x: p.x, y: p.y - 120, t: 0, txt: '-' + (p.hp - h), big: false }); });
+      if (!anim) m.hp.forEach((h, i) => { const p = t.players[i]; if (p && p.on && p.hp > 0 && h <= 0) killTank(i, t); });   // 불길에 쓰러지면 그 자리에서 폭발
       m.hp.forEach((h, i) => { if (t.players[i]) t.players[i].hp = h; });
       t.fires = m.fires; const now = performance.now(); t.fires.forEach(f => { f.at = now; });
     }
@@ -495,11 +526,9 @@ const drawTanks = root => root.querySelectorAll('canvas.tkc').forEach(c => tankT
 const tankChip = (name, acc, css) => `<span style="display:flex;align-items:center;gap:8px;${css}"><span style="width:10px;height:10px;border-radius:50%;flex:none;background:${acc};box-shadow:0 0 8px ${acc}"></span>${esc(name)}</span>`;
 
 // 내 탱크 / 맵 버튼은 한 번만 만들고, 선택 표시만 바꿔요
-const TANKS_UI = [...TANKS, ['random', '랜덤', `게임이 시작되면 ${TANKS.length}종 중 하나가 무작위로 정해져요 · 다른 사람도 시작해야 무슨 탱크인지 알 수 있어요`]];   // 맵처럼 맨 끝에 '랜덤'
-const RANDC = '#a9b4dc';
-const tankBtns = TANKS_UI.map(([k, n]) => {
+const tankBtns = TANKS.map(([k, n]) => {
   const b = el('button', null, $('tanks')); b.className = 'tk';
-  b.innerHTML = tankSvg(58, 40, '#8e9bc4', k === 'random' ? '?' : k) + `<span>${esc(n)}</span>`;
+  b.innerHTML = tankSvg(58, 40, '#8e9bc4', k) + `<span>${esc(n)}</span>`;
   b.onclick = () => sendMsg({ type: 'tank', kind: k });
   return b;
 });
@@ -517,7 +546,7 @@ $('copy').onclick = () => {
 };
 
 function slotCard(i, col, team) {   // 개인전(큰 카드) / 팀전(가로 카드) 참가자 한 칸
-  const n = st.names[i], rk = st.tanks[i] || 'random', k = rk === 'random' ? '?' : rk, acc = rk === 'random' ? '#7a86ad' : TANKC[k] || '#fff6b0', tn = rk === 'random' ? '???' : TN[k] || '기본탄', ico = esc(st.icons[i] || ''), host = i === st.host, mine = i === me;
+  const n = st.names[i], k = st.tanks[i] || 'basic', acc = TANKC[k] || '#fff6b0', tn = TN[k] || '기본탄', ico = esc(st.icons[i] || ''), host = i === st.host, mine = i === me;
   const nm = `${ico ? ico + ' ' : ''}${esc(n)}`;
   if (!team) return `<div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid ${col};padding:16px 20px;display:flex;flex-direction:column">
     <div style="position:absolute;right:-50px;top:-70px;width:260px;height:260px;border-radius:50%;background:${col};opacity:.2;filter:blur(46px)"></div>
@@ -581,11 +610,11 @@ function renderRoom() {
   }
   drawTanks(box);
   // 내 탱크
-  const mk = st.tanks[me] || 'random', macc = mk === 'random' ? RANDC : TANKC[mk];
-  tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const k = TANKS_UI[i][0], sel = k === mk, c = k === 'random' ? RANDC : TANKC[k]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
+  const mk = st.tanks[me] || 'basic', macc = TANKC[mk];
+  tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const sel = TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
   $('tdesc').style.cssText += `;background:${hexA(macc, .08)};border:1px solid ${hexA(macc, .35)}`;
-  const td = TANKS_UI.find(t => t[0] === mk);
-  $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${mk === 'random' ? '🎲 ' : ''}${esc(td[1])}</b> · ${esc(td[2])}</span>`;
+  const td = TANKS.find(t => t[0] === mk);
+  $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${esc(td[1])}</b> · ${esc(td[2])}</span>`;
   drawTanks($('tanks'));
   // 맵
   $('mapnote').textContent = isHost ? '눌러서 선택해요' : '방장이 선택해요';
@@ -611,10 +640,11 @@ function apply(m) {
   show('game');
   if (m.phase === 'order') { const n = performance.now(); m.goAt = n + m.orderGo; m.endAt = n + m.orderLeft; }
   if (fresh) {
-    fresh = false; cam.snap = true; startIntro(); hideRank(); orderMarks = [];
+    fresh = false; cam.snap = true; startIntro(); hideRank(); orderMarks = []; resetDeathFx();
     m.players.forEach((p, i) => { aims[i] = p.x < W / 2 ? 45 : 135; });
     my.angle = aims[me]; placeAim(); setPower(50); showFsPrompt();
   }
+  checkEndFx(m);
   ui();
 }
 
@@ -841,7 +871,8 @@ const sceneCv = document.createElement('canvas'); sceneCv.width = W; sceneCv.hei
 const bgCv = document.createElement('canvas');
 let S = 1, SV = 1;   // 렌더 배율: 화면에 실제로 보이는 크기 × devicePixelRatio (선명도)
 let sceneKey = null, bgKey = null, edgePath = null, twink = [], TC = null;
-const FX = { booms: [], floats: [], muzzle: null, shake: 0, flash: 0 };
+const FX = { booms: [], floats: [], muzzle: null, shake: 0, flash: 0, later: [], chunks: [], wrecks: [] };
+const dying = new Set();   // 방금 파괴돼서 화면에서 이미 사라진 탱크 (폭발 연출 중)
 const cam = { x: 0, y: 0, snap: true };
 let FS = 1;   // 이번 프레임이 60fps 프레임의 몇 배인지 (주사율이 달라도 같은 속도로 움직이게)
 const vis = [], aimVis = [], pv = { a: 45, p: 50 };   // 탱크 화면 표시 위치 (서버 좌표를 부드럽게 따라가요)
@@ -1278,7 +1309,6 @@ function drawTank(p, i, deg, active) {
 
 // 대기실 탱크 선택 버튼용 작은 미리보기
 function tankThumb(cnv, kind, col, k = 2) {
-  if (kind === '?') { mysteryThumb(cnv, col, k); return; }
   const g = cnv.getContext('2d'); g.clearRect(0, 0, cnv.width, cnv.height);
   C = g; C.save(); C.translate(cnv.width * (k > 2 ? .46 : .4), cnv.height - 7 * k); C.scale(k, k);
   C.save(); C.scale(1, .26);
@@ -1286,25 +1316,6 @@ function tankThumb(cnv, kind, col, k = 2) {
   C.fillStyle = ug; C.beginPath(); C.arc(0, 0, 40, 0, 7); C.fill(); C.restore();
   paintTank(kind, { col, lite: shade(col, .6), edge: shade(col, .35), dir: 1, a: .5, tilt: 0, now: 700, i: 0 });
   C.restore(); C = ctx;
-}
-
-// 대기실의 '?' 탱크: 기본 탱크 모양을 검은 그림자로 칠하고 가운데에 ? 를 띄워요
-function mysteryThumb(cnv, col, k) {
-  const g = cnv.getContext('2d'); g.clearRect(0, 0, cnv.width, cnv.height);
-  C = g; C.save(); C.translate(cnv.width * (k > 2 ? .46 : .4), cnv.height - 7 * k); C.scale(k, k);
-  paintTank('basic', { col: '#888888', lite: '#aaaaaa', edge: '#555555', dir: 1, a: .5, tilt: 0, now: 700, i: 0 });
-  C.restore();
-  g.save(); g.globalCompositeOperation = 'source-atop';   // 탱크가 그려진 부분만 그림자 색으로 덮어요
-  const sg = g.createLinearGradient(0, 0, 0, cnv.height); sg.addColorStop(0, '#2a3358'); sg.addColorStop(1, '#0b1024');
-  g.fillStyle = sg; g.fillRect(0, 0, cnv.width, cnv.height); g.restore();
-  g.save(); g.translate(cnv.width * (k > 2 ? .46 : .4), cnv.height - 7 * k); g.scale(k, k);
-  g.globalCompositeOperation = 'destination-over'; g.save(); g.scale(1, .26);   // 바닥 빛
-  const ug = g.createRadialGradient(0, 0, 0, 0, 0, 40); ug.addColorStop(0, rgba(col, .45)); ug.addColorStop(1, rgba(col, 0));
-  g.fillStyle = ug; g.beginPath(); g.arc(0, 0, 40, 0, 7); g.fill(); g.restore();
-  g.globalCompositeOperation = 'source-over';
-  g.font = '900 26px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.shadowColor = col; g.shadowBlur = 10; g.lineWidth = 3; g.strokeStyle = '#0b1024'; g.strokeText('?', 2, -15); g.fillStyle = '#eaf0ff'; g.fillText('?', 2, -15);
-  g.restore(); C = ctx;
 }
 
 // 이름표 + 4칸 체력바 + 내 차례 표시
@@ -1533,6 +1544,50 @@ function spawnBoom(x, y, n = 1, red = false) {
     smoke: Array.from({ length: 7 }, () => ({ dx: (R() - .5) * 44 * n, v: .3 + R() * .6, s: 10 + R() * 14, d: R() * 8 })) });
   FX.shake = Math.max(FX.shake, (red ? 4 : 8) * n); FX.flash = Math.max(FX.flash, (red ? .12 : .2) * n);
 }
+// ----- 탱크 파괴: 그 자리에서 연쇄 폭발 + 파편 + 불타는 잔해, 내 탱크면 패배 연출 -----
+function later(frames, fn) { FX.later.push({ t: frames, fn }); }
+let endShown = false;
+function resetDeathFx() { endShown = false; hideVictory(); dying.clear(); FX.later = []; FX.chunks = []; FX.wrecks = []; hideDefeat(); }
+function hideVictory() { const v = $('victory'); if (v) v.hidden = true; }
+function showVictory(sub) {
+  hideDefeat();
+  const v = $('victory'), cf = v.querySelector('.cf'), cols = ['#ffd23a', '#ff6a5e', '#4dd2ff', '#7dff9a', '#fff'];
+  cf.innerHTML = Array.from({ length: 44 }, () => `<i style="--x:${Math.random() * 100}%;--w:${5 + Math.random() * 7}px;--c:${cols[Math.random() * 5 | 0]};--d:${2.2 + Math.random() * 1.8}s;--dl:${Math.random() * 1.2}s;--r:${(Math.random() - .5) * 1440}deg"></i>`).join('');
+  v.querySelector('.vs').textContent = sub || '';
+  v.hidden = true; void v.offsetWidth; v.hidden = false;
+  FX.flash = Math.max(FX.flash, .35);
+}
+function checkEndFx(m) {   // 게임이 끝난 상태를 처음 받았을 때: 이긴 쪽이면 승리 연출
+  if (endShown || m.winner === -1 || m.winner === undefined || me < 0) return;
+  endShown = true;
+  const won = m.winner >= 0 && (m.mode === 'team' ? m.winTeam === m.teams[me] : m.winner === me);
+  if (won) showVictory(m.mode === 'team' ? '우리 팀이 이겼어요!' : '마지막까지 살아남았어요!');
+}
+function hideDefeat() { const d = $('defeat'); if (d) d.hidden = true; if (cv) cv.classList.remove('dead'); }
+function showDefeat(sub) {
+  const d = $('defeat'); d.hidden = true; void d.offsetWidth;   // 애니메이션을 처음부터
+  d.lastChild.lastChild.textContent = sub || '';
+  d.hidden = false;
+  setTimeout(() => { if (dying.has(me)) cv.classList.add('dead'); }, 700);
+}
+function killTank(i, next) {
+  if (!st || !st.players || !st.players[i] || dying.has(i)) return;
+  dying.add(i);
+  const p = st.players[i], v = vis[i] || p, x = v.x, gy = v.y, y = gy - 12 * TS, col = pc(i), R = Math.random;
+  spawnBoom(x, y, 2.8);                                   // 첫 폭발
+  FX.flash = Math.max(FX.flash, .95); FX.shake = Math.max(FX.shake, 30);
+  [[5, -22, -6, 1.5], [10, 24, -14, 1.7], [16, -8, -22, 1.4], [24, 0, -10, 3.2]].forEach(([f, dx, dy, n]) => later(f, () => {   // 연쇄 폭발 → 마지막은 큰 폭발
+    spawnBoom(x + dx * TS, y + dy * TS, n); FX.shake = Math.max(FX.shake, 14 + n * 4);
+    if (n > 3) FX.flash = Math.max(FX.flash, .5);
+  }));
+  for (let n = 0; n < 16; n++) {                           // 차체·포신 파편 (탱크 색)
+    const a = -Math.PI * (.08 + R() * .84), v0 = 6 + R() * 11;
+    FX.chunks.push({ x: x + (R() - .5) * 20 * TS, y: y + (R() - .5) * 10 * TS, vx: Math.cos(a) * v0, vy: Math.sin(a) * v0, r: R() * 6, w: (R() - .5) * .5,
+      w2: (6 + R() * 12) * TS, h2: (3 + R() * 6) * TS, c: n % 3 === 0 ? shade(col, .5) : n % 3 === 1 ? col : shade(col, -.45), t: 0, l: 150 + R() * 60, fire: R() < .5 });
+  }
+  FX.wrecks.push({ x, y: gy, t: 0, l: 260, col });         // 타오르는 잔해
+  if (i === me) showDefeat(next && next.winner === -1 ? '탱크가 파괴됐어요 · 팀원을 응원하세요' : '내 탱크가 파괴되었습니다');
+}
 function fireFx(by, deg) {
   const p = st && st.players && st.players[by]; if (!p) return;
   const dir = deg <= 90 ? 1 : -1, a = deg * Math.PI / 180;
@@ -1545,10 +1600,36 @@ function fxFromDiff(prev, next) {   // 포탄 결과로 체력이 깎인 탱크:
     const o = prev.players[i]; if (!o || !o.on) return;
     const d = o.hp - q.hp; if (d <= 0) return;
     FX.floats.push({ x: o.x, y: o.y - 120, t: 0, txt: '-' + Math.round(d), big: q.hp <= 0 });
-    if (q.hp <= 0) spawnBoom(o.x, o.y - 12 * TS, 2.4);
+    if (q.hp <= 0) killTank(i, next);
   });
 }
 function drawFx() {
+  if (FX.later.length) { FX.later.forEach(q => { q.t -= FS; }); const ready = FX.later.filter(q => q.t <= 0); FX.later = FX.later.filter(q => q.t > 0); ready.forEach(q => q.fn()); }
+  for (const w of FX.wrecks) {   // 불타는 잔해: 불꽃 + 검은 연기
+    const f = Math.max(0, 1 - w.t / w.l);
+    ctx.save();
+    ctx.fillStyle = `rgba(14,12,22,${.7 * Math.min(1, f * 2)})`; ctx.beginPath(); ctx.ellipse(w.x, w.y - 3 * TS, 18 * TS, 5 * TS, 0, 0, 7); ctx.fill();   // 그을린 자국
+    for (let n = 0; n < 6; n++) {
+      const u = ((w.t + n * 17) % 90) / 90;
+      ctx.fillStyle = `rgba(40,42,58,${.5 * (1 - u) * Math.min(1, f * 3)})`; ctx.beginPath(); ctx.arc(w.x + Math.sin(u * 5 + n * 2) * 10 * TS, w.y - (10 + u * 60) * TS, (4 + u * 11) * TS, 0, 7); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    for (let n = 0; n < 5; n++) { ctx.fillStyle = `rgba(255,${110 + Math.random() * 100 | 0},40,${(.45 + Math.random() * .4) * Math.min(1, f * 3)})`; ctx.beginPath(); ctx.arc(w.x + (Math.random() - .5) * 22 * TS, w.y - (5 + Math.random() * 14) * TS, (1.2 + Math.random() * 3) * TS, 0, 7); ctx.fill(); }
+    ctx.restore(); w.t += FS;
+  }
+  FX.wrecks = FX.wrecks.filter(w => w.t < w.l);
+  for (const c of FX.chunks) {   // 날아가는 파편 (땅에 닿으면 튕겨요)
+    const f = Math.min(1, (c.l - c.t) / 40);
+    ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.r); ctx.globalAlpha = Math.max(0, f);
+    ctx.fillStyle = c.c; ctx.fillRect(-c.w2 / 2, -c.h2 / 2, c.w2, c.h2);
+    ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(-c.w2 / 2, -c.h2 / 2, c.w2, c.h2);
+    ctx.restore();
+    if (c.fire && c.t < c.l - 30) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,${130 + Math.random() * 90 | 0},40,.7)`; ctx.beginPath(); ctx.arc(c.x - c.vx * .6, c.y - c.vy * .6, (2 + Math.random() * 3) * TS, 0, 7); ctx.fill(); ctx.restore(); }
+    c.x += c.vx * FS; c.y += c.vy * FS; c.vy += .45 * FS; c.r += c.w * FS; c.t += FS;
+    const gy = st && st.terrain ? st.terrain[Math.max(0, Math.min(W - 1, Math.round(c.x)))] : null;
+    if (gy != null && c.y > gy - 2 && c.vy > 0) { c.y = gy - 2; c.vy *= -.35; c.vx *= .6; c.w *= .6; }
+  }
+  FX.chunks = FX.chunks.filter(c => c.t < c.l);
   for (const m of FX.muzzles || []) {
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const f = 1 - m.t / 9, r = (8 + 14 * f) * Z;
@@ -1620,15 +1701,9 @@ function startIntro() {
   const el = $('intro'); introT.forEach(clearTimeout); introT = [];
   el.hidden = false; el.className = ''; void el.offsetWidth; el.className = 'load';   // 로딩 바 애니메이션을 처음부터 다시
   $('itip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
-  [['지형을 만드는 중…', 0], ['탱크를 뽑는 중… 🎲', 650], ['포탄을 장전하는 중…', 1300]].forEach(([t, d]) => introT.push(setTimeout(() => { $('isub').textContent = t; }, d)));
+  [['지형을 만드는 중…', 0], ['탱크를 배치하는 중…', 650], ['포탄을 장전하는 중…', 1300]].forEach(([t, d]) => introT.push(setTimeout(() => { $('isub').textContent = t; }, d)));
   introT.push(setTimeout(() => { $('isub').textContent = '전투 개시!'; el.className = 'open'; cv.classList.remove('zoomin'); void cv.offsetWidth; cv.classList.add('zoomin'); }, 2000));
-  const mt = st && st.players && st.players[me] ? TANKS.find(t => t[0] === st.players[me].tank) : null;
-  introT.push(setTimeout(() => {
-    el.hidden = true; cv.classList.remove('zoomin');
-    if (mt) showBanner(`🎲 내 탱크: ${mt[1]}`, mt[2]);   // 랜덤으로 뽑힌 내 탱크 공개
-    else showBanner('🎯 순서 정하기', '목표물에 가장 가깝게 쏜 순서대로 차례가 정해져요 · 모두 동시에 발사!');
-  }, 2950));
-  if (mt) introT.push(setTimeout(() => showBanner('🎯 순서 정하기', '목표물에 가장 가깝게 쏜 순서대로 차례가 정해져요 · 모두 동시에 발사! (순서 정하기는 모두 기본탄)'), 5250));
+  introT.push(setTimeout(() => { el.hidden = true; cv.classList.remove('zoomin'); showBanner('🎯 순서 정하기', '목표물에 가장 가깝게 쏜 순서대로 차례가 정해져요 · 모두 동시에 발사!'); }, 2950));
 }
 function showBanner(t, sub) {
   const b = $('banner'); b.firstChild.textContent = t; b.lastChild.textContent = sub || '';
@@ -1904,7 +1979,7 @@ function draw() {
 
   drawFires();
   if (st.target && (st.phase === 'order' || performance.now() < rankUntil)) drawTarget();
-  const alive = st.players.map((p, i) => p.on && p.hp > 0);
+  const alive = st.players.map((p, i) => p.on && p.hp > 0 && !dying.has(i));
   const rp = st.players.map((p, i) => vis[i] ? { ...p, x: vis[i].x, y: vis[i].y } : p);
   rp.forEach((p, i) => { if (alive[i]) drawTank(p, i, aimVis[i] ?? aims[i], isTurn(i)); });
   rp.forEach((p, i) => { if (alive[i]) drawTag(p, i, isTurn(i)); });
@@ -1931,6 +2006,7 @@ function draw() {
       if (s.boomed || A.i < s.path.length) return;
       s.boomed = true;
       const e = s.path[s.path.length - 1];
+      if (!A.order && A.kind !== 'pierce' && s.hit != null && A.pending && A.pending.players && A.pending.players[s.hit] && A.pending.players[s.hit].hp <= 0 && A.shells.filter(q => q.hit === s.hit).every(q => q.boomed)) killTank(s.hit, A.pending);   // 마지막 포탄에 맞은 순간 그 자리에서 폭발
       if (s.impact && A.order) spawnBoom(s.impact[0], s.impact[1], .9);   // 순서 정하기: 지형은 안 파여요
       else if (s.impact && A.kind === 'pierce') spawnBoom(s.impact[0], s.impact[1], s.hit == null ? 1 : .8);
       else if (s.impact) spawnBoom(s.impact[0], s.impact[1], A.kind === 'bumper' ? [1.6, 1.25, .95][s.gen || 0] : { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 3.4, pierce: 1, laser: .5 }[A.kind] || 1.5);

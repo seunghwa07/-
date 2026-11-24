@@ -22,7 +22,7 @@ const SHELL = {
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
   bumper0: { dmg: 20, rad: 52 }, bumper1: { dmg: 12, rad: 42 }, bumper2: { dmg: 8, rad: 34 },   // 범퍼: 첫 탄 20 / 한 번 튄 탄 12 / 두 번 튄 가장 작은 탄 8
   pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함 · 맞은 탱크는 드릴로 2×3 추가 피해) / 레이저(직격만, 기본탄 17보다 센 22)
-  heavy: { dmg: 75, rad: Math.round(CRATER * Math.sqrt(6)) },   // 광폭탄: 피해 75, 폭발 면적 6배(반지름 √6배)
+  heavy: { dmg: 68, rad: Math.round(CRATER * Math.sqrt(6)) },   // 광폭탄: 피해 4배(기본탄 17의 4배), 폭발 면적 6배(반지름 √6배)
 };
 const SPEED = { heavy: Math.sqrt(0.7) };   // 광폭탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
@@ -46,7 +46,6 @@ const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
 const toRoom = (r, m) => r.slots.forEach(s => s && send(s.ws, m));
-// 탱크: 직접 고르거나 '랜덤'을 고르면 게임이 시작될 때 무작위로 정해져요
 const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && s.tank), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
 const listMsg = () => ({
   type: 'rooms',
@@ -85,13 +84,12 @@ function spawnXs(r) {
   return xs;
 }
 
-// 게임이 시작될 때 '랜덤'을 고른 참가자는 탱크를 무작위로 뽑아요
 function newGame(r) {
   const xs = spawnXs(r);
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [],
-    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: !r.slots[i] ? 'basic' : r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank, name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? r.slots[i].tank : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
   g.turn = g.players.findIndex(p => p.on);
@@ -115,7 +113,7 @@ function snapshot(r) {
   };
 }
 
-function checkEnd(r) {
+function checkEnd(r, animMs = 0) {   // animMs: 이번 포탄 화면 연출 길이 (끝난 뒤에도 5초 보여줘요)
   const g = r.game, a = alive(g);
   if (g.mode === 'team') {   // 팀전: 살아있는 팀이 하나 이하면 종료
     const ts = new Set(a.map(i => g.players[i].team));
@@ -126,7 +124,7 @@ function checkEnd(r) {
   clearTimeout(g.orderTimer);
   setTimeout(() => {
     if (r.game === g) { r.game = null; toRoom(r, roomMsg(r)); pushList(); }
-  }, 5000);
+  }, 5000 + animMs);
   return true;
 }
 
@@ -377,7 +375,7 @@ function fireCarpet(r, shooter, angle, power) {
     }
   }
   const total = path.length + (missiles.length ? CARPET_GLOW + CARPET_GAP * 2 + CARPET_FALL : 20);
-  if (!checkEnd(r)) { g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), SHOT_MS(total) + 2000); }
+  if (!checkEnd(r, SHOT_MS(total))) { g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), SHOT_MS(total) + 2000); }
   return { type: 'shot', by: shooter, angle, kind: 'carpet', dud: false, shells: [],
     carpet: { path, landIdx, missiles, glow: CARPET_GLOW, gap: CARPET_GAP, fall: CARPET_FALL, total }, state: snapshot(r) };
 }
@@ -402,9 +400,9 @@ function fire(r, shooter, angle, power) {
   shells.forEach(s => { if (kind === 'pierce') { if (s.impact) drill(g, shooter, s, Math.round(s.path.length * 1000 / 60 / FMAP.SHOT_SPEED) + 300); } else if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - SHELL.laser.dmg); } else if (s.impact) explode(g, shooter, s.impact, kind === 'bumper' ? 'bumper' + s.gen : kind, Math.round(s.path.length * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED)) + 300); });
   if (g.fires.length) startBurn(r);
 
-  if (!checkEnd(r)) {   // 턴은 바로 넘기지 않고, 포탄이 끝날 때까지 기다려요
+  const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED) + 2000 + (kind === 'pierce' ? DRILL_MS : 0);
+  if (!checkEnd(r, ms - 2000)) {   // 턴은 바로 넘기지 않고, 포탄이 끝날 때까지 기다려요
     g.busy = true;
-    const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED) + 2000 + (kind === 'pierce' ? DRILL_MS : 0);
     g.busyTimer = setTimeout(() => resolveShot(r, g), ms);
   }
   return { type: 'shot', by: shooter, angle, kind, dud, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd })), state: snapshot(r) };
@@ -413,7 +411,7 @@ function fire(r, shooter, angle, power) {
 function join(ws, r, name, icon) {
   const i = r.slots.indexOf(null);
   const t0 = r.slots.filter(s => s && s.team === 0).length, t1 = r.slots.filter(s => s && s.team === 1).length;
-  r.slots[i] = { ws, name, icon, team: t0 <= t1 ? 0 : 1, tank: 'random' };   // 인원이 적은 팀에 자동 배정 / 탱크는 처음엔 랜덤
+  r.slots[i] = { ws, name, icon, team: t0 <= t1 ? 0 : 1, tank: 'basic' };   // 인원이 적은 팀에 자동 배정
   ws.room = r; ws.slot = i;
   send(ws, { type: 'joined', code: r.code, you: i });
   toRoom(r, roomMsg(r));
@@ -472,7 +470,7 @@ wss.on('connection', ws => {
       // 본인 팀은 누구나, 다른 사람의 팀은 방장만 바꿀 수 있어요
       const target = Number.isInteger(m.slot) && ws.slot === host(r) ? m.slot : ws.slot;
       if (r.mode === 'team' && r.slots[target]) { r.slots[target].team = m.team === 1 ? 1 : 0; toRoom(r, roomMsg(r)); }
-    } else if (r && m.type === 'tank' && !r.game && (KINDS.includes(m.kind) || m.kind === 'random')) {
+    } else if (r && m.type === 'tank' && !r.game && KINDS.includes(m.kind)) {
       r.slots[ws.slot].tank = m.kind; toRoom(r, roomMsg(r));
     } else if (r && m.type === 'start' && !r.game && ws.slot === host(r) && count(r) >= 2) {
       if (r.mode === 'team') {
