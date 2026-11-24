@@ -627,7 +627,7 @@ let sceneKey = null, bgKey = null, edgePath = null, twink = [], TC = null;
 const FX = { booms: [], floats: [], muzzle: null, shake: 0, flash: 0 };
 const cam = { x: 0, y: 0, snap: true };
 let FS = 1;   // 이번 프레임이 60fps 프레임의 몇 배인지 (주사율이 달라도 같은 속도로 움직이게)
-const vis = [];   // 탱크 화면 표시 위치 (서버 좌표를 부드럽게 따라가요)
+const vis = [], aimVis = [], pv = { a: 45, p: 50 };   // 탱크 화면 표시 위치 (서버 좌표를 부드럽게 따라가요)
 const ptAt = (P, v) => { const n = P.length - 1; v = v < 0 ? 0 : v > n ? n : v; const i = v | 0, f = v - i, a = P[i], b = P[i < n ? i + 1 : i]; return f ? [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f] : a; };   // 카메라 왼쪽 위 (월드 좌표)
 
 // ----- 배경: 별 + 레트로 네온 태양 + 먼 능선 -----
@@ -705,11 +705,6 @@ function buildScene(th, T, id, x0, x1) {
   c.globalCompositeOperation = 'lighter';
   [[26, .06], [12, .09]].forEach(([w, a]) => { c.lineWidth = w; c.strokeStyle = TC.lite(a); c.stroke(edge); });
   c.globalCompositeOperation = 'source-over';
-  c.lineWidth = 2;   // 등고선: 윗선을 아래로 복사해 깊이를 표현
-  for (let k = 1; k <= 8; k++) { c.save(); c.translate(0, k * 22); c.strokeStyle = hsl(TC.h, 100, 88, .22 / Math.pow(k, .55)); c.stroke(edge); c.restore(); }
-  c.strokeStyle = 'rgba(255,255,255,.035)'; c.lineWidth = 7; c.beginPath();   // 아주 은은한 사선 무늬
-  for (let x = -H + 28 * (Math.floor(q0 / 28) - 1); x < q1 + 28; x += 28) { c.moveTo(x, 0); c.lineTo(x + H, H); }
-  c.stroke();
   for (let i = 0; i < 520; i++) {   // 반짝 점 (난수 호출 순서는 항상 같게 유지해야 부분 재생성해도 모양이 같아요)
     const x = Math.floor(rnd() * W), r1 = rnd(), r2 = rnd(), r3 = rnd(), r4 = rnd();
     if (x < q0 || x > q1) continue;
@@ -1055,40 +1050,47 @@ function drawTag(p, i, active) {
 }
 
 // ----- 조준 점선 미리보기 (궤적 앞부분만, 서버와 같은 물리) -----
+const _ds = {};
+function dotSprite(col) {   // 점 주변 빛: 그라데이션을 점마다 만들지 않고 한 번만 그려 재사용
+  if (_ds[col]) return _ds[col];
+  const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gr.addColorStop(0, rgba(col, .8)); gr.addColorStop(1, rgba(col, 0)); g.fillStyle = gr; g.fillRect(0, 0, 32, 32); return (_ds[col] = c);
+}
 function drawPreview(p, col) {
   if (p.tank === 'laser') {   // 레이저는 직선: 첫 번째 벽까지만 점선으로 보여줘요 (파워 무관)
-    const a = my.angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), T = st.terrain, LM = 900 * K / 2.5, GP = 13 * K;
+    const a = pv.a * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), T = st.terrain, LM = 900 * K / 2.5, GP = 13 * K;
     let x = p.x, y = T[Math.floor(p.x)] - 20 * TS, len = 0, next = 30 * K - GP + (performance.now() / 50) % GP;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     while (len < LM) {
+      const x0 = x, y0 = y, l0 = len;
       x += dx * 4; y += dy * 4; len += 4;
       if (x < 0 || x >= W || y < 0 || y >= T[Math.floor(x)]) break;   // 지형·맵 경계 모두 '벽'
-      if (len >= next) {
-        next += GP; if (len < 30 * K) continue;
-        const al = Math.max(.15, 1 - len / LM);
-        ctx.fillStyle = rgba(col, .8 * al); ctx.beginPath(); ctx.arc(x, y, 5 * Z, 0, 7); ctx.fill();
-        ctx.fillStyle = `rgba(255,255,255,${al})`; ctx.beginPath(); ctx.arc(x, y, 1.8 * Z, 0, 7); ctx.fill();
+      while (len >= next) {   // 점은 걸음 끝이 아니라 정확한 거리 위치에 찍어야 흐를 때 덜덜거리지 않아요
+        const f = (next - l0) / 4, qx = x0 + (x - x0) * f, qy = y0 + (y - y0) * f, nl = next; next += GP; if (nl < 30 * K) continue;
+        const al = Math.max(.15, 1 - nl / LM);
+        ctx.fillStyle = rgba(col, .8 * al); ctx.beginPath(); ctx.arc(qx, qy, 5 * Z, 0, 7); ctx.fill();
+        ctx.fillStyle = `rgba(255,255,255,${al})`; ctx.beginPath(); ctx.arc(qx, qy, 1.8 * Z, 0, 7); ctx.fill();
       }
     }
     ctx.restore(); return;
   }
-  const a = my.angle * Math.PI / 180, v = my.power * 8 * K * (p.tank === 'heavy' ? Math.sqrt(.7) : 1), dt = 1 / 120;
+  const a = pv.a * Math.PI / 180, v = pv.p * 8 * K * (p.tank === 'heavy' ? Math.sqrt(.7) : 1), dt = 1 / 120;
   let x = p.x, y = st.terrain[Math.floor(p.x)] - 14 * TS, vx = v * Math.cos(a), vy = -v * Math.sin(a), len = 0;
-  const LMAX = (60 + my.power * 1.1) * K, START = 30 * K, GAP = 13 * K;
+  const LMAX = (60 + pv.p * 1.1) * K, START = 30 * K, GAP = 13 * K;
   let next = START - GAP + (performance.now() / 50) % GAP;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   for (let t = 0; t < 1200 && len < LMAX; t++) {
     vx += st.wind * 3 * K * dt; vy += 500 * K * dt;
-    const nx = x + vx * dt, ny = y + vy * dt;
-    len += Math.hypot(nx - x, ny - y); x = nx; y = ny;
-    if (len >= next) {
-      next += GAP;
-      if (len < START) continue;
-      const al = Math.max(.12, 1 - (len - START) / (LMAX - START) * .88);
-      const hg = ctx.createRadialGradient(x, y, 0, x, y, 7 * Z); hg.addColorStop(0, rgba(col, .8 * al)); hg.addColorStop(1, rgba(col, 0));
-      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(x, y, 7 * Z, 0, 7); ctx.fill();
-      ctx.fillStyle = `rgba(255,255,255,${al})`; ctx.beginPath(); ctx.arc(x, y, (1.6 + al * 1.4) * Z, 0, 7); ctx.fill();
+    const nx = x + vx * dt, ny = y + vy * dt, l0 = len, sl = Math.hypot(nx - x, ny - y);
+    len += sl;
+    while (len >= next) {   // 점을 정확한 거리 위치에 찍어서 흐를 때 걸음 단위로 덜덜거리지 않게 해요
+      const f = sl ? (next - l0) / sl : 0, qx = x + (nx - x) * f, qy = y + (ny - y) * f, nl = next; next += GAP;
+      if (nl < START) continue;
+      const al = Math.max(.12, 1 - (nl - START) / (LMAX - START) * .88);
+      ctx.globalAlpha = al; ctx.drawImage(dotSprite(col), qx - 7 * Z, qy - 7 * Z, 14 * Z, 14 * Z);
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(qx, qy, (1.6 + al * 1.4) * Z, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
     }
+    x = nx; y = ny;
   }
   ctx.restore();
 }
@@ -1330,13 +1332,23 @@ function drawFires() {
     const rem = f.life - (now - (f.at || now)); if (rem <= 0) return;
     const fade = Math.min(1, rem / 1000), y0 = gy(f.x);
     const gl = ctx.createRadialGradient(f.x, y0, 0, f.x, y0, f.r);
-    gl.addColorStop(0, `rgba(255,120,30,${.4 * fade})`); gl.addColorStop(1, 'rgba(255,60,20,0)');
-    ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(f.x, y0, f.r, f.r * .45, 0, 0, 7); ctx.fill();
-    for (let k = 0; k < 16; k++) {
-      const u = (now / 800 + k * .618 + fi * .3) % 1, fx = f.x + (((k * 53 + fi * 17) % 100) / 100 - .5) * 1.8 * f.r, fy = gy(fx) - u * 60;
-      const r = (14 + (k % 3) * 5) * (1 - u * .7) * fade;
-      ctx.globalAlpha = 1 - u; ctx.drawImage(flameSprite(), fx - r, fy - r, r * 2, r * 2);
+    gl.addColorStop(0, `rgba(255,140,40,${.75 * fade})`); gl.addColorStop(.6, `rgba(255,90,25,${.35 * fade})`); gl.addColorStop(1, 'rgba(255,60,20,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(f.x, y0, f.r, f.r * .5, 0, 0, 7); ctx.fill();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';   // 불길 범위를 또렷하게: 땅을 따라 타오르는 선 + 가장자리 점선 고리
+    const xa = Math.max(0, f.x - f.r), xb = Math.min(W - 1, f.x + f.r);
+    ctx.beginPath(); for (let x = xa; x <= xb; x += 10) { const y = gy(x) - 2; x === xa ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.strokeStyle = `rgba(255,90,20,${.45 * fade})`; ctx.lineWidth = 14; ctx.stroke();
+    ctx.strokeStyle = `rgba(255,220,120,${.9 * fade})`; ctx.lineWidth = 4; ctx.stroke();
+    ctx.setLineDash([18, 14]); ctx.lineDashOffset = -now / 40; ctx.strokeStyle = `rgba(255,170,60,${.55 * fade})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(f.x, y0 - 4, f.r, f.r * .5, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    const N = 30;
+    for (let k = 0; k < N; k++) {
+      const u = (now / 700 + k * .618 + fi * .3) % 1, fx = f.x + (((k * 53 + fi * 17) % 100) / 100 - .5) * 1.9 * f.r, fy = gy(fx) - u * 95;
+      const r = (24 + (k % 3) * 9) * (1 - u * .65) * fade;
+      ctx.globalAlpha = Math.min(1, (1 - u) * 1.5); ctx.drawImage(flameSprite(), fx - r, fy - r, r * 2, r * 2);
+      if (k % 2 === 0) { ctx.globalAlpha = (1 - u) * .8; ctx.drawImage(flameSprite(), fx - r * .45, fy - r * .45, r * .9, r * .9); }   // 하얗게 달아오른 중심
     }
+    ctx.globalAlpha = 1;
   });
   ctx.restore();
 }
@@ -1344,12 +1356,19 @@ let _fs = null;
 function flameSprite() {   // 불꽃 알갱이 그림을 한 번만 만들어 두고 재사용해요 (매 프레임 그라데이션 수십 개를 만들지 않도록)
   if (_fs) return _fs;
   const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gr.addColorStop(0, 'rgba(255,240,170,.8)'); gr.addColorStop(.45, 'rgba(255,120,30,.6)'); gr.addColorStop(1, 'rgba(220,40,20,0)');
+  gr.addColorStop(0, 'rgba(255,250,200,1)'); gr.addColorStop(.35, 'rgba(255,170,50,.85)'); gr.addColorStop(.7, 'rgba(255,90,25,.45)'); gr.addColorStop(1, 'rgba(220,40,20,0)');
   g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return (_fs = c);
 }
 
 // 탱크 표시 위치: 서버가 알려 준 좌표(걸음마다 뚝뚝 바뀜)를 시간 기준으로 부드럽게 따라가요
 function stepVis() {
+  const ka = 1 - Math.exp(-FS * 16.667 / 55);   // 각도·파워는 정수로 툭툭 바뀌니까 화면에서는 부드럽게 따라가요
+  if (cam.snap) { pv.a = my.angle; pv.p = my.power; }
+  else { pv.a += (my.angle - pv.a) * ka; pv.p += (my.power - pv.p) * ka; if (Math.abs(my.angle - pv.a) < .01) pv.a = my.angle; if (Math.abs(my.power - pv.p) < .01) pv.p = my.power; }
+  st.players.forEach((p, i) => {
+    const t = i === me ? pv.a : aims[i];
+    if (aimVis[i] === undefined || cam.snap) aimVis[i] = t; else { aimVis[i] += (t - aimVis[i]) * ka; if (Math.abs(t - aimVis[i]) < .01) aimVis[i] = t; }
+  });
   const k = 1 - Math.exp(-FS * 16.667 / 70);
   st.players.forEach((p, i) => {
     const v = vis[i];
@@ -1398,7 +1417,7 @@ function draw() {
   drawFires();
   const alive = st.players.map((p, i) => p.on && p.hp > 0);
   const rp = st.players.map((p, i) => vis[i] ? { ...p, x: vis[i].x, y: vis[i].y } : p);
-  rp.forEach((p, i) => { if (alive[i]) drawTank(p, i, aims[i], st.turn === i && st.winner === -1); });
+  rp.forEach((p, i) => { if (alive[i]) drawTank(p, i, aimVis[i] ?? aims[i], st.turn === i && st.winner === -1); });
   rp.forEach((p, i) => { if (alive[i]) drawTag(p, i, st.turn === i && st.winner === -1); });
   if (!anim && st.winner === -1 && st.turn === me && me >= 0 && alive[me]) drawPreview(rp[me], pc(me));
 

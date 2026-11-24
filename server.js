@@ -27,7 +27,7 @@ const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피
 const PIERCE_HIT = HIT_R * 2;      // 관통탄 피격 범위: 기본 판정의 2배
 const LASER_HIT = HIT_R * 1.9;     // 레이저 판정 범위: 기본 판정의 약 1.9배 (빔이 굵은 만큼 넓게)
 const MAX_CLIMB = 90;              // 한 걸음(6px)당 최대 오르막 높이 → 약 86° 경사까지 (거의 수직 절벽만 막혀요)
-const FIRE_R = 90, FIRE_MS = 3000, BURN_TICK = 500, BURN_DMG = 2;   // 소이탄: 불길 반경 / 3초 지속 / 0.5초마다 2 피해
+const FIRE_R = 170, FIRE_MS = 3000, BURN_TICK = 500, BURN_DMG = 2;   // 소이탄: 불길 반경 / 3초 지속 / 0.5초마다 2 피해
 const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
 const DUD = 0.3, HOMING_TURN = 2.2; // 유도탄 불발 확률 / 초당 최대 회전각(rad)
 
@@ -158,7 +158,7 @@ function flight(g, shooter, angle, power, kind) {
 // 레이저: 포물선 없이 직선으로 날아가고, 벽(지형)과 맵 경계(왼쪽·오른쪽·위)에 닿으면 반사돼요. 4번 반사한 뒤 또 닿으면 사라져요.
 const LASER_BOUNCES = 4;
 function laserFlight(g, shooter, angle) {
-  const p = g.players[shooter], a = angle * Math.PI / 180, STEP = 4, MAXLEN = 9000;
+  const p = g.players[shooter], a = angle * Math.PI / 180, STEP = 4, MAXLEN = 60000;   // 맵 폭(5000)보다 훨씬 길게: 4번 튕기는 동안 거리 제한에 걸려 사라지지 않게 해요
   let x = p.x, y = g.terrain[p.x] - 20 * TS, dx = Math.cos(a), dy = -Math.sin(a);
   let bounces = 0, len = 0, rec = 0, hit = null, impact = null;
   const path = [[x, y]];
@@ -183,6 +183,7 @@ function laserFlight(g, shooter, angle) {
       const sl = (g.terrain[xr] - g.terrain[xl]) / ((xr - xl) || 1), nl = Math.hypot(sl, 1), nX = sl / nl, nY = -1 / nl;   // 지형 표면의 바깥쪽 법선
       const dot = dx * nX + dy * nY;
       if (dot < 0) { dx -= 2 * dot * nX; dy -= 2 * dot * nY; }
+      else { bounces--; x = nx; y = ny; len += STEP; rec += STEP; }   // 이미 벽에서 멀어지는 중(스치기/파묻힘): 튕김으로 세지 않고 그냥 빠져나가요
       continue;
     }
     x = nx; y = ny; len += STEP; rec += STEP;
