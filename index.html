@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000">
-<title>증강 포트리스</title>
+<title>Apex Fortress</title>
 <style>
   :root{--bg:#04061a;--card:#080d28;--bd:#2a3556;--tx:#eef1ff;--sub:#9aa5c8;--in:#10163a;--pri:#8a3d14;--pri2:#c9651f;--btn:#1b2447}
   body.light{--bg:#eef2fb;--card:#fff;--bd:#c9d2ea;--tx:#1a2140;--sub:#5a6485;--in:#f3f6fd;--pri:#e8873a;--pri2:#f5a25d;--btn:#e3e9f8}
@@ -27,6 +27,8 @@
   button.pri{background:var(--pri);color:#fff;font-weight:bold}
   button.dan{background:#a33;color:#fff}
   button:disabled{opacity:.45}
+  button.sel{background:var(--pri);color:#fff;font-weight:bold;outline:2px solid var(--pri2)}
+  #modedesc{margin-top:8px;font-size:13px;color:var(--sub);min-height:18px}
   #conn{margin:6px 2px;font-size:13px;color:var(--sub)}
   #msg{color:#fc6;min-height:20px;margin-top:6px}
   .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -119,7 +121,7 @@
 <div id="menu" class="card">
   <button id="theme" class="chip">☀️ 라이트</button>
   <div class="logo">💥</div>
-  <h1>증강 포트리스</h1>
+  <h1>Apex Fortress</h1>
   <p class="sub">지형을 부수고 마지막까지 살아남으세요!</p>
 
   <h3>내 닉네임 및 탱크 모양</h3>
@@ -141,6 +143,10 @@
 
 <div id="room" class="card" hidden>
   <h2>방 코드 <span id="rc" class="code"></span></h2>
+  <h3>게임 모드 <span id="modenote" style="font-size:12px;color:var(--sub)"></span></h3>
+  <div class="row"><button id="mffa" style="flex:1">🎯 개인전</button><button id="mteam" style="flex:1">🤝 팀전</button></div>
+  <div id="modedesc"></div>
+  <h3>참가자</h3>
   <div id="cards" class="cards"></div>
   <h3>맵 <span id="mapnote" style="font-size:12px;color:var(--sub)"></span></h3>
   <div id="maps"></div>
@@ -173,6 +179,8 @@ const MAPS = FMAP.MAPS, RANDOM = MAPS.length;
 let ws = null, wsUrl = '', pending = null, retry = null;
 let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
+const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
+const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
 
 const ls = {
   get: k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
@@ -254,7 +262,7 @@ $('url').onchange = connect;
 function onMsg(m) {
   if (m.type === 'rooms') { rooms = m.rooms; renderRooms(); }
   else if (m.type === 'joined') me = m.you;
-  else if (m.type === 'error') $('msg').textContent = m.msg;
+  else if (m.type === 'error') { $('msg').textContent = m.msg; $('rmsg').textContent = m.msg; }
   else if (m.type === 'room' || m.type === 'state') { if (anim) anim.pending = m; else apply(m); }
   else if (m.type === 'moved') {
     const t = anim ? anim.pending : st;
@@ -273,7 +281,7 @@ function renderRooms() {
   const box = $('rooms'); box.textContent = '';
   if (!rooms.length) el('div', '열린 방이 없어요. 방을 만들어 보세요.', box, 'color:var(--sub)');
   rooms.forEach(r => {
-    const label = `${r.code} · ${r.host}의 방 · ${r.count}/4 · ${r.map === RANDOM ? '랜덤' : MAPS[r.map].name}${r.playing ? ' (게임 중)' : ''}`;
+    const label = `${r.code} · ${r.host}의 방 · ${r.count}/4 · ${r.mode === 'team' ? '팀전' : '개인전'} · ${r.map === RANDOM ? '랜덤' : MAPS[r.map].name}${r.playing ? ' (게임 중)' : ''}`;
     const b = el('button', label, box, 'display:block;margin:6px 0;width:100%;text-align:left');
     b.disabled = r.playing || r.count >= 4;
     b.onclick = () => joinRoom(r.code);
@@ -322,13 +330,19 @@ for (let id = 0; id <= RANDOM; id++) {
 function renderRoom() {
   $('rc').textContent = st.code;
   const box = $('cards'); box.textContent = '';
+  const team = st.mode === 'team';
   st.names.forEach((n, i) => {
-    const c = el('div', null, box, `border-top-color:${n ? COLORS[i] : 'var(--bd)'}`);
+    const c = el('div', null, box, `border-top-color:${n ? pc(i) : 'var(--bd)'}`);
     c.className = 'pc' + (n ? '' : ' empty');
     if (!n) { el('div', '대기 중...', c); return; }
     el('div', st.icons[i] || '🪖', c).className = 'ic';
     el('div', n, c).className = 'nm';
     el('div', `P${i + 1}${i === st.host ? ' · 👑 방장' : ''}${i === me ? ' · 나' : ''}`, c).className = 'tg';
+    if (team) {   // 팀 버튼: 본인 것은 누구나, 다른 사람 것은 방장만 바꿀 수 있어요
+      const t = st.teams[i], tb = el('button', TEAMN[t] + ' ⇄', c, `margin-top:8px;padding:6px 14px;font-size:14px;font-weight:bold;color:#fff;background:${TEAMC[t]}`);
+      if (i !== me && me !== st.host) tb.style.pointerEvents = 'none';
+      tb.onclick = () => sendMsg({ type: 'team', slot: i, team: 1 - t });
+    }
   });
   const isHost = me === st.host, cnt = st.names.filter(Boolean).length;
   mapCards.forEach((d, i) => {
@@ -337,9 +351,16 @@ function renderRoom() {
   });
   $('mapnote').textContent = isHost ? '(방장이 선택)' : '(방장이 선택해요)';
   $('start').hidden = !isHost;
-  $('start').disabled = cnt < 2;
-  $('rmsg').textContent = cnt < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : '';
+  const tc = [0, 1].map(k => st.teams.filter((t, i) => st.names[i] && t === k).length), bad = team && (!tc[0] || !tc[1]);
+  $('mffa').classList.toggle('sel', !team); $('mteam').classList.toggle('sel', team);
+  $('mffa').style.pointerEvents = $('mteam').style.pointerEvents = isHost ? '' : 'none';
+  $('modenote').textContent = isHost ? '(방장이 선택)' : '(방장이 선택해요)';
+  $('modedesc').textContent = team ? '내 카드의 팀 버튼으로 A팀/B팀을 바꿔요. 아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요.' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요.';
+  $('start').disabled = cnt < 2 || bad;
+  $('rmsg').textContent = cnt < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : bad ? '팀전은 A팀과 B팀에 최소 1명씩 있어야 시작할 수 있어요.' : '';
 }
+$('mffa').onclick = () => sendMsg({ type: 'mode', mode: 'ffa' });
+$('mteam').onclick = () => sendMsg({ type: 'mode', mode: 'team' });
 $('start').onclick = () => { enterFS(); sendMsg({ type: 'start' }); };
 $('leave').onclick = () => { sendMsg({ type: 'leave' }); me = -1; st = null; show('menu'); };
 
@@ -367,7 +388,7 @@ function ui() {
   const fp = st.turn === me && st.winner === -1 ? Math.max(0, st.fuel) / FMAP.FUEL * 100 : 0;
   $('fuelf').setAttribute('stroke-dasharray', `${fp} 100`); $('fuelsvg').classList.toggle('low', fp > 0 && fp <= 20);
   let t;
-  if (st.winner !== -1) t = (st.winner === -2 ? '무승부' : st.winner === me ? '승리!' : `${st.players[st.winner].name} 승리`) + ' (잠시 후 대기실로)';
+  if (st.winner !== -1) t = (st.winner === -2 ? '무승부' : st.mode === 'team' ? (st.winTeam === st.teams[me] ? '승리!' : `${TEAMN[st.winTeam]} 승리`) : st.winner === me ? '승리!' : `${st.players[st.winner].name} 승리`) + ' (잠시 후 대기실로)';
   else t = st.turn === me ? '내 차례' : `${st.players[st.turn].name}의 차례`;
   $('info').textContent = t; setWind(st.wind);
 }
@@ -603,7 +624,7 @@ const TP = {   // 오른쪽을 보는 기준, 지면 접점 = (0,0)
   turret: new Path2D('M-12 -15.5L-10 -21L-4 -24.5L7 -24.5L14 -19.5L14 -15.5Z'),
 };
 function drawTank(p, i, deg, active) {
-  const col = COLORS[i], a = deg * Math.PI / 180, dir = deg <= 90 ? 1 : -1, T = st.terrain, now = performance.now();
+  const col = pc(i), a = deg * Math.PI / 180, dir = deg <= 90 ? 1 : -1, T = st.terrain, now = performance.now();
   const x0 = Math.max(0, Math.round(p.x - 14 * TS)), x1 = Math.min(W - 1, Math.round(p.x + 14 * TS));
   const tilt = Math.max(-0.5, Math.min(0.5, Math.atan2(T[x1] - T[x0], x1 - x0)));
   const lite = shade(col, .6), edge = shade(col, .35);
@@ -666,10 +687,10 @@ function drawTank(p, i, deg, active) {
 
 // 이름표 + 4칸 체력바 + 내 차례 표시
 function drawTag(p, i, active) {
-  const col = COLORS[i], hp = Math.max(0, Math.min(100, p.hp)), x = 0, y = 0, now = performance.now();
+  const col = pc(i), hp = Math.max(0, Math.min(100, p.hp)), x = 0, y = 0, now = performance.now();
   ctx.save(); ctx.translate(p.x, p.y - 36 * TS - 8 * TGS); ctx.scale(TGS, TGS);
   ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const label = `${p.icon || ''} ${i === me ? '나' : p.name}`, w = Math.max(44, ctx.measureText(label).width + 16);
+  const label = `${st.mode === 'team' ? TEAMN[p.team][0] + ' ' : ''}${p.icon || ''} ${i === me ? '나' : p.name}`, w = Math.max(44, ctx.measureText(label).width + 16);
   rrect(x - w / 2, y - 17, w, 15, 7.5); ctx.fillStyle = 'rgba(4,6,16,.8)'; ctx.fill(); ctx.lineWidth = 1.3; ctx.strokeStyle = rgba(col, .95); ctx.stroke();
   ctx.fillStyle = '#fff'; ctx.fillText(label, x, y - 9);
   ctx.textBaseline = 'alphabetic';
@@ -715,7 +736,7 @@ function drawPreview(p, col) {
 
 // ----- 포탄: 쏜 사람 색의 꼬리 + 하얀 심지 -----
 function drawShell(an) {
-  const idx = Math.min(an.i, an.path.length - 1), pt = an.path[idx], col = COLORS[an.by] || '#ffffff', L = 34;
+  const idx = Math.min(an.i, an.path.length - 1), pt = an.path[idx], col = pc(an.by) || '#ffffff', L = 34;
   ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
   for (let j = L - 1; j >= 0; j--) {
     const p0 = an.path[Math.max(0, idx - j - 1)], p1 = an.path[Math.max(0, idx - j)], f = 1 - j / L;
@@ -744,7 +765,7 @@ function spawnBoom(x, y, n = 1) {
 function fireFx(by, deg) {
   const p = st && st.players && st.players[by]; if (!p) return;
   const dir = deg <= 90 ? 1 : -1, a = deg * Math.PI / 180;
-  FX.muzzle = { x: p.x + (8 * dir + Math.cos(a) * 26) * TS, y: p.y - (19.5 + Math.sin(a) * 26) * TS, a, t: 0, col: COLORS[by] };
+  FX.muzzle = { x: p.x + (8 * dir + Math.cos(a) * 26) * TS, y: p.y - (19.5 + Math.sin(a) * 26) * TS, a, t: 0, col: pc(by) };
   FX.shake = Math.max(FX.shake, 3);
 }
 function fxFromDiff(prev, next) {   // 포탄 결과로 체력이 깎인 탱크: 피해 숫자, 파괴되면 큰 폭발
@@ -840,7 +861,7 @@ function drawOffscreen() {
     let y = cy + dy * t;
     for (let n = 0, hit = true; hit && n < 4; n++) { hit = false; for (const q of placed) if (Math.abs(q.x - x) < 170 && Math.abs(q.y - y) < 46) { y = q.y + 46; hit = true; } }   // 같은 쪽 화살표끼리 겹치지 않게 아래로 밀어요
     placed.push({ x, y });
-    const m = Math.round(Math.hypot(p.x - ref.x, p.y - ref.y) / MPP), col = COLORS[i];
+    const m = Math.round(Math.hypot(p.x - ref.x, p.y - ref.y) / MPP), col = pc(i);
     ctx.save(); ctx.translate(x, y);
     ctx.save(); ctx.rotate(ang); ctx.globalAlpha = .75 + .25 * Math.sin(performance.now() / 260 + i);
     ctx.shadowColor = col; ctx.shadowBlur = 14; ctx.lineJoin = 'round';
@@ -896,7 +917,7 @@ function draw() {
   const alive = st.players.map((p, i) => p.on && p.hp > 0);
   st.players.forEach((p, i) => { if (alive[i]) drawTank(p, i, aims[i], st.turn === i && st.winner === -1); });
   st.players.forEach((p, i) => { if (alive[i]) drawTag(p, i, st.turn === i && st.winner === -1); });
-  if (!anim && st.winner === -1 && st.turn === me && me >= 0 && alive[me]) drawPreview(st.players[me], COLORS[me]);
+  if (!anim && st.winner === -1 && st.turn === me && me >= 0 && alive[me]) drawPreview(st.players[me], pc(me));
 
   if (anim) {
     drawShell(anim);

@@ -20,11 +20,11 @@ const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
 const toRoom = (r, m) => r.slots.forEach(s => s && send(s.ws, m));
-const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
+const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, teams: r.slots.map(s => s && s.team), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
 const listMsg = () => ({
   type: 'rooms',
   rooms: [...rooms.values()].map(r => ({
-    code: r.code, count: count(r), map: r.mapId, host: r.slots[host(r)].name, playing: !!r.game,
+    code: r.code, count: count(r), map: r.mapId, mode: r.mode, host: r.slots[host(r)].name, playing: !!r.game,
   })),
 });
 const pushList = () => { const m = listMsg(); wss.clients.forEach(c => !c.room && send(c, m)); };
@@ -49,8 +49,8 @@ function nextTurn(g, from) {
 function newGame(r) {
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
-    map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1,
-    players: SPAWN.map((x, i) => ({ x, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1,
+    players: SPAWN.map((x, i) => ({ x, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   r.game.turn = r.game.players.findIndex(p => p.on);
   r.game.fuel = FUEL;
@@ -59,14 +59,19 @@ function newGame(r) {
 function snapshot(r) {
   const g = r.game;
   return {
-    type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel,
-    players: g.players.map(p => ({ x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
+    type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam,
+    teams: g.players.map(p => p.team),
+    players: g.players.map(p => ({ team: p.team, x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
   };
 }
 
 function checkEnd(r) {
   const g = r.game, a = alive(g);
-  if (a.length > 1) return false;
+  if (g.mode === 'team') {   // 팀전: 살아있는 팀이 하나 이하면 종료
+    const ts = new Set(a.map(i => g.players[i].team));
+    if (ts.size > 1) return false;
+    g.winTeam = ts.size ? [...ts][0] : -1;
+  } else if (a.length > 1) return false;
   g.winner = a.length ? a[0] : -2; // -2: 무승부
   setTimeout(() => {
     if (r.game === g) { r.game = null; toRoom(r, roomMsg(r)); pushList(); }
@@ -83,6 +88,7 @@ function crater(g, cx, cy) {
 
 function fire(r, shooter, angle, power) {
   const g = r.game, p = g.players[shooter];
+  const ally = i => g.mode === 'team' && i !== shooter && g.players[i].team === p.team;
   const a = angle * Math.PI / 180, v = power * 8 * K, dt = 1 / 120;
   let x = p.x, y = g.terrain[p.x] - 14 * TS;
   let vx = v * Math.cos(a), vy = -v * Math.sin(a);
@@ -94,7 +100,7 @@ function fire(r, shooter, angle, power) {
     if (t % 4 === 0) path.push([x, y]);
     if (x < 0 || x >= W || y > H) break;
     if (y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }
-    if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) &&
+    if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) && !ally(i) &&
         Math.hypot(x - q.x, y - (g.terrain[q.x] - 10 * TS)) < HIT_R)) { impact = [x, y]; break; }
   }
 
@@ -102,8 +108,8 @@ function fire(r, shooter, angle, power) {
     path.push(impact);
     crater(g, impact[0], impact[1]);
     const reach = CRATER + 25;
-    g.players.forEach(q => {
-      if (q.hp <= 0) return;
+    g.players.forEach((q, i) => {
+      if (q.hp <= 0 || ally(i)) return;   // 팀전에서는 아군 피해 없음
       const d = Math.hypot(q.x - impact[0], g.terrain[q.x] - 10 * TS - impact[1]);
       if (d < reach) q.hp = Math.max(0, q.hp - Math.max(5, Math.round(40 * (1 - d / reach))));
     });
@@ -115,7 +121,8 @@ function fire(r, shooter, angle, power) {
 
 function join(ws, r, name, icon) {
   const i = r.slots.indexOf(null);
-  r.slots[i] = { ws, name, icon };
+  const t0 = r.slots.filter(s => s && s.team === 0).length, t1 = r.slots.filter(s => s && s.team === 1).length;
+  r.slots[i] = { ws, name, icon, team: t0 <= t1 ? 0 : 1 };   // 인원이 적은 팀에 자동 배정
   ws.room = r; ws.slot = i;
   send(ws, { type: 'joined', code: r.code, you: i });
   toRoom(r, roomMsg(r));
@@ -150,7 +157,7 @@ wss.on('connection', ws => {
 
     if (m.type === 'create' && !r) {
       const code = newCode();
-      const nr = { code, slots: Array(MAX).fill(null), mapId: 0, game: null };
+      const nr = { code, slots: Array(MAX).fill(null), mapId: 0, mode: 'ffa', game: null };
       rooms.set(code, nr);
       join(ws, nr, name, icon);
     } else if (m.type === 'join' && !r) {
@@ -164,7 +171,18 @@ wss.on('connection', ws => {
     } else if (r && m.type === 'map' && !r.game && ws.slot === host(r)) {
       r.mapId = Math.max(0, Math.min(RANDOM_MAP, (+m.id) | 0));
       toRoom(r, roomMsg(r)); pushList();
+    } else if (r && m.type === 'mode' && !r.game && ws.slot === host(r)) {
+      r.mode = m.mode === 'team' ? 'team' : 'ffa';
+      toRoom(r, roomMsg(r)); pushList();
+    } else if (r && m.type === 'team' && !r.game) {
+      // 본인 팀은 누구나, 다른 사람의 팀은 방장만 바꿀 수 있어요
+      const target = Number.isInteger(m.slot) && ws.slot === host(r) ? m.slot : ws.slot;
+      if (r.mode === 'team' && r.slots[target]) { r.slots[target].team = m.team === 1 ? 1 : 0; toRoom(r, roomMsg(r)); }
     } else if (r && m.type === 'start' && !r.game && ws.slot === host(r) && count(r) >= 2) {
+      if (r.mode === 'team') {
+        const t0 = r.slots.filter(s => s && s.team === 0).length, t1 = r.slots.filter(s => s && s.team === 1).length;
+        if (!t0 || !t1) return send(ws, { type: 'error', msg: '팀전은 양 팀에 최소 1명씩 필요해요' });
+      }
       newGame(r); toRoom(r, snapshot(r)); pushList();
     } else if (r && m.type === 'move') {
       const g = r.game, now = Date.now();
