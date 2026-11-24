@@ -8,6 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000">
 <title>Apex Fortress</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#04061a;--card:#080d28;--bd:#2a3556;--tx:#eef1ff;--sub:#9aa5c8;--in:#10163a;--pri:#8a3d14;--pri2:#c9651f;--btn:#1b2447}
   body.light{--bg:#eef2fb;--card:#fff;--bd:#c9d2ea;--tx:#1a2140;--sub:#5a6485;--in:#f3f6fd;--pri:#e8873a;--pri2:#f5a25d;--btn:#e3e9f8}
@@ -28,16 +31,26 @@
   button.dan{background:#a33;color:#fff}
   button:disabled{opacity:.45}
   button.sel{background:var(--pri);color:#fff;font-weight:bold;outline:2px solid var(--pri2)}
-  #modedesc{margin-top:8px;font-size:13px;color:var(--sub);min-height:18px}
   #conn{margin:6px 2px;font-size:13px;color:var(--sub)}
   #msg{color:#fc6;min-height:20px;margin-top:6px}
-  .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .pc{border:2px solid var(--bd);border-top-width:6px;border-radius:18px;padding:12px 6px;text-align:center;background:var(--in)}
-  .pc.empty{border-style:dashed;color:var(--sub);padding:30px 6px}
-  .pc .ic{font-size:38px;line-height:1.2}
-  .pc .nm{font-weight:bold;font-size:17px;margin-top:4px;overflow:hidden;text-overflow:ellipsis}
-  .pc .tg{font-size:12px;color:var(--sub);margin-top:2px}
-  .code{font-family:monospace;letter-spacing:3px;color:var(--pri2)}
+  /* ---------- 대기실: 1280×720 무대를 화면 크기에 맞춰 키워요 ---------- */
+  #room{position:fixed;inset:0;background:#060a1e;overflow:hidden}
+  #room[hidden]{display:none}
+  #lobby{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;box-sizing:border-box;padding:28px;display:flex;flex-direction:column;gap:20px;
+    background:radial-gradient(900px 500px at 15% -10%,#16205a 0%,rgba(22,32,90,0) 70%),radial-gradient(700px 500px at 100% 100%,#2a1050 0%,rgba(42,16,80,0) 70%),#060a1e;
+    color:#eaf0ff;font-family:'Noto Sans KR',system-ui,sans-serif;font-size:14px;overflow:hidden}
+  :where(#lobby) button{font:inherit;padding:0;border:0;border-radius:0;background:none;color:inherit;white-space:normal;cursor:pointer}
+  :where(#lobby) button:disabled{cursor:not-allowed}
+  #lobby .cp{font-family:'Chakra Petch','Noto Sans KR',sans-serif}
+  #lobby .bar{width:4px;height:18px;border-radius:2px;flex:none}
+  #lobby .sec{font-size:20px;font-weight:900}
+  #lobby .ro{pointer-events:none}
+  #lobby .tk{box-sizing:border-box;height:84px;padding:6px 4px 8px;border-radius:14px;border:2px solid #2a3556;background:#0d1433;color:#eaf0ff;display:flex;flex-direction:column;align-items:center;justify-content:space-between;font-size:14px;font-weight:700}
+  #lobby .mp{box-sizing:border-box;padding:4px 4px 8px;border-radius:14px;border:2px solid #2a3556;background:#0d1433;color:#eaf0ff;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;font-weight:700;white-space:nowrap}
+  #lobby .mp canvas{display:block;width:100%;height:auto;border-radius:9px}
+  #start{height:64px;padding:0 56px 0 44px;display:flex;align-items:center;gap:14px;border-radius:20px;background:linear-gradient(180deg,#7dffc4,#2fd48b);color:#04210f;font-size:24px;font-weight:900;letter-spacing:.06em;box-shadow:0 8px 30px rgba(93,255,176,.35),inset 0 1px 0 rgba(255,255,255,.7)}
+  #start:disabled{opacity:.4;filter:grayscale(.8);box-shadow:none}
+  #start[hidden],#vs[hidden]{display:none !important}
   /* ---------- 게임 화면 (항상 가로) ---------- */
   #game{position:fixed;inset:0;background:#05060f;overflow:hidden;touch-action:none;overscroll-behavior:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;--ch:100vh}
   /* 전체화면/방향 잠금이 안 되는 터치 기기(iOS 등)에서 세로로 들고 있으면 화면을 90° 돌려서 가로로 보여줘요 */
@@ -170,22 +183,62 @@
   <div id="rooms"></div>
 </div>
 
-<div id="room" class="card" hidden>
-  <h2>방 코드 <span id="rc" class="code"></span></h2>
-  <h3>게임 모드 <span id="modenote" style="font-size:12px;color:var(--sub)"></span></h3>
-  <div class="row"><button id="mffa" style="flex:1">🎯 개인전</button><button id="mteam" style="flex:1">🤝 팀전</button></div>
-  <div id="modedesc"></div>
-  <h3>참가자</h3>
-  <div id="cards" class="cards"></div>
-  <h3>내 탱크</h3>
-  <div id="tanks"></div>
-  <h3>맵 <span id="mapnote" style="font-size:12px;color:var(--sub)"></span></h3>
-  <div id="maps"></div>
-  <div class="row" style="margin-top:14px">
-    <button id="start" class="pri" style="flex:1">게임 시작</button>
-    <button id="leave" class="dan">나가기</button>
+<div id="room" hidden>
+<div id="lobby">
+  <!-- 상단: 나가기 / 방 코드 / 모드 -->
+  <div style="height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <button id="leave" style="height:48px;padding:0 20px 0 14px;display:flex;align-items:center;gap:8px;border-radius:14px;border:1px solid #3a2a4a;background:#1a1030;color:#ffb3c0;font-size:16px;font-weight:700">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      나가기
+    </button>
+    <div style="display:flex;align-items:center;gap:18px">
+      <span style="font-size:15px;font-weight:700;color:#a9b8de">방 코드</span>
+      <span id="rc" class="cp" style="font-weight:700;font-size:44px;letter-spacing:.22em;line-height:1;color:#fff;text-shadow:0 0 18px rgba(77,210,255,.55);padding-left:.22em"></span>
+      <button id="copy" aria-label="방 코드 복사" style="height:44px;padding:0 16px;display:flex;align-items:center;gap:8px;border-radius:12px;border:1px solid #2f5f7f;background:rgba(77,210,255,.1);color:#9fe6ff;font-size:15px;font-weight:700">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h8"></path></svg>
+        <span id="copyt">복사</span>
+      </button>
+    </div>
+    <div style="display:flex;padding:4px;border-radius:16px;background:#0d1433;border:1px solid #2a3556;gap:4px">
+      <button id="mffa" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">개인전</button>
+      <button id="mteam" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">팀전</button>
+    </div>
   </div>
-  <div id="rmsg" style="margin-top:10px;color:var(--sub)"></div>
+
+  <!-- 본문 -->
+  <div style="flex:1;min-height:0;display:flex;gap:24px;position:relative">
+    <!-- 참가자 / 팀 구성 -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:14px">
+        <span class="bar" style="background:#5dffb0;align-self:center"></span>
+        <span id="ptitle" class="sec"></span>
+        <span id="pcount" class="cp" style="font-size:20px;font-weight:700;color:#5dffb0"></span>
+        <span id="psub" style="font-size:14px;color:#a9b8de"></span>
+      </div>
+      <div id="cards" style="flex:1;min-height:0"></div>
+    </div>
+
+    <!-- 설정: 내 탱크 / 맵 -->
+    <div style="width:420px;flex-shrink:0;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#4dd2ff"></span><span class="sec">내 탱크</span></div>
+        <div id="tanks" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px"></div>
+        <div id="tdesc" style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;min-height:44px"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#ff3df2"></span><span class="sec">맵</span><span id="mapnote" style="font-size:13px;color:#a9b8de"></span></div>
+        <div id="maps" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px"></div>
+      </div>
+    </div>
+    <div id="vs" class="cp" hidden style="position:absolute;left:358px;top:228px;width:64px;height:64px;border-radius:50%;background:#060a1e;border:2px solid #4a5a8f;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;color:#fff;box-shadow:0 0 24px rgba(255,255,255,.12);z-index:2;pointer-events:none">VS</div>
+  </div>
+
+  <!-- 하단: 상태 + 시작 -->
+  <div style="height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0 0 0 4px">
+    <div style="display:flex;align-items:center;gap:12px;font-size:17px;color:#cfd9f5"><span id="ricon" style="display:flex"></span><span id="rmsg"></span></div>
+    <button id="start"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>게임 시작</button>
+  </div>
+</div>
 </div>
 
 <div id="game" hidden>
@@ -229,6 +282,7 @@ function el(tag, text, parent, css) {
 function show(v) {
   const was = !$('game').hidden;
   ['menu', 'room', 'game'].forEach(x => { $(x).hidden = x !== v; });
+  fitLobby();
   if (was && v !== 'game') exitFS();
 }
 const sendMsg = m => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
@@ -339,8 +393,8 @@ function renderRooms() {
 function preview(c, id) {
   const x = c.getContext('2d');
   if (id === RANDOM) {
-    x.fillStyle = '#333'; x.fillRect(0, 0, c.width, c.height);
-    x.fillStyle = '#fff'; x.font = '28px sans-serif'; x.textAlign = 'center'; x.fillText('?', c.width / 2, 34);
+    x.fillStyle = '#0a1230'; x.fillRect(0, 0, c.width, c.height);
+    x.fillStyle = '#fff'; x.font = `700 ${c.height * .55 | 0}px 'Chakra Petch',sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('?', c.width / 2, c.height / 2);
     return;
   }
   const m = MAPS[id], TC = tcol(m), t = FMAP.terrain(id), sx = c.width / W, sy = c.height / H;
@@ -364,61 +418,131 @@ function preview(c, id) {
   x.fillStyle = gf; x.fill(P);
   x.lineWidth = 1.4; x.strokeStyle = TC.lite(.6); x.stroke(E);
 }
+// ---- 대기실 (1280×720 디자인 무대) ----
+const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', homing: '#4dffe0', heavy: '#d0a15a', pierce: '#ff4d6a', laser: '#7df3ff' };   // 탱크 종류별 포인트 색
+const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
+const CROWN = w => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="currentColor" aria-label="방장" role="img"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"></path></svg>`;
+function fitLobby() {   // 무대를 화면에 맞춰 키워요 (세로로 들고 있으면 가로로 눕혀요)
+  const r = $('room'); if (r.hidden) return;
+  const w = innerWidth, h = innerHeight, rot = h > w, sc = rot ? Math.min(h / 1280, w / 720) : Math.min(w / 1280, h / 720);
+  const ox = (w - (rot ? 720 : 1280) * sc) / 2, oy = (h - (rot ? 1280 : 720) * sc) / 2;
+  $('lobby').style.transform = rot ? `translate(${ox + 720 * sc}px,${oy}px) rotate(90deg) scale(${sc})` : `translate(${ox}px,${oy}px) scale(${sc})`;
+}
+addEventListener('resize', fitLobby); addEventListener('orientationchange', fitLobby);
+const tankSvg = (w, h, col, acc, style = '') => `<svg width="${w}" height="${h}" viewBox="0 0 130 76" style="${style}" aria-hidden="true">
+  <ellipse cx="62" cy="68" rx="52" ry="5" fill="${col}" opacity=".4"/><rect x="8" y="46" width="104" height="18" rx="9" fill="#0b0e1a" stroke="${col}" stroke-opacity=".7"/>
+  <circle cx="24" cy="55" r="4" fill="#2a3556"/><circle cx="48" cy="55" r="4" fill="#2a3556"/><circle cx="72" cy="55" r="4" fill="#2a3556"/><circle cx="96" cy="55" r="4" fill="#2a3556"/>
+  <path d="M12 46 L17 33 L100 33 L110 46 Z" fill="${col}"/><path d="M17 33 L100 33" stroke="#fff" stroke-opacity=".7" stroke-width="2"/>
+  <rect x="74" y="22" width="46" height="7" rx="3.5" fill="${acc}" transform="rotate(-16 74 25)"/>
+  <path d="M36 33 L42 18 L72 18 L80 33 Z" fill="${col}"/><path d="M36 33 L42 18 L72 18 L80 33 Z" fill="#fff" opacity=".2"/><circle cx="58" cy="26" r="3" fill="${acc}"/></svg>`;
+const tankChip = (name, acc, css) => `<span style="display:flex;align-items:center;gap:8px;${css}"><span style="width:10px;height:10px;border-radius:50%;flex:none;background:${acc};box-shadow:0 0 8px ${acc}"></span>${esc(name)}</span>`;
+
+// 내 탱크 / 맵 버튼은 한 번만 만들고, 선택 표시만 바꿔요
+const tankBtns = TANKS.map(([k, n]) => {
+  const b = el('button', null, $('tanks')); b.className = 'tk';
+  b.innerHTML = tankSvg(54, 32, '#8e9bc4', TANKC[k]).replace('fill="#8e9bc4"', 'fill="#8e9bc4"') + `<span>${esc(n)}</span>`;
+  b.onclick = () => sendMsg({ type: 'tank', kind: k });
+  return b;
+});
 const mapCards = [];
 for (let id = 0; id <= RANDOM; id++) {
-  const d = el('div', null, $('maps'), 'display:inline-block;margin:4px;padding:4px;border:2px solid var(--bd);border-radius:12px;cursor:pointer;text-align:center');
-  const c = el('canvas', null, d); c.width = 160; c.height = 48;
-  preview(c, id);
-  el('div', id === RANDOM ? '랜덤' : MAPS[id].name, d);
+  const d = el('button', null, $('maps')); d.className = 'mp';
+  const c = el('canvas', null, d); c.width = 160; c.height = 88; preview(c, id);
+  el('span', id === RANDOM ? '랜덤' : MAPS[id].name, d);
   d.onclick = () => { if (st && st.type === 'room' && me === st.host) sendMsg({ type: 'map', id }); };
   mapCards.push(d);
+}
+$('copy').onclick = () => {
+  const code = st ? st.code : '', done = () => { $('copyt').textContent = '복사됨'; setTimeout(() => { $('copyt').textContent = '복사'; }, 1500); };
+  try { navigator.clipboard.writeText(code).then(done, done); } catch (e) { done(); }
+};
+
+function slotCard(i, col, team) {   // 개인전(큰 카드) / 팀전(가로 카드) 참가자 한 칸
+  const n = st.names[i], k = st.tanks[i] || 'basic', acc = TANKC[k] || '#fff6b0', tn = TN[k] || '기본탄', ico = esc(st.icons[i] || ''), host = i === st.host, mine = i === me;
+  const nm = `${ico ? ico + ' ' : ''}${esc(n)}`;
+  if (!team) return `<div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid ${col};padding:16px 20px;display:flex;flex-direction:column">
+    <div style="position:absolute;right:-50px;top:-70px;width:260px;height:260px;border-radius:50%;background:${col};opacity:.2;filter:blur(46px)"></div>
+    <div style="position:relative;display:flex;align-items:center;gap:8px">
+      <span class="cp" style="font-weight:700;font-size:15px;color:${col};padding:3px 10px;border-radius:8px;border:1px solid ${col}">P${i + 1}</span>
+      ${host ? `<span style="display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:#ffd23a">${CROWN(16)}방장</span>` : ''}
+      ${mine ? `<span style="margin-left:auto;font-size:14px;font-weight:900;color:#04061a;background:${col};padding:3px 12px;border-radius:999px">나</span>` : ''}
+    </div>
+    <div style="position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">${tankSvg(168, 98, col, acc)}</div>
+    <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <span style="font-size:26px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</span>
+      ${tankChip(tn, acc, 'padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid #3a4770;font-size:15px;font-weight:700;white-space:nowrap')}
+    </div></div>`;
+  const t = st.teams[i], can = mine || me === st.host, dense = team === 2;
+  return `<div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:18px;background:#0d1433;border:1px solid #2a3556;border-left:6px solid ${col};padding:${dense ? '8px 14px' : '14px 16px'};display:flex;align-items:center;gap:14px">
+    <div style="position:absolute;left:-40px;top:-50px;width:220px;height:220px;border-radius:50%;background:${col};opacity:.16;filter:blur(40px)"></div>
+    ${tankSvg(dense ? 96 : 132, dense ? 57 : 78, col, acc, 'position:relative;flex-shrink:0')}
+    <div style="position:relative;flex:1;min-width:0;display:flex;flex-direction:column;gap:${dense ? 4 : 8}px">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0">
+        <span style="font-size:${dense ? 20 : 24}px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</span>
+        ${mine ? `<span style="font-size:13px;font-weight:900;color:#04061a;background:${col};padding:2px 10px;border-radius:999px;flex:none">나</span>` : ''}
+        ${host ? `<span style="color:#ffd23a;display:flex;flex:none">${CROWN(18)}</span>` : ''}
+      </div>
+      ${tankChip(tn, acc, 'font-size:14px;font-weight:700;color:#cfd9f5')}
+      <button data-sw="${i}" ${can ? '' : 'class="ro"'} style="align-self:flex-start;height:34px;padding:0 14px;display:flex;align-items:center;gap:6px;border-radius:10px;border:1px solid ${TEAMC[1 - t]};color:#eaf0ff;font-size:13px;font-weight:700;${can ? '' : 'opacity:.5'}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h13l-3-3M17 17H4l3 3"></path></svg>${TEAMN[1 - t]}으로</button>
+    </div></div>`;
+}
+function emptyCard(team, dense) {
+  return team ? `<div style="box-sizing:border-box;border-radius:18px;background:#0d1433;border:1px solid #2a3556;padding:${dense ? '8px' : '14px'} 16px;display:flex"><div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:12px;border:2px dashed #34406a;color:#a9b8de"><span style="font-size:18px;font-weight:700;color:#cfd9f5">자리 비어 있음</span><span style="font-size:13px">방 코드 <b class="cp" style="letter-spacing:.14em;color:#9fe6ff">${esc(st.code)}</b></span></div></div>`
+    : `<div style="box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid #2a3556;padding:16px 20px;display:flex;flex-direction:column"><div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:14px;border:2px dashed #34406a;color:#a9b8de">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#5a6aa0" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M8 12h8"></path></svg>
+      <span style="font-size:20px;font-weight:700;color:#cfd9f5">대기 중…</span><span style="font-size:14px">친구에게 방 코드 <b class="cp" style="letter-spacing:.14em;color:#9fe6ff">${esc(st.code)}</b> 를 알려주세요</span></div></div>`;
 }
 
 function renderRoom() {
   $('rc').textContent = st.code;
-  const box = $('cards'); box.textContent = '';
-  const team = st.mode === 'team';
-  st.names.forEach((n, i) => {
-    const c = el('div', null, box, `border-top-color:${n ? pc(i) : 'var(--bd)'}`);
-    c.className = 'pc' + (n ? '' : ' empty');
-    if (!n) { el('div', '대기 중...', c); return; }
-    el('div', st.icons[i] || '🪖', c).className = 'ic';
-    el('div', n, c).className = 'nm';
-    el('div', `P${i + 1}${i === st.host ? ' · 👑 방장' : ''}${i === me ? ' · 나' : ''}`, c).className = 'tg';
-    el('div', TN[st.tanks[i]] || '기본탄', c, 'font-size:13px;margin-top:2px');
-    if (team) {   // 팀 버튼: 본인 것은 누구나, 다른 사람 것은 방장만 바꿀 수 있어요
-      const t = st.teams[i], tb = el('button', TEAMN[t] + ' ⇄', c, `margin-top:8px;padding:6px 14px;font-size:14px;font-weight:bold;color:#fff;background:${TEAMC[t]}`);
-      if (i !== me && me !== st.host) tb.style.pointerEvents = 'none';
-      tb.onclick = () => sendMsg({ type: 'team', slot: i, team: 1 - t });
-    }
-  });
-  const isHost = me === st.host, cnt = st.names.filter(Boolean).length;
-  mapCards.forEach((d, i) => {
-    d.style.borderColor = i === st.mapId ? '#ff0' : 'var(--bd)';
-    d.style.opacity = isHost || i === st.mapId ? 1 : 0.6;
-  });
-  $('mapnote').textContent = isHost ? '(방장이 선택)' : '(방장이 선택해요)';
-  $('start').hidden = !isHost;
-  const tc = [0, 1].map(k => st.teams.filter((t, i) => st.names[i] && t === k).length), bad = team && (!tc[0] || !tc[1]);
-  $('mffa').classList.toggle('sel', !team); $('mteam').classList.toggle('sel', team);
+  const team = st.mode === 'team', isHost = me === st.host, filled = st.names.map((n, i) => n ? i : -1).filter(i => i >= 0), cnt = filled.length;
+  // 모드 전환
+  const on = 'background:linear-gradient(180deg,#5dffb0,#2fd48b);color:#04210f;font-weight:900', off = 'background:transparent;color:#a9b8de;font-weight:700';
+  $('mffa').style.cssText += ';' + (team ? off : on); $('mteam').style.cssText += ';' + (team ? on : off);
   $('mffa').style.pointerEvents = $('mteam').style.pointerEvents = isHost ? '' : 'none';
-  $('modenote').textContent = isHost ? '(방장이 선택)' : '(방장이 선택해요)';
-  $('modedesc').textContent = team ? '내 카드의 팀 버튼으로 A팀/B팀을 바꿔요. 아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요.' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요.';
-  const tb = $('tanks'); tb.textContent = '';
-  TANKS.forEach(([k, n, d]) => {
-    const b = el('button', null, tb, 'display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:6px 0;white-space:normal');
-    const tc = el('canvas', null, b, 'flex:none;width:76px;height:52px'); tc.width = 152; tc.height = 104; tankThumb(tc, k, pc(me >= 0 ? me : 0));
-    const tt = el('div', null, b); el('b', n, tt); el('span', ' — ' + d, tt, 'font-size:13px;opacity:.85');
-    if (st.tanks[me] === k) b.classList.add('sel');
-    b.onclick = () => sendMsg({ type: 'tank', kind: k });
-  });
-  $('start').disabled = cnt < 2 || bad;
-  $('rmsg').textContent = cnt < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : bad ? '팀전은 A팀과 B팀에 최소 1명씩 있어야 시작할 수 있어요.' : '';
+  // 참가자 / 팀 구성
+  $('ptitle').textContent = team ? '팀 구성' : '참가자';
+  $('pcount').textContent = `${cnt} / 4`;
+  $('psub').textContent = team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
+  $('vs').hidden = !team;
+  const box = $('cards'), tc = [0, 1].map(k => filled.filter(i => st.teams[i] === k));
+  if (!team) {
+    box.style.cssText = 'flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:16px';
+    box.innerHTML = st.names.map((n, i) => n ? slotCard(i, COLORS[i], 0) : emptyCard(0)).join('');
+  } else {
+    const rows = Math.max(2, tc[0].length, tc[1].length), dense = rows > 2 ? 2 : 1;
+    box.style.cssText = 'flex:1;min-height:0;display:flex;align-items:stretch;gap:0';
+    box.innerHTML = tc.map((m, k) => `<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;margin:${k ? '0 0 0 38px' : '0 38px 0 0'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 18px;border-radius:14px;background:${hexA(TEAMC[k], .14)};border:1px solid ${TEAMC[k]}">
+        <span style="font-size:22px;font-weight:900;color:${TEAMC[k]}">${TEAMN[k]}</span><span class="cp" style="font-size:18px;font-weight:700;color:#eaf0ff">${m.length}명</span></div>
+      <div style="flex:1;min-height:0;display:grid;grid-template-rows:repeat(${rows},minmax(0,1fr));gap:${rows > 2 ? 8 : 12}px">
+        ${m.map(i => slotCard(i, TEAMC[k], dense)).join('')}${Array(rows - m.length).fill(emptyCard(1, rows > 2)).join('')}</div></div>`).join('');
+    box.querySelectorAll('[data-sw]').forEach(b => { const i = +b.dataset.sw; b.onclick = () => sendMsg({ type: 'team', slot: i, team: 1 - st.teams[i] }); });
+  }
+  // 내 탱크
+  const mk = st.tanks[me] || 'basic', macc = TANKC[mk];
+  tankBtns.forEach((b, i) => { const sel = TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
+  $('tdesc').style.cssText += `;background:${hexA(macc, .08)};border:1px solid ${hexA(macc, .35)}`;
+  const td = TANKS.find(t => t[0] === mk);
+  $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${esc(td[1])}</b> · ${esc(td[2])}</span>`;
+  // 맵
+  $('mapnote').textContent = isHost ? '눌러서 선택해요' : '방장이 선택해요';
+  mapCards.forEach((d, i) => { const sel = i === st.mapId; d.style.borderColor = sel ? '#ffe94a' : '#2a3556'; d.style.background = sel ? 'rgba(255,233,74,.1)' : '#0d1433'; d.style.opacity = isHost || sel ? 1 : .6; d.style.pointerEvents = isHost ? '' : 'none'; });
+  // 하단 상태 + 시작
+  const bad = team && (!tc[0].length || !tc[1].length), ok = cnt >= 2 && !bad;
+  $('start').hidden = !isHost; $('start').disabled = !ok;
+  $('rmsg').textContent = cnt < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : bad ? '팀전은 A팀과 B팀에 최소 1명씩 있어야 시작할 수 있어요.'
+    : isHost ? (team ? 'A팀과 B팀에 모두 참가자가 있어요. 시작할 수 있어요!' : `${cnt}명이 모였어요. 지금 바로 시작할 수 있어요!`) : '방장이 게임을 시작하길 기다리고 있어요.';
+  $('ricon').innerHTML = ok ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5dffb0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M8 12.5l2.8 2.8L16 9.5"></path></svg>'
+    : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffb15c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 7.5v5.5M12 16.5v.01"></path></svg>';
 }
 $('mffa').onclick = () => sendMsg({ type: 'mode', mode: 'ffa' });
 $('mteam').onclick = () => sendMsg({ type: 'mode', mode: 'team' });
 $('start').onclick = () => { enterFS(); sendMsg({ type: 'start' }); };
 $('leave').onclick = () => { sendMsg({ type: 'leave' }); me = -1; st = null; show('menu'); };
+
 
 function apply(m) {
   st = m;
