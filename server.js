@@ -19,11 +19,13 @@ const rooms = new Map();
 const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser'];
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
-  pierce: { dmg: 14, rad: 30 }, laser: { dmg: 15, rad: 0 },   // 관통탄(기본탄보다 약함) / 레이저(직격만)
+  pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함) / 레이저(직격만, 기본탄 17보다 센 22)
   heavy: { dmg: 34, rad: Math.round(CRATER * Math.sqrt(3)) },   // 광폭탄: 피해 2배, 폭발 면적 3배(반지름 √3배)
 };
 const SPEED = { heavy: Math.sqrt(0.7) };   // 광폭탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
+const PIERCE_HIT = HIT_R * 2;      // 관통탄 피격 범위: 기본 판정의 2배
+const LASER_HIT = HIT_R * 1.9;     // 레이저 판정 범위: 기본 판정의 약 1.9배 (빔이 굵은 만큼 넓게)
 const MAX_CLIMB = 90;              // 한 걸음(6px)당 최대 오르막 높이 → 약 86° 경사까지 (거의 수직 절벽만 막혀요)
 const FIRE_R = 90, FIRE_MS = 3000, BURN_TICK = 500, BURN_DMG = 2;   // 소이탄: 불길 반경 / 3초 지속 / 0.5초마다 2 피해
 const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
@@ -115,7 +117,7 @@ function crater(g, cx, cy, rad) {
 }
 
 // 직격(DIRECT 이내)은 전체 피해, 멀어질수록 줄어들어 최소 25%
-const dmgAt = (base, d, reach) => d >= reach ? 0 : d <= DIRECT ? base : Math.max(Math.round(base * .25), Math.round(base * (1 - (d - DIRECT) / (reach - DIRECT))));
+const dmgAt = (base, d, reach, direct = DIRECT) => d >= reach ? 0 : d <= direct ? base : Math.max(Math.round(base * .25), Math.round(base * (1 - (d - direct) / (reach - direct))));
 const isAlly = (g, a, b) => g.mode === 'team' && a !== b && g.players[a].team === g.players[b].team;
 const tankY = (g, q) => g.terrain[q.x] - 10 * TS;
 
@@ -147,7 +149,7 @@ function flight(g, shooter, angle, power, kind) {
     if (x < 0 || x >= W || y > H) { out = true; break; }
     if (kind !== 'pierce' && y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }   // 관통탄은 땅을 그냥 통과해요
     if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) && !isAlly(g, shooter, i) &&
-        Math.hypot(x - q.x, y - tankY(g, q)) < HIT_R)) { impact = [x, y]; break; }
+        Math.hypot(x - q.x, y - tankY(g, q)) < (kind === 'pierce' ? PIERCE_HIT : HIT_R))) { impact = [x, y]; break; }
   }
   if (impact) path.push(impact);
   return { path, impact, fizzled: !impact && !out };   // fizzled: 30초 넘게 날다 소멸
@@ -171,7 +173,7 @@ function laserFlight(g, shooter, angle) {
       continue;
     }
     const ti = g.players.findIndex((q, i) => q.hp > 0 && (i !== shooter || bounces > 0 || len > 90) && !isAlly(g, shooter, i) &&
-      Math.hypot(nx - q.x, ny - tankY(g, q)) < HIT_R);
+      Math.hypot(nx - q.x, ny - tankY(g, q)) < LASER_HIT);
     if (ti >= 0) { hit = ti; impact = [nx, ny]; x = nx; y = ny; break; }          // 탱크 명중
     if (ny >= g.terrain[Math.floor(nx)]) {                                       // 벽에 닿음
       path.push([x, y]); rec = 0;
@@ -193,11 +195,11 @@ function laserFlight(g, shooter, angle) {
 
 // 착탄: 땅 파임 + 피해(팀전에서는 아군 제외) + 소이탄이면 불길 생성 (delay: 클라이언트 화면에서 폭발이 보일 때까지의 시간)
 function explode(g, shooter, impact, kind, delay = 0) {
-  const { dmg, rad } = SHELL[kind], reach = rad + 25;
+  const { dmg, rad } = SHELL[kind], direct = kind === 'pierce' ? PIERCE_HIT + 8 : DIRECT, reach = kind === 'pierce' ? Math.max(rad + 25, direct + 20) : rad + 25;
   crater(g, impact[0], impact[1], rad);
   g.players.forEach((q, i) => {
     if (q.hp <= 0 || isAlly(g, shooter, i)) return;
-    q.hp = Math.max(0, q.hp - dmgAt(dmg, Math.hypot(q.x - impact[0], tankY(g, q) - impact[1]), reach));
+    q.hp = Math.max(0, q.hp - dmgAt(dmg, Math.hypot(q.x - impact[0], tankY(g, q) - impact[1]), reach, direct));
   });
   if (kind === 'incendiary') {
     const fx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), t0 = Date.now() + delay;
