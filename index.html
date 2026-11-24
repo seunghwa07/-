@@ -41,72 +41,67 @@
   /* 전체화면/방향 잠금이 안 되는 터치 기기(iOS 등)에서 세로로 들고 있으면 화면을 90° 돌려서 가로로 보여줘요 */
   #game.force-land{inset:auto;top:0;left:0;width:var(--sh);height:var(--sw);transform-origin:0 0;transform:translateX(var(--sw)) rotate(90deg)}
   #c{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-  #info{position:absolute;top:6px;left:50%;transform:translateX(-50%);background:linear-gradient(#0b1230e6,#060a1ee6);border:1px solid #6a7ab8aa;box-shadow:0 3px 10px #0008;color:#fff;padding:6px 16px;border-radius:14px;font-size:15px;font-weight:bold;white-space:nowrap;z-index:5}
+  #info{position:absolute;top:6px;left:50%;transform:translateX(-50%);background:#050a08ee;border:1px solid #00bf63;box-shadow:0 0 10px #00bf6366,0 3px 10px #0008;color:#fff;padding:6px 16px;border-radius:14px;font-size:15px;font-weight:bold;white-space:nowrap;z-index:5}
 
   /* 컨트롤 크기는 화면 높이에 맞춰 자동 조절 */
-  .pad,#fire,#fuel,#rd,#pw{--s:clamp(96px,calc(var(--ch) * .36),150px);--m:max(18px,env(safe-area-inset-left,0px));--b:max(16px,env(safe-area-inset-bottom,0px))}
+  #game{--g:#00bf63;--gl:#4dffa8;--bk:#050a08}
+  .pad,#fire,#fuel,#rd,#pw{--s:clamp(96px,calc(var(--ch) * .36),150px);--hh:clamp(66px,calc(var(--ch) * .22),96px);--mw:calc(var(--hh) * 2.3);--fw:calc(var(--s) * .66);--m:max(14px,env(safe-area-inset-left,0px));--b:max(14px,env(safe-area-inset-bottom,0px));--bw:6px}
 
-  /* ---------- 조이스틱 ---------- */
-  .pad{position:absolute;bottom:var(--b);width:var(--s);height:var(--s);border-radius:50%;touch-action:none;z-index:5;
-    background:
-      radial-gradient(circle at 50% 50%,#ffffff1a 0 2.5%,#0000 3%),
-      radial-gradient(circle at 50% 30%,#35426ae6 0,#141c38f2 62%,#080c1cf5 100%);
-    border:2px solid #8da0d899;
-    box-shadow:0 0 0 5px #0007,0 8px 20px #000b,inset 0 0 24px #000d,inset 0 3px 4px #ffffff30;
-    transition:box-shadow .15s,border-color .15s}
-  .pad.on{border-color:#cfe0ffcc;box-shadow:0 0 0 5px #0007,0 8px 20px #000b,0 0 22px #6f9bff88,inset 0 0 24px #000d,inset 0 3px 4px #ffffff40}
-  #am.on{box-shadow:0 0 0 5px #0007,0 8px 20px #000b,0 0 22px #ff7a5a99,inset 0 0 24px #000d,inset 0 3px 4px #ffffff40}
-  .pad::before{content:"";position:absolute;inset:5%;border-radius:50%;pointer-events:none;
-    background:repeating-conic-gradient(from -1deg,#ffffff66 0 2deg,#0000 2deg 15deg);
-    -webkit-mask:radial-gradient(circle,#0000 0 80%,#000 81% 94%,#0000 95%);mask:radial-gradient(circle,#0000 0 80%,#000 81% 94%,#0000 95%)}
-  .pad::after{content:attr(data-l);position:absolute;top:-26px;left:50%;transform:translateX(-50%);padding:2px 12px;border-radius:10px;background:#000a;border:1px solid #ffffff33;color:#e6ecff;font-size:12px;font-weight:bold;letter-spacing:2px;white-space:nowrap}
-  .ar{position:absolute;top:50%;margin-top:-.6em;font-style:normal;font-size:calc(var(--s) * .13);color:#ffffffaa;pointer-events:none;text-shadow:0 0 6px #6f9bffaa}
-  .ar.l{left:15%}.ar.r{right:15%}
+  /* ---------- 육각형 프레임 (검정 바탕 + 초록 테두리) ---------- */
+  .hexpad,#pw{--hexc:polygon(28% 0,72% 0,100% 50%,72% 100%,28% 100%,0 50%)}
+  #am{--hexc:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
+  .hexbg{position:absolute;inset:0;pointer-events:none;filter:drop-shadow(0 0 7px #00bf6388) drop-shadow(0 5px 8px #000b);transition:filter .15s}
+  .hexbg::before,.hexbg::after{content:"";position:absolute}
+  .hexbg::before{inset:0;background:var(--g);clip-path:var(--hexc)}
+  .hexbg::after{inset:var(--bw) calc(var(--bw) * 1.7);background:linear-gradient(#0c1713,#000 65%);clip-path:var(--hexc)}
+  .pad.on .hexbg,#pw.on .hexbg{filter:drop-shadow(0 0 13px #4dffa8cc) drop-shadow(0 5px 8px #000b)}
+
+  .pad{position:absolute;bottom:var(--b);touch-action:none;z-index:5}
+  .pad::after,#pw::after{content:attr(data-l);position:absolute;top:-27px;left:50%;transform:translateX(-50%);padding:2px 12px;border-radius:10px;background:#050a08ee;border:1px solid var(--g);color:#d8ffe9;font-size:12px;font-weight:bold;letter-spacing:2px;white-space:nowrap;pointer-events:none}
+  #mv{left:var(--m);width:var(--mw);height:var(--hh);--k:calc(var(--hh) * .74)}
+  #am{right:var(--m);width:var(--s);height:var(--s);--k:calc(var(--s) * .28)}
+
+  /* 이동 조이스틱: 육각형 안에서 좌우로 미끄러지는 회색 원형 노브 */
+  .ar{position:absolute;top:50%;margin-top:-.62em;font-style:normal;font-size:calc(var(--hh) * .2);color:var(--g);pointer-events:none;text-shadow:0 0 6px #00bf63}
+  .ar.l{left:11%}.ar.r{right:11%}
+  .knob{position:absolute;left:50%;top:50%;width:var(--k);height:var(--k);margin:calc(var(--k) / -2);border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle at 38% 28%,#fff 0,#ececec 22%,#cbced2 60%,#8d9298 100%);
+    border:2px solid #0b2418;box-shadow:0 5px 9px #000c,0 0 10px #ffffff2a,inset 0 -5px 8px #0006,inset 0 3px 4px #ffffffaa}
+  .knob::after{content:"";position:absolute;inset:24%;border-radius:50%;border:2px solid #00bf6399;background:radial-gradient(circle at 40% 35%,#ffffff55,#0000 70%)}
+  .knob.snap{transition:transform .16s ease-out}
+
+  /* 조준 조이스틱: 육각형 + 반원 가이드 위를 도는 초록 노브 */
   .arc{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
   .beam{position:absolute;left:50%;top:50%;height:4px;margin-top:-2px;width:0;transform-origin:0 50%;border-radius:2px;pointer-events:none;
-    background:linear-gradient(90deg,#ff8a5a00,#ffb08aee);box-shadow:0 0 8px #ff7a5a99}
-  .knob{position:absolute;left:50%;top:50%;width:calc(var(--s) * .38);height:calc(var(--s) * .38);margin:calc(var(--s) * -.19);border-radius:50%;pointer-events:none;
-    background:radial-gradient(circle at 36% 28%,#ffffffd0 0,#a9bbff 16%,#566fd6 52%,#1c2766 100%);
-    border:2px solid #dbe4ffaa;
-    box-shadow:0 5px 10px #000c,0 0 14px #6f8cff88,inset 0 -5px 9px #0009,inset 0 3px 4px #ffffff66}
-  .knob::after{content:"";position:absolute;inset:26%;border-radius:50%;border:2px solid #ffffff44;background:radial-gradient(circle at 40% 35%,#ffffff40,#0000 70%)}
-  .knob.snap{transition:transform .16s ease-out}
-  #am .knob{background:radial-gradient(circle at 36% 28%,#fff0ebd0 0,#ffb39a 16%,#e5472c 52%,#6a1208 100%);border-color:#ffd9ccaa;box-shadow:0 5px 10px #000c,0 0 14px #ff6a4a88,inset 0 -5px 9px #0009,inset 0 3px 4px #ffffff66}
-  #mv{left:var(--m)}
-  #am{right:var(--m)}
+    background:linear-gradient(90deg,#4dffa800,#4dffa8ee);box-shadow:0 0 8px #4dffa8aa}
+  #am .knob{background:radial-gradient(circle at 36% 28%,#eafff3 0,#7dffb5 18%,#00bf63 55%,#04502b 100%);border-color:#04210f;box-shadow:0 5px 9px #000c,0 0 14px #00bf63aa,inset 0 -5px 8px #0008,inset 0 3px 4px #ffffff88}
+  #am .knob::after{border-color:#04210f88}
+
+  /* ---------- 파워 바: 육각형 안이 노랑 → 주황 그라데이션으로 차올라요 ---------- */
+  #pw{position:absolute;left:calc(var(--m) + var(--mw) + 16px);right:calc(var(--m) + var(--s) + var(--fw) + 44px);bottom:var(--b);height:var(--hh);z-index:5;touch-action:none}
+  .pw-inner{position:absolute;inset:calc(var(--bw) * 2.3) calc(var(--bw) * 4.2);clip-path:var(--hexc);overflow:hidden;pointer-events:none}
+  .pw-fill{position:absolute;inset:0;background:linear-gradient(90deg,#ffff1f 0,#ffe21a 28%,#ffc01f 58%,#ff9b1f 100%);clip-path:inset(0 50% 0 0)}
+  .pw-inner::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,#0000 0 calc(10% - 1.5px),#0007 calc(10% - 1.5px) 10%)}
+  .pw-mark{position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:#fff;box-shadow:0 0 8px #fff,0 0 14px #ffd54a}
 
   /* ---------- 발사 버튼 (조이스틱과 분리된 독립 버튼) ---------- */
-  #fire{position:absolute;right:calc(var(--m) + var(--s) + 26px);bottom:calc(var(--b) + 8px);width:calc(var(--s) * .7);height:calc(var(--s) * .7);padding:0;border:0;border-radius:50%;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#fff;touch-action:none;z-index:5;
-    background:radial-gradient(circle at 50% 28%,#ff9a8a 0,#f0382f 36%,#b3120f 72%,#5e0606 100%);
-    box-shadow:0 0 0 3px #2a0707,0 0 0 6px #d3d7e4,0 0 0 8px #4a5064,0 10px 18px 4px #000a,inset 0 -9px 14px #0008,inset 0 7px 10px #ffffff66;
+  #fire{position:absolute;right:calc(var(--m) + var(--s) + 20px);bottom:calc(var(--b) + 4px);width:var(--fw);height:var(--fw);padding:0;border:0;border-radius:50%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--gl);touch-action:none;z-index:5;
+    background:radial-gradient(circle at 50% 28%,#1d3329 0,#07100c 60%,#000 100%);
+    box-shadow:0 0 0 3px var(--g),0 0 0 6px #030806,0 0 0 8px #0b6b3a,0 8px 16px 4px #000b,inset 0 0 18px #00bf6366,inset 0 6px 8px #ffffff1c;
     animation:fpulse 1.4s ease-in-out infinite;transition:transform .08s}
-  #fire .fi{width:34%;height:auto;filter:drop-shadow(0 2px 2px #0009)}
-  #fire b{font-size:clamp(14px,calc(var(--ch) * .042),20px);letter-spacing:2px;text-shadow:0 2px 3px #000a}
-  #fire:active:not(:disabled){transform:scale(.93);background:radial-gradient(circle at 50% 28%,#ffb0a2 0,#ff4a3f 36%,#c4160f 72%,#6a0808 100%);box-shadow:0 0 0 3px #2a0707,0 0 0 6px #fff,0 0 0 8px #4a5064,0 4px 8px 2px #000a,inset 0 -5px 10px #0008,inset 0 5px 8px #ffffff55}
-  #fire:disabled{animation:none;filter:grayscale(.75) brightness(.6)}
-  @keyframes fpulse{0%,100%{filter:drop-shadow(0 0 4px #ff3b3088)}50%{filter:drop-shadow(0 0 16px #ff3b30)}}
-
-  /* ---------- 파워 막대 (직접 드래그) ---------- */
-  #pw{position:absolute;left:calc(var(--m) + var(--s) + 34px);right:calc(var(--m) + var(--s) * 1.7 + 62px);bottom:calc(var(--b) + 10px);z-index:5;touch-action:none;
-    padding:5px 14px 4px;border-radius:16px;background:linear-gradient(#0d1430ee,#070b1eee);border:1px solid #7f8fc888;box-shadow:0 6px 16px #000a,inset 0 2px 3px #ffffff22}
-  .pw-top{display:flex;justify-content:space-between;align-items:baseline;color:#cfd8ff;font-size:12px;font-weight:bold;letter-spacing:2px;pointer-events:none}
-  .pw-top b{font-size:18px;color:#fff;letter-spacing:0;text-shadow:0 0 8px #ffb347aa;min-width:2.2em;text-align:right}
-  .pw-hit{position:relative;height:40px;cursor:pointer}
-  .pw-track{position:absolute;left:0;right:0;top:50%;height:16px;margin-top:-8px;border-radius:9px;overflow:hidden;background:#05070f;border:1px solid #ffffff33;box-shadow:inset 0 3px 6px #000}
-  .pw-fill{position:absolute;inset:0;background:linear-gradient(90deg,#3ddc5a,#d8e83a 55%,#ffb020 78%,#ff3b30);clip-path:inset(0 50% 0 0)}
-  .pw-track::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,#0000 0 calc(10% - 1.5px),#000a calc(10% - 1.5px) 10%)}
-  .pw-thumb{position:absolute;top:50%;left:50%;width:22px;height:34px;margin:-17px 0 0 -11px;border-radius:8px;pointer-events:none;
-    background:linear-gradient(90deg,#8d96ad,#f4f6ff 40%,#aab3c9 60%,#5a627a);border:1px solid #1b2033;
-    box-shadow:0 4px 8px #000c,0 0 10px #ffffff55,inset 0 -3px 5px #0006}
-  .pw-thumb::after{content:"";position:absolute;left:50%;top:6px;bottom:6px;width:2px;margin-left:-1px;background:#2a3047;border-radius:1px}
-  #pw.on{border-color:#ffd98aee;box-shadow:0 6px 16px #000a,0 0 18px #ffb34788,inset 0 2px 3px #ffffff33}
-  @media (max-width:640px){#pw{left:calc(var(--m) + var(--s) + 14px);right:calc(var(--m) + var(--s) * 1.7 + 38px)}#fire{right:calc(var(--m) + var(--s) + 14px)}}
+  #fire .fi{width:34%;height:auto;filter:drop-shadow(0 0 5px #00bf63)}
+  #fire b{font-size:clamp(14px,calc(var(--ch) * .042),20px);letter-spacing:2px;text-shadow:0 0 8px #00bf63}
+  #fire:active:not(:disabled){transform:scale(.93);background:radial-gradient(circle at 50% 28%,#4dffa8 0,#00bf63 70%,#04502b 100%);color:#021409;box-shadow:0 0 0 3px var(--gl),0 0 0 6px #030806,0 0 0 8px #0b6b3a,0 4px 8px 2px #000b,inset 0 0 14px #ffffff55}
+  #fire:active:not(:disabled) .fi,#fire:active:not(:disabled) b{filter:none;text-shadow:none}
+  #fire:disabled{animation:none;filter:grayscale(.85) brightness(.55)}
+  @keyframes fpulse{0%,100%{filter:drop-shadow(0 0 4px #00bf6366)}50%{filter:drop-shadow(0 0 16px #4dffa8)}}
+  @media (max-width:640px){#pw{left:calc(var(--m) + var(--mw) + 10px);right:calc(var(--m) + var(--s) + var(--fw) + 30px)}#fire{right:calc(var(--m) + var(--s) + 10px)}}
 
   /* ---------- 상태 표시 ---------- */
-  #fuel{position:absolute;left:var(--m);bottom:calc(var(--b) + var(--s) + 38px);width:var(--s);height:12px;background:#000a;border:1px solid #ffffff44;border-radius:7px;overflow:hidden;z-index:5;box-shadow:inset 0 2px 4px #000a}
+  #fuel{position:absolute;left:var(--m);bottom:calc(var(--b) + var(--hh) + 40px);width:var(--mw);height:12px;background:#050a08ee;border:1px solid var(--g);border-radius:7px;overflow:hidden;z-index:5;box-shadow:0 0 8px #00bf6355,inset 0 2px 4px #000a}
   #fb{display:block;height:100%;width:0;background:linear-gradient(#ffe27a,#f0a010);border-radius:7px;box-shadow:0 0 6px #fc3a}
-  #rd{position:absolute;right:var(--m);bottom:calc(var(--b) + var(--s) + 38px);color:#fff;background:#000a;border:1px solid #ffffff44;padding:3px 10px;border-radius:10px;font-size:13px;font-weight:bold;z-index:5}
+  #rd{position:absolute;right:var(--m);bottom:calc(var(--b) + var(--s) + 40px);color:#d8ffe9;background:#050a08ee;border:1px solid var(--g);padding:3px 10px;border-radius:10px;font-size:13px;font-weight:bold;z-index:5;box-shadow:0 0 8px #00bf6355}
   #fs{display:none;position:absolute;inset:0;background:#000d;color:#fff;align-items:center;justify-content:center;text-align:center;font-size:20px;padding:20px;line-height:1.6;z-index:20}
 </style>
 </head>
@@ -151,11 +146,11 @@
   <canvas id="c" width="1000" height="600"></canvas>
   <div id="info"></div>
   <div id="fuel"><i id="fb"></i></div>
-  <div id="mv" class="pad" data-l="이동"><div class="knob"></div><i class="ar l">◀</i><i class="ar r">▶</i></div>
+  <div id="mv" class="pad hexpad" data-l="이동"><div class="hexbg"></div><i class="ar l">◀</i><i class="ar r">▶</i><div class="knob"></div></div>
   <div id="rd"></div>
-  <div id="am" class="pad" data-l="조준"><div class="knob"></div><svg class="arc" viewBox="-50 -50 100 100"><path d="M -35 0 A 35 35 0 0 1 35 0" fill="none" stroke="#ffb08a" stroke-opacity=".55" stroke-width="1.4" stroke-dasharray="1.6 3.4" stroke-linecap="round"/></svg><i id="beam" class="beam"></i></div>
+  <div id="am" class="pad" data-l="조준"><div class="hexbg"></div><svg class="arc" viewBox="-50 -50 100 100"><path d="M -29 0 A 29 29 0 0 1 29 0" fill="none" stroke="#4dffa8" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="1.6 3.4" stroke-linecap="round"/></svg><i id="beam" class="beam"></i><div class="knob"></div></div>
   <button id="fire"><svg class="fi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg><b>발사</b></button>
-  <div id="pw"><div class="pw-top"><span>파워</span><b id="pwv">50</b></div><div class="pw-hit"><div class="pw-track"><div class="pw-fill" id="pwf"></div></div><div class="pw-thumb" id="pwt"></div></div></div>
+  <div id="pw" data-l="파워 50"><div class="hexbg"></div><div class="pw-inner"><div class="pw-fill" id="pwf"></div><div class="pw-mark" id="pwm"></div></div></div>
   <div id="fs">👆 화면을 터치하면<br>가로 전체화면으로 시작해요</div>
 </div>
 
@@ -387,12 +382,13 @@ addEventListener('resize', layout);
 addEventListener('orientationchange', () => setTimeout(layout, 150));
 
 // ---------- 조이스틱 (이동 / 조준 분리) ----------
-function makePad(pad, onMove, resetOnEnd) {
-  const knob = pad.firstElementChild; let drag = false;
+function makePad(pad, onMove, resetOnEnd, opts = {}) {
+  const knob = pad.querySelector('.knob'); let drag = false;
   const upd = e => {
-    const r = pad.getBoundingClientRect(), Rm = r.width / 2 * 0.7;
+    const r = pad.getBoundingClientRect(), Rm = opts.rm ? opts.rm(pad) : pad.offsetWidth / 2 * 0.7;
     let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
     if ($('game').classList.contains('force-land')) [dx, dy] = [dy, -dx]; // 90° 회전 보정
+    if (opts.horiz) dy = 0;                                                // 이동 조이스틱은 좌우로만
     const h = Math.hypot(dx, dy), k = Math.min(h, Rm) / (h || 1);
     knob.style.transform = `translate(${dx * k}px,${dy * k}px)`;
     onMove(dx, dy, Rm, h);
@@ -407,7 +403,7 @@ function makePad(pad, onMove, resetOnEnd) {
 
 // 이동: 좌우로 밀면 이동 (턴마다 연료 한도 안에서)
 let mvDir = 0;
-makePad($('mv'), (dx, dy, Rm) => { mvDir = dx > Rm * 0.3 ? 1 : dx < -Rm * 0.3 ? -1 : 0; }, true);
+makePad($('mv'), (dx, dy, Rm) => { mvDir = dx > Rm * 0.3 ? 1 : dx < -Rm * 0.3 ? -1 : 0; }, true, { horiz: true, rm: p => p.offsetHeight * 0.46 });
 setInterval(() => { if (mvDir && canAct() && st.fuel > 0) sendMsg({ type: 'move', dir: mvDir }); }, 40);
 
 // 조준: 방향 = 각도(0~180°), 당긴 거리 = 파워. 놓아도 값은 유지돼요.
@@ -418,18 +414,18 @@ makePad($('am'), (dx, dy, Rm, h) => {   // 조준 조이스틱: 각도만 담당
   if (ang < 0) ang = dx >= 0 ? 0 : 180;
   my.angle = Math.round(ang);
   aims[me] = my.angle; placeAim(); ui();
-}, false);
+}, false, { rm: p => p.offsetWidth * 0.29 });
 
 // 파워 막대: 막대를 직접 터치/드래그해서 조절
 function setPower(p) {
   my.power = Math.max(10, Math.min(100, Math.round(p)));
-  $('pwv').textContent = my.power;
-  $('pwt').style.left = my.power + '%';
+  $('pw').dataset.l = '파워 ' + my.power;
+  $('pwm').style.left = my.power + '%';
   $('pwf').style.clipPath = `inset(0 ${100 - my.power}% 0 0)`;
   ui();
 }
 (function () {
-  const pw = $('pw'), hit = pw.querySelector('.pw-hit'); let drag = false;
+  const pw = $('pw'), hit = pw.querySelector('.pw-inner'); let drag = false;
   const upd = e => {
     const r = hit.getBoundingClientRect(), rot = $('game').classList.contains('force-land');
     const f = rot ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width; // 화면을 돌린 경우 가로축 = 화면 세로
@@ -440,12 +436,12 @@ function setPower(p) {
   pw.onpointerup = pw.onpointercancel = () => { drag = false; pw.classList.remove('on'); };
 })();
 function placeAim() {
-  const pad = $('am'), d = pad.offsetWidth / 2 * 0.7, a = my.angle * Math.PI / 180;
-  pad.firstElementChild.style.transform = `translate(${Math.cos(a) * d}px,${-Math.sin(a) * d}px)`;
+  const pad = $('am'), d = pad.offsetWidth * 0.29, a = my.angle * Math.PI / 180;
+  pad.querySelector('.knob').style.transform = `translate(${Math.cos(a) * d}px,${-Math.sin(a) * d}px)`;
   setBeam();
 }
 function setBeam() {
-  const pad = $('am'), d = pad.offsetWidth / 2 * 0.7, b = $('beam');
+  const pad = $('am'), d = pad.offsetWidth * 0.29, b = $('beam');
   b.style.width = d + 'px'; b.style.transform = `rotate(${-my.angle}deg)`;
 }
 
