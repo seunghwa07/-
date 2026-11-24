@@ -43,6 +43,8 @@
   #c{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
   #info{position:absolute;top:6px;left:50%;transform:translateX(-50%);background:#050a08ee;border:1px solid #00bf63;box-shadow:0 0 10px #00bf6366,0 3px 10px #0008;color:#fff;padding:6px 16px;border-radius:14px;font-size:15px;font-weight:bold;white-space:nowrap;z-index:5}
 
+  #wind{position:absolute;top:46px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:#050a08ee;border:1px solid #00bf63;box-shadow:0 0 8px #00bf6355;color:#d8ffe9;padding:3px 12px;border-radius:12px;font-size:13px;font-weight:bold;white-space:nowrap;z-index:5;pointer-events:none}
+
   /* 컨트롤 크기는 화면 높이에 맞춰 자동 조절 */
   #game{--g:#00bf63;--gl:#4dffa8;--bk:#050a08}
   .pad,#fire,#fuel,#rd,#pw{--s:clamp(96px,calc(var(--ch) * .36),150px);--hh:clamp(66px,calc(var(--ch) * .22),96px);--mw:calc(var(--hh) * 2.3);--aw:calc(var(--s) * 1.15);--fw:calc(var(--s) * .74);--m:max(14px,env(safe-area-inset-left,0px));--b:max(14px,env(safe-area-inset-bottom,0px));--bw:6px}
@@ -152,6 +154,7 @@
 <div id="game" hidden>
   <canvas id="c" width="1000" height="600"></canvas>
   <div id="info"></div>
+  <div id="wind"><svg id="wsv" viewBox="-60 -12 120 24" width="84" height="17"><g id="wg"><line id="wln" x1="-40" y1="0" x2="34" y2="0" stroke="#4dffa8" stroke-width="5" stroke-linecap="round"/><polygon id="wpo" points="26,-8 44,0 26,8" fill="#4dffa8"/></g></svg><b id="wt"></b></div>
   <div id="mv" class="pad hexpad" data-l="이동"><div class="hexbg"></div><svg id="fuelsvg" class="fuelsvg" viewBox="0 0 230 100" preserveAspectRatio="none"><defs><linearGradient id="fg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="230" y2="0"><stop offset="0" stop-color="#d9ff3d"/><stop offset="1" stop-color="#00d46f"/></linearGradient></defs><path d="M -6.1 42.1 L 61 -10 L 169 -10 L 236.1 42.1" pathLength="100" fill="none" stroke="#00bf63" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="M -6.1 42.1 L 61 -10 L 169 -10 L 236.1 42.1" pathLength="100" fill="none" stroke="#050a08" stroke-width="8.6" stroke-linecap="round" stroke-linejoin="round"/><path id="fuelf" d="M -6.1 42.1 L 61 -10 L 169 -10 L 236.1 42.1" pathLength="100" fill="none" stroke="url(#fg)" stroke-width="5" stroke-linejoin="round" stroke-dasharray="0 100"/></svg><i class="ar l">◀</i><i class="ar r">▶</i><div class="knob"></div></div>
   <div id="rd"></div>
   <div id="am" class="pad" data-l="조준"><div class="hexbg"></div><svg class="arc" viewBox="-50 -43.3 100 86.6"><path d="M -27 0 A 27 27 0 0 1 27 0" fill="none" stroke="#4dffa8" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="1.6 3.4" stroke-linecap="round"/></svg><i id="beam" class="beam"></i><div class="knob"></div></div>
@@ -163,7 +166,7 @@
 <script src="maps.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const cv = $('c'), ctx = cv.getContext('2d'), W = FMAP.W, H = FMAP.H, K = FMAP.K, TS = FMAP.TS, Z = 1.6, TGS = 1.9;
+const cv = $('c'), ctx = cv.getContext('2d'), W = FMAP.W, H = FMAP.H, K = FMAP.K, TS = FMAP.TS, Z = 1.6, TGS = 1.9, VW = 2000, VH = 1200, MPP = 10;   // VW×VH: 카메라가 비추는 월드 범위, MPP: 1m = 10px
 const COLORS = ['#3d8bff', '#ff3b5c', '#2fe86a', '#ffb41f'];   // 네온 배경에서 잘 보이는 밝은 색
 const ICONS = [['🪖', '탱크'], ['🐸', '개구리'], ['🚀', '우주선'], ['🐱', '고양이'], ['🤖', '로봇'], ['🦖', '공룡']];
 const MAPS = FMAP.MAPS, RANDOM = MAPS.length;
@@ -282,7 +285,7 @@ function preview(c, id) {
   const x = c.getContext('2d');
   if (id === RANDOM) {
     x.fillStyle = '#333'; x.fillRect(0, 0, c.width, c.height);
-    x.fillStyle = '#fff'; x.font = '36px sans-serif'; x.textAlign = 'center'; x.fillText('?', c.width / 2, 46);
+    x.fillStyle = '#fff'; x.font = '28px sans-serif'; x.textAlign = 'center'; x.fillText('?', c.width / 2, 34);
     return;
   }
   const m = MAPS[id], TC = tcol(m), t = FMAP.terrain(id), sx = c.width / W, sy = c.height / H;
@@ -309,7 +312,7 @@ function preview(c, id) {
 const mapCards = [];
 for (let id = 0; id <= RANDOM; id++) {
   const d = el('div', null, $('maps'), 'display:inline-block;margin:4px;padding:4px;border:2px solid var(--bd);border-radius:12px;cursor:pointer;text-align:center');
-  const c = el('canvas', null, d); c.width = 120; c.height = 70;
+  const c = el('canvas', null, d); c.width = 160; c.height = 48;
   preview(c, id);
   el('div', id === RANDOM ? '랜덤' : MAPS[id].name, d);
   d.onclick = () => { if (st && st.type === 'room' && me === st.host) sendMsg({ type: 'map', id }); };
@@ -345,7 +348,7 @@ function apply(m) {
   if (m.type === 'room') { fresh = true; show('room'); renderRoom(); return; }
   show('game');
   if (fresh) {
-    fresh = false;
+    fresh = false; cam.snap = true;
     m.players.forEach((p, i) => { aims[i] = p.x < W / 2 ? 45 : 135; });
     my.angle = aims[me]; placeAim(); setPower(50); showFsPrompt();
   }
@@ -365,8 +368,8 @@ function ui() {
   $('fuelf').setAttribute('stroke-dasharray', `${fp} 100`); $('fuelsvg').classList.toggle('low', fp > 0 && fp <= 20);
   let t;
   if (st.winner !== -1) t = (st.winner === -2 ? '무승부' : st.winner === me ? '승리!' : `${st.players[st.winner].name} 승리`) + ' (잠시 후 대기실로)';
-  else t = (st.turn === me ? '내 차례' : `${st.players[st.turn].name}의 차례`) + ' · 바람 ' + (st.wind > 0 ? '→ ' : st.wind < 0 ? '← ' : '') + Math.abs(st.wind);
-  $('info').textContent = t;
+  else t = st.turn === me ? '내 차례' : `${st.players[st.turn].name}의 차례`;
+  $('info').textContent = t; setWind(st.wind);
 }
 
 // ---------- 가로 전체화면 ----------
@@ -396,10 +399,11 @@ function layout() {
   g.style.setProperty('--sw', w + 'px');
   g.style.setProperty('--sh', h + 'px');
   g.style.setProperty('--ch', (rot ? w : h) + 'px');
-  const fit = Math.min((rot ? h : w) / W, (rot ? w : h) / H);
-  const ns = Math.min(2, Math.max(.5, Math.round(fit * (devicePixelRatio || 1) * 4) / 4));
-  if (ns !== S || cv.width !== Math.round(W * ns)) {
-    S = ns; cv.width = sceneCv.width = Math.round(W * S); cv.height = sceneCv.height = Math.round(H * S); sceneKey = null;
+  const fit = Math.min((rot ? h : w) / VW, (rot ? w : h) / VH);
+  const nv = Math.min(2.5, Math.max(.5, Math.round(fit * (devicePixelRatio || 1) * 4) / 4)), ns = Math.min(1, Math.max(.5, nv));
+  if (nv !== SV || cv.width !== Math.round(VW * nv)) { SV = nv; cv.width = Math.round(VW * SV); cv.height = Math.round(VH * SV); }   // 화면 캔버스 = 카메라가 비추는 범위
+  if (ns !== S || sceneCv.width !== Math.round(W * ns)) {   // 월드 전체를 한 번 그려 두는 캐시 (메모리 때문에 배율 최대 1)
+    S = ns; sceneCv.width = Math.round(W * S); sceneCv.height = Math.round(H * S); sceneKey = null;
   }
   placeAim();
 }
@@ -507,25 +511,26 @@ const seeded = s => () => (s = s * 16807 % 2147483647) / 2147483647;
 
 const sceneCv = document.createElement('canvas'); sceneCv.width = W; sceneCv.height = H;
 const bgCv = document.createElement('canvas');
-let S = 1;   // 렌더 배율: 화면에 실제로 보이는 크기 × devicePixelRatio (선명도)
+let S = 1, SV = 1;   // 렌더 배율: 화면에 실제로 보이는 크기 × devicePixelRatio (선명도)
 let sceneKey = null, bgKey = null, edgePath = null, twink = [], TC = null;
 const FX = { booms: [], floats: [], muzzle: null, shake: 0, flash: 0 };
+const cam = { x: 0, y: 0, snap: true };   // 카메라 왼쪽 위 (월드 좌표)
 
 // ----- 배경: 별 + 레트로 네온 태양 + 먼 능선 -----
 function buildBg(th, id) {
-  const W = 1000, H = 600;   // 배경은 1000×600 기준 좌표로 그리고 K배 확대해요
+  const W = 2000, H = 600;   // 배경은 2000×600 기준 좌표로 그리고 K배 확대해요
   bgCv.width = sceneCv.width; bgCv.height = sceneCv.height;
   const c = bgCv.getContext('2d'); c.setTransform(S * K, 0, 0, S * K, 0, 0);
   const rnd = seeded(777 + id * 131), T = tcol(th);
   const sky = c.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, th.sky[0]); sky.addColorStop(1, th.sky[1]);
   c.fillStyle = sky; c.fillRect(0, 0, W, H);
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 240; i++) {
     const x = rnd() * W, y = rnd() * H * .7, r = .5 + rnd() * 1.2, a = .25 + rnd() * .6;
     c.fillStyle = rnd() < .3 ? hsl(T.h, 100, 80, a) : `rgba(255,255,255,${a})`; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
   }
-  twink = Array.from({ length: 14 }, () => ({ x: 20 + rnd() * (W - 40), y: 10 + rnd() * 300, r: 1 + rnd() * 1.2, ph: rnd() * 6.28, sp: .8 + rnd() * 1.6 }));
+  twink = Array.from({ length: 28 }, () => ({ x: 20 + rnd() * (W - 40), y: 10 + rnd() * 300, r: 1 + rnd() * 1.2, ph: rnd() * 6.28, sp: .8 + rnd() * 1.6 }));
   // 네온 태양: 위는 보색, 아래는 맵 색. 아래쪽엔 레트로 가로 줄무늬
-  const sx = 170 + rnd() * 660, sy = 175, R = 105;
+  const sx = 170 + rnd() * (W - 340), sy = 175, R = 105;
   const halo = c.createRadialGradient(sx, sy, R * .6, sx, sy, R * 3.2); halo.addColorStop(0, T.glow2(.28)); halo.addColorStop(1, T.glow2(0));
   c.fillStyle = halo; c.fillRect(0, 0, W, H);
   const sc = document.createElement('canvas'); sc.width = sc.height = Math.ceil(R * 2 * S * K);
@@ -551,7 +556,7 @@ function buildBg(th, id) {
 
 // ----- 지형: 빛나는 본체 + 안쪽 등고선 + 네온 튜브 같은 윗선 -----
 function buildScene(th, T, id) {
-  const W = 1000, H = 600;   // 지형 장식은 1000×600 기준 좌표(edgePath도 이 좌표)로 그리고 K배 확대해요
+  const W = 2000, H = 600;   // 지형 장식은 2000×600 기준 좌표(edgePath도 이 좌표)로 그리고 K배 확대해요
   const c = sceneCv.getContext('2d'); TC = tcol(th);
   if (bgKey !== id + '@' + S) { buildBg(th, id); bgKey = id + '@' + S; }
   c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
@@ -580,7 +585,7 @@ function buildScene(th, T, id) {
   c.strokeStyle = 'rgba(255,255,255,.035)'; c.lineWidth = 7; c.beginPath();   // 아주 은은한 사선 무늬
   for (let x = -H; x < W; x += 28) { c.moveTo(x, 0); c.lineTo(x + H, H); }
   c.stroke();
-  for (let i = 0; i < 260; i++) {   // 반짝 점
+  for (let i = 0; i < 520; i++) {   // 반짝 점
     const x = Math.floor(rnd() * W), y = Y[x] + 4 + rnd() * (H - Y[x]);
     c.fillStyle = rnd() < .5 ? 'rgba(255,255,255,.16)' : TC.lite(.2); c.fillRect(x, y, 1 + rnd() * 2, 1.4);
   }
@@ -803,6 +808,66 @@ function drawFx() {
   FX.floats = FX.floats.filter(f => f.t < 70);
 }
 
+// ----- 카메라: 지금 차례인 탱크(포탄이 날아가는 동안엔 포탄)를 부드럽게 따라가요 -----
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function updateCam() {
+  let fx = W / 2, fy = H / 2, k = .1;
+  if (anim) { const pt = anim.path[Math.min(anim.i, anim.path.length - 1)]; fx = pt[0]; fy = pt[1]; k = .22; }
+  else {
+    const p = st.players[st.winner >= 0 ? st.winner : st.turn];
+    if (p && p.on) { fx = p.x; fy = p.y - 20 * TS; }
+  }
+  const tx = clamp(fx - VW / 2, 0, W - VW), ty = clamp(fy - VH * .6, 0, H - VH);
+  if (cam.snap) { cam.x = tx; cam.y = ty; cam.snap = false; }
+  else { cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; }
+}
+
+// ----- 화면 밖 상대: 가장자리에 방향 화살표 + 내 탱크로부터의 거리(m) -----
+function drawOffscreen() {
+  if (!st || st.type !== 'state' || st.winner !== -1) return;
+  const mine = me >= 0 && st.players[me].on && st.players[me].hp > 0;
+  const ref = mine ? st.players[me] : { x: cam.x + VW / 2, y: cam.y + VH / 2 };
+  const L = 110, R = VW - 110, T = 170, B = VH - 560, cx = VW / 2, cy = VH / 2;   // 컨트롤(파워/조준)·상단 표시줄을 피하는 안쪽 사각형
+  const placed = [];
+  ctx.setTransform(SV, 0, 0, SV, 0, 0);
+  st.players.forEach((p, i) => {
+    if (i === me || !p.on || p.hp <= 0) return;
+    const sx = p.x - cam.x, sy = p.y - 20 * TS - cam.y;
+    if (sx > L && sx < R && sy > T && sy < B) return;   // 화면 안에 잘 보이면 표시하지 않아요
+    const dx = sx - cx, dy = sy - cy;
+    const tx = dx ? (dx > 0 ? R - cx : L - cx) / dx : Infinity, ty = dy ? (dy > 0 ? B - cy : T - cy) / dy : Infinity;
+    const t = Math.min(tx, ty), x = cx + dx * t, ang = Math.atan2(dy, dx);
+    let y = cy + dy * t;
+    for (let n = 0, hit = true; hit && n < 4; n++) { hit = false; for (const q of placed) if (Math.abs(q.x - x) < 170 && Math.abs(q.y - y) < 46) { y = q.y + 46; hit = true; } }   // 같은 쪽 화살표끼리 겹치지 않게 아래로 밀어요
+    placed.push({ x, y });
+    const m = Math.round(Math.hypot(p.x - ref.x, p.y - ref.y) / MPP), col = COLORS[i];
+    ctx.save(); ctx.translate(x, y);
+    ctx.save(); ctx.rotate(ang); ctx.globalAlpha = .75 + .25 * Math.sin(performance.now() / 260 + i);
+    ctx.shadowColor = col; ctx.shadowBlur = 14; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(-14, -20); ctx.lineTo(-4, 0); ctx.lineTo(-14, 20); ctx.closePath();
+    ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.restore();
+    const label = `${p.icon || ''} ${m}m`;
+    ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const w = ctx.measureText(label).width + 24, ca = Math.cos(ang), sa = Math.sin(ang);
+    const ox = -ca * (36 + w / 2 * Math.abs(ca)), oy = -sa * (36 + 17 * Math.abs(sa));
+    rrect(ox - w / 2, oy - 17, w, 34, 17); ctx.fillStyle = 'rgba(4,6,16,.85)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = rgba(col, .95); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.fillText(label, ox, oy + 1);
+    ctx.restore();
+  });
+  ctx.textBaseline = 'alphabetic';
+}
+
+// ----- 풍속: 중앙 상단 화살표 (방향 + 길이 = 세기) -----
+function setWind(w) {
+  const a = Math.abs(w), L = a / 10 * 46;
+  $('wsv').style.display = a ? '' : 'none';
+  $('wg').setAttribute('transform', `scale(${w < 0 ? -1 : 1},1)`);
+  $('wln').setAttribute('x1', -L); $('wln').setAttribute('x2', L - 6);
+  $('wpo').setAttribute('points', `${L - 14},-8 ${L + 4},0 ${L - 14},8`);
+  $('wt').textContent = a ? `바람 ${a} m/s` : '바람 없음';
+}
+
 function draw() {
   if (!st || st.type !== 'state') return;
   const th = MAPS[st.map], now = performance.now();
@@ -818,9 +883,11 @@ function draw() {
   }
   const shk = FX.shake; FX.shake = shk < .25 ? 0 : shk * .86;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
-  ctx.setTransform(S, 0, 0, S, (Math.random() - .5) * 2 * shk * S, (Math.random() - .5) * 2 * shk * S);
+  updateCam();
+  ctx.setTransform(SV, 0, 0, SV, (Math.random() - .5) * 2 * shk * SV, (Math.random() - .5) * 2 * shk * SV);
+  ctx.translate(-cam.x, -cam.y);
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(sceneCv, 0, 0, W, H);
+  ctx.drawImage(sceneCv, cam.x * S, cam.y * S, VW * S, VH * S, cam.x, cam.y, VW, VH);
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   twink.forEach(s => { ctx.fillStyle = `rgba(255,255,255,${.12 + .55 * Math.abs(Math.sin(now / 1000 * s.sp + s.ph))})`; ctx.beginPath(); ctx.arc(s.x * K, s.y * K, s.r * K, 0, 7); ctx.fill(); });
   if (TC && edgePath) { ctx.globalAlpha = .08 + .07 * Math.sin(now / 450); ctx.strokeStyle = TC.glow(1); ctx.lineWidth = 14; ctx.lineJoin = 'round'; ctx.save(); ctx.scale(K, K); ctx.stroke(edgePath); ctx.restore(); }   // 숨쉬는 지형 빛
@@ -840,6 +907,7 @@ function draw() {
   }
   drawFx();
   if (FX.flash > .01) { ctx.fillStyle = `rgba(255,255,255,${FX.flash})`; ctx.fillRect(-20, -20, W + 40, H + 40); FX.flash *= .78; }
+  drawOffscreen();
 }
 (function loop() { draw(); requestAnimationFrame(loop); })();
 
