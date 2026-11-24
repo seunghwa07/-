@@ -264,8 +264,8 @@
     <div style="width:420px;flex-shrink:0;display:flex;flex-direction:column;gap:18px">
       <div style="display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#4dd2ff"></span><span class="sec">내 탱크</span></div>
-        <div id="tanks" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px"></div>
-        <div id="tdesc" style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;min-height:44px"></div>
+        <div id="tanks" style="display:flex;align-items:center;gap:16px;padding:14px 18px;border-radius:16px;background:#0d1433;border:1px dashed #3a4770"></div>
+        <div id="tdesc" style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;min-height:44px;background:rgba(160,170,210,.06);border:1px solid #2a3556"><span style="font-size:14px;line-height:1.5;color:#c9d3f0">🎲 <b style="color:#eaf0ff">랜덤 탱크</b> · 게임이 시작되면 ${TANKS_N}종 중 하나가 무작위로 정해져요. 다른 사람의 탱크도 시작해야 알 수 있어요.</span></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#ff3df2"></span><span class="sec">맵</span><span id="mapnote" style="font-size:13px;color:#a9b8de"></span></div>
@@ -312,7 +312,7 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 75 · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 
 const ls = {
@@ -495,12 +495,8 @@ const drawTanks = root => root.querySelectorAll('canvas.tkc').forEach(c => tankT
 const tankChip = (name, acc, css) => `<span style="display:flex;align-items:center;gap:8px;${css}"><span style="width:10px;height:10px;border-radius:50%;flex:none;background:${acc};box-shadow:0 0 8px ${acc}"></span>${esc(name)}</span>`;
 
 // 내 탱크 / 맵 버튼은 한 번만 만들고, 선택 표시만 바꿔요
-const tankBtns = TANKS.map(([k, n]) => {
-  const b = el('button', null, $('tanks')); b.className = 'tk';
-  b.innerHTML = tankSvg(58, 40, '#8e9bc4', k) + `<span>${esc(n)}</span>`;
-  b.onclick = () => sendMsg({ type: 'tank', kind: k });
-  return b;
-});
+$('tanks').innerHTML = tankSvg(120, 0, '#8e9bc4', '?') + `<div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:24px;font-weight:900;color:#eaf0ff;letter-spacing:.06em">???</span><span style="font-size:13px;color:#a9b8de">어떤 탱크일까요?</span></div>`;
+$('tdesc').innerHTML = $('tdesc').innerHTML.replace('${TANKS_N}', TANKS.length);
 const mapCards = [];
 for (let id = 0; id <= RANDOM; id++) {
   const d = el('button', null, $('maps')); d.className = 'mp';
@@ -515,7 +511,7 @@ $('copy').onclick = () => {
 };
 
 function slotCard(i, col, team) {   // 개인전(큰 카드) / 팀전(가로 카드) 참가자 한 칸
-  const n = st.names[i], k = st.tanks[i] || 'basic', acc = TANKC[k] || '#fff6b0', tn = TN[k] || '기본탄', ico = esc(st.icons[i] || ''), host = i === st.host, mine = i === me;
+  const n = st.names[i], k = '?', acc = '#7a86ad', tn = '???', ico = esc(st.icons[i] || ''), host = i === st.host, mine = i === me;
   const nm = `${ico ? ico + ' ' : ''}${esc(n)}`;
   if (!team) return `<div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid ${col};padding:16px 20px;display:flex;flex-direction:column">
     <div style="position:absolute;right:-50px;top:-70px;width:260px;height:260px;border-radius:50%;background:${col};opacity:.2;filter:blur(46px)"></div>
@@ -579,11 +575,7 @@ function renderRoom() {
   }
   drawTanks(box);
   // 내 탱크
-  const mk = st.tanks[me] || 'basic', macc = TANKC[mk];
-  tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const sel = TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
-  $('tdesc').style.cssText += `;background:${hexA(macc, .08)};border:1px solid ${hexA(macc, .35)}`;
-  const td = TANKS.find(t => t[0] === mk);
-  $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${esc(td[1])}</b> · ${esc(td[2])}</span>`;
+  $('tanks').querySelector('canvas').dataset.c = pc(me >= 0 ? me : 0);
   drawTanks($('tanks'));
   // 맵
   $('mapnote').textContent = isHost ? '눌러서 선택해요' : '방장이 선택해요';
@@ -1276,6 +1268,7 @@ function drawTank(p, i, deg, active) {
 
 // 대기실 탱크 선택 버튼용 작은 미리보기
 function tankThumb(cnv, kind, col, k = 2) {
+  if (kind === '?') { mysteryThumb(cnv, col, k); return; }
   const g = cnv.getContext('2d'); g.clearRect(0, 0, cnv.width, cnv.height);
   C = g; C.save(); C.translate(cnv.width * (k > 2 ? .46 : .4), cnv.height - 7 * k); C.scale(k, k);
   C.save(); C.scale(1, .26);
@@ -1283,6 +1276,25 @@ function tankThumb(cnv, kind, col, k = 2) {
   C.fillStyle = ug; C.beginPath(); C.arc(0, 0, 40, 0, 7); C.fill(); C.restore();
   paintTank(kind, { col, lite: shade(col, .6), edge: shade(col, .35), dir: 1, a: .5, tilt: 0, now: 700, i: 0 });
   C.restore(); C = ctx;
+}
+
+// 대기실의 '?' 탱크: 기본 탱크 모양을 검은 그림자로 칠하고 가운데에 ? 를 띄워요
+function mysteryThumb(cnv, col, k) {
+  const g = cnv.getContext('2d'); g.clearRect(0, 0, cnv.width, cnv.height);
+  C = g; C.save(); C.translate(cnv.width * (k > 2 ? .46 : .4), cnv.height - 7 * k); C.scale(k, k);
+  paintTank('basic', { col: '#888888', lite: '#aaaaaa', edge: '#555555', dir: 1, a: .5, tilt: 0, now: 700, i: 0 });
+  C.restore();
+  g.save(); g.globalCompositeOperation = 'source-atop';   // 탱크가 그려진 부분만 그림자 색으로 덮어요
+  const sg = g.createLinearGradient(0, 0, 0, cnv.height); sg.addColorStop(0, '#2a3358'); sg.addColorStop(1, '#0b1024');
+  g.fillStyle = sg; g.fillRect(0, 0, cnv.width, cnv.height); g.restore();
+  g.save(); g.translate(cnv.width * (k > 2 ? .46 : .4), cnv.height - 7 * k); g.scale(k, k);
+  g.globalCompositeOperation = 'destination-over'; g.save(); g.scale(1, .26);   // 바닥 빛
+  const ug = g.createRadialGradient(0, 0, 0, 0, 0, 40); ug.addColorStop(0, rgba(col, .45)); ug.addColorStop(1, rgba(col, 0));
+  g.fillStyle = ug; g.beginPath(); g.arc(0, 0, 40, 0, 7); g.fill(); g.restore();
+  g.globalCompositeOperation = 'source-over';
+  g.font = '900 26px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = col; g.shadowBlur = 10; g.lineWidth = 3; g.strokeStyle = '#0b1024'; g.strokeText('?', 2, -15); g.fillStyle = '#eaf0ff'; g.fillText('?', 2, -15);
+  g.restore(); C = ctx;
 }
 
 // 이름표 + 4칸 체력바 + 내 차례 표시
@@ -1598,9 +1610,15 @@ function startIntro() {
   const el = $('intro'); introT.forEach(clearTimeout); introT = [];
   el.hidden = false; el.className = ''; void el.offsetWidth; el.className = 'load';   // 로딩 바 애니메이션을 처음부터 다시
   $('itip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
-  [['지형을 만드는 중…', 0], ['탱크를 배치하는 중…', 650], ['포탄을 장전하는 중…', 1300]].forEach(([t, d]) => introT.push(setTimeout(() => { $('isub').textContent = t; }, d)));
+  [['지형을 만드는 중…', 0], ['탱크를 뽑는 중… 🎲', 650], ['포탄을 장전하는 중…', 1300]].forEach(([t, d]) => introT.push(setTimeout(() => { $('isub').textContent = t; }, d)));
   introT.push(setTimeout(() => { $('isub').textContent = '전투 개시!'; el.className = 'open'; cv.classList.remove('zoomin'); void cv.offsetWidth; cv.classList.add('zoomin'); }, 2000));
-  introT.push(setTimeout(() => { el.hidden = true; cv.classList.remove('zoomin'); showBanner('🎯 순서 정하기', '목표물에 가장 가깝게 쏜 순서대로 차례가 정해져요 · 모두 동시에 발사!'); }, 2950));
+  const mt = st && st.players && st.players[me] ? TANKS.find(t => t[0] === st.players[me].tank) : null;
+  introT.push(setTimeout(() => {
+    el.hidden = true; cv.classList.remove('zoomin');
+    if (mt) showBanner(`🎲 내 탱크: ${mt[1]}`, mt[2]);   // 랜덤으로 뽑힌 내 탱크 공개
+    else showBanner('🎯 순서 정하기', '목표물에 가장 가깝게 쏜 순서대로 차례가 정해져요 · 모두 동시에 발사!');
+  }, 2950));
+  if (mt) introT.push(setTimeout(() => showBanner('🎯 순서 정하기', '목표물에 가장 가깝게 쏜 순서대로 차례가 정해져요 · 모두 동시에 발사! (순서 정하기는 모두 기본탄)'), 5250));
 }
 function showBanner(t, sub) {
   const b = $('banner'); b.firstChild.textContent = t; b.lastChild.textContent = sub || '';
