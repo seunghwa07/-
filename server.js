@@ -56,11 +56,23 @@ function nextTurn(g, from) {
   return from;
 }
 
+// 시작 위치: 맵 양 끝에 나눠 배치해요. 팀전은 A팀=왼쪽, B팀=오른쪽, 개인전은 번갈아 양쪽에.
+const EDGE = [300, 800, 1300];   // 맵 끝에서 안쪽으로 떨어진 거리 (같은 쪽에 여럿이면 차례로)
+function spawnXs(r) {
+  const xs = [], used = [0, 0];
+  r.slots.map((s, i) => (s ? i : -1)).filter(i => i >= 0).forEach((i, n) => {
+    const side = r.mode === 'team' ? r.slots[i].team : n % 2, k = used[side]++;
+    xs[i] = side === 0 ? EDGE[k] : W - EDGE[k];
+  });
+  return xs;
+}
+
 function newGame(r) {
+  const xs = spawnXs(r);
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [],
-    players: SPAWN.map((x, i) => ({ x, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? r.slots[i].tank : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? r.slots[i].tank : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   r.game.turn = r.game.players.findIndex(p => p.on);
   r.game.fuel = FUEL;
