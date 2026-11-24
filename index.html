@@ -51,64 +51,89 @@
   #game{--g:#00bf63;--gl:#4dffa8;--bk:#050a08}
   .pad,#fire,#fuel,#rd,#pw{--s:clamp(96px,calc(var(--ch) * .36),150px);--hh:clamp(66px,calc(var(--ch) * .22),96px);--mw:calc(var(--hh) * 2.3);--aw:calc(var(--s) * 1.15);--fw:calc(var(--s) * .74);--m:max(14px,env(safe-area-inset-left,0px));--b:max(14px,env(safe-area-inset-bottom,0px));--bw:6px}
 
-  /* ---------- 육각형 프레임 (검정 바탕 + 초록 테두리) ---------- */
-  .hexpad,#pw{--hexc:polygon(28% 0,72% 0,100% 50%,72% 100%,28% 100%,0 50%)}
-  #am{--hexc:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
-  .hexbg{position:absolute;inset:0;pointer-events:none;filter:drop-shadow(0 0 7px #00bf6388) drop-shadow(0 5px 8px #000b);transition:filter .15s}
-  .hexbg::before,.hexbg::after{content:"";position:absolute}
-  .hexbg::before{inset:0;background:var(--g);clip-path:var(--hexc)}
-  .hexbg::after{inset:var(--bw) calc(var(--bw) * 1.7);background:linear-gradient(#0c1713,#000 65%);clip-path:var(--hexc)}
-  .pad.on .hexbg,#pw.on .hexbg{filter:drop-shadow(0 0 13px #4dffa8cc) drop-shadow(0 5px 8px #000b)}
+  /* ---------- 조이스틱: 유리(글래스) 패널 + 민트 포인트 ---------- */
+  #game{--ac:#5dffb0;--ac2:#b9ffdf;--glass:rgba(12,20,17,.5);--line:rgba(255,255,255,.16)}
+  .glass{position:absolute;inset:0;pointer-events:none;border-radius:999px;
+    background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.03) 45%,rgba(0,0,0,.16)),var(--glass);
+    border:1px solid var(--line);
+    box-shadow:0 10px 26px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -10px 18px rgba(0,0,0,.18);
+    -webkit-backdrop-filter:blur(8px) saturate(1.3);backdrop-filter:blur(8px) saturate(1.3);
+    transition:box-shadow .18s,border-color .18s}
+  .pad.on .glass,#pw.on .glass{border-color:rgba(93,255,176,.55);
+    box-shadow:0 10px 26px rgba(0,0,0,.42),0 0 0 1px rgba(93,255,176,.22),0 0 26px rgba(93,255,176,.26),inset 0 1px 0 rgba(255,255,255,.28)}
+  #am .glass{inset:0 6.7%}   /* 조준: 높이만큼의 정원 (폭 × √3/2) */
+  #mv .glass::before{content:"";position:absolute;left:22%;right:22%;top:50%;border-top:2px dotted rgba(255,255,255,.14)}
 
   .pad{position:absolute;bottom:var(--b);touch-action:none;z-index:5}
-  .pad::after,#pw::after{content:attr(data-l);position:absolute;top:-27px;left:50%;transform:translateX(-50%);padding:2px 12px;border-radius:10px;background:#050a08ee;border:1px solid var(--g);color:#d8ffe9;font-size:12px;font-weight:bold;letter-spacing:2px;white-space:nowrap;pointer-events:none}
-  #mv{left:var(--m);width:var(--mw);height:var(--hh);--k:calc(var(--hh) * .74)}
-  #am{right:var(--m);width:var(--aw);height:calc(var(--aw) * .866);--k:calc(var(--aw) * .24)}  /* 정육각형: 높이 = 폭 × √3/2 */
+  .pad::after,#pw::after{content:attr(data-l);position:absolute;top:-27px;left:50%;transform:translateX(-50%);padding:3px 12px;border-radius:999px;
+    background:var(--glass);border:1px solid var(--line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    color:#e9fff4;font-size:11px;font-weight:600;letter-spacing:.14em;white-space:nowrap;pointer-events:none}
+  #mv{left:var(--m);width:var(--mw);height:var(--hh);--k:calc(var(--hh) * .62)}
+  #am{right:var(--m);width:var(--aw);height:calc(var(--aw) * .866);--k:calc(var(--aw) * .2)}  /* 정육각형 비율 그대로: 높이 = 폭 × √3/2 */
+  #am::after{top:auto;bottom:12%;padding:0;background:none;border:0;-webkit-backdrop-filter:none;backdrop-filter:none;font-size:10px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.32em}
 
-  #mv::after{top:-48px}
-  #am::after{top:auto;bottom:9%;padding:0;background:none;border:0;font-size:11px;color:#4dffa8aa;letter-spacing:3px}
-  #pw::after{top:50%;padding:0;background:none;border:0;font-size:clamp(12px,calc(var(--ch) * .036),15px);color:#fff;letter-spacing:1px;transform:translate(-50%,-50%);text-shadow:0 0 3px #000,0 0 3px #000,0 1px 3px #000;z-index:2}
-
-  /* 연료바: 이동 육각형 위쪽 세 면을 따라 꺾이는 게이지 */
-  .fuelsvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 0 5px #00bf6388)}
+  /* 연료: 이동 패널 아래쪽의 가는 게이지 (노브가 움직이는 범위와 같은 길이) */
+  .fuelsvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 0 4px rgba(93,255,176,.45))}
+  .fuelsvg .ftrack{fill:none;stroke:rgba(255,255,255,.14);stroke-width:4;stroke-linecap:round}
+  .fuelsvg #fuelf{fill:none;stroke-width:4;stroke-linecap:round;transition:opacity .15s}
   .fuelsvg.low #fuelf{stroke:#ff5a3c}
-  .fuelsvg.low{filter:drop-shadow(0 0 6px #ff5a3caa)}
+  .fuelsvg.low{filter:drop-shadow(0 0 5px rgba(255,90,60,.7))}
 
-  /* 이동 조이스틱: 육각형 안에서 좌우로 미끄러지는 회색 원형 노브 */
-  .ar{position:absolute;top:50%;margin-top:-.62em;font-style:normal;font-size:calc(var(--hh) * .2);color:var(--g);pointer-events:none;text-shadow:0 0 6px #00bf63}
-  .ar.l{left:11%}.ar.r{right:11%}
+  /* 이동: 얇은 화살표 + 좌우로 미끄러지는 노브 */
+  .ar{position:absolute;top:50%;width:calc(var(--hh) * .13);height:calc(var(--hh) * .13);margin-top:calc(var(--hh) * -.065);
+    border:solid rgba(255,255,255,.5);border-width:0 0 2.5px 2.5px;pointer-events:none}
+  .ar.l{left:12%;transform:rotate(45deg)}
+  .ar.r{right:12%;transform:rotate(-135deg)}
   .knob{position:absolute;left:50%;top:50%;width:var(--k);height:var(--k);margin:calc(var(--k) / -2);border-radius:50%;pointer-events:none;
-    background:radial-gradient(circle at 38% 28%,#fff 0,#ececec 22%,#cbced2 60%,#8d9298 100%);
-    border:2px solid #0b2418;box-shadow:0 5px 9px #000c,0 0 10px #ffffff2a,inset 0 -5px 8px #0006,inset 0 3px 4px #ffffffaa}
-  .knob::after{content:"";position:absolute;inset:24%;border-radius:50%;border:2px solid #00bf6399;background:radial-gradient(circle at 40% 35%,#ffffff55,#0000 70%)}
-  .knob.snap{transition:transform .16s ease-out}
+    background:linear-gradient(150deg,#fff,#dbe6e0 55%,#aebdb6);
+    box-shadow:0 6px 14px rgba(0,0,0,.5),0 0 0 3px rgba(255,255,255,.14),inset 0 1px 0 #fff;
+    transition:box-shadow .18s}
+  .knob::after{content:"";position:absolute;inset:34%;border-radius:50%;background:var(--ac);box-shadow:0 0 10px var(--ac)}
+  .knob.snap{transition:transform .16s ease-out,box-shadow .18s}
+  .pad.on .knob{box-shadow:0 6px 16px rgba(0,0,0,.5),0 0 0 5px rgba(93,255,176,.22),0 0 22px rgba(93,255,176,.5),inset 0 1px 0 #fff}
 
-  /* 조준 조이스틱: 육각형 + 반원 가이드 위를 도는 초록 노브 */
+  /* 조준: 눈금 다이얼 + 중심에서 노브까지 이어지는 빛줄기 */
   .arc{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-  .beam{position:absolute;left:50%;top:50%;height:4px;margin-top:-2px;width:0;transform-origin:0 50%;border-radius:2px;pointer-events:none;
-    background:linear-gradient(90deg,#4dffa800,#4dffa8ee);box-shadow:0 0 8px #4dffa8aa}
-  #am .knob{background:radial-gradient(circle at 36% 28%,#eafff3 0,#7dffb5 18%,#00bf63 55%,#04502b 100%);border-color:#04210f;box-shadow:0 5px 9px #000c,0 0 14px #00bf63aa,inset 0 -5px 8px #0008,inset 0 3px 4px #ffffff88}
-  #am .knob::after{border-color:#04210f88}
+  .arc .orbit{fill:none;stroke:rgba(255,255,255,.2);stroke-width:1.1}
+  .arc .ticks{fill:none;stroke:rgba(255,255,255,.38);stroke-width:.9;stroke-linecap:round}
+  .arc .dot{fill:rgba(255,255,255,.55)}
+  .beam{position:absolute;left:50%;top:50%;height:2px;margin-top:-1px;width:0;transform-origin:0 50%;border-radius:2px;pointer-events:none;
+    background:linear-gradient(90deg,rgba(93,255,176,0),rgba(93,255,176,.95));box-shadow:0 0 8px rgba(93,255,176,.6)}
+  #am .knob{background:linear-gradient(150deg,#e9fff4,var(--ac) 55%,#1fbf7d);box-shadow:0 6px 14px rgba(0,0,0,.5),0 0 14px rgba(93,255,176,.45),inset 0 1px 0 rgba(255,255,255,.8)}
+  #am .knob::after{background:#fff;box-shadow:none}
+  #am.on .knob{box-shadow:0 6px 16px rgba(0,0,0,.5),0 0 0 5px rgba(93,255,176,.22),0 0 24px rgba(93,255,176,.65),inset 0 1px 0 rgba(255,255,255,.8)}
 
-  /* ---------- 파워 바: 육각형 안이 노랑 → 주황 그라데이션으로 차올라요 ---------- */
-  #pw{--bw:4px;position:absolute;right:var(--m);width:var(--aw);height:calc(var(--aw) / 2.3);bottom:calc(var(--b) + var(--aw) * .866 + 10px);z-index:5;touch-action:none}
-  .pw-inner{position:absolute;inset:calc(var(--bw) * 2.3) calc(var(--bw) * 4.2);clip-path:var(--hexc);overflow:hidden;pointer-events:none}
-  .pw-fill{position:absolute;inset:0;background:linear-gradient(90deg,#ffff1f 0,#ffe21a 28%,#ffc01f 58%,#ff9b1f 100%);clip-path:inset(0 50% 0 0)}
-  .pw-inner::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,#0000 0 calc(10% - 1.5px),#0007 calc(10% - 1.5px) 10%)}
-  .pw-mark{position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:#fff;box-shadow:0 0 8px #fff,0 0 14px #ffd54a}
+  /* ---------- 파워: 알약형 슬라이더 (초록 → 노랑 → 주황으로 차올라요) ---------- */
+  #pw{--ph:clamp(40px,calc(var(--aw) * .3),56px);--th:calc(var(--ph) * .58);
+    position:absolute;right:var(--m);width:var(--aw);height:var(--ph);bottom:calc(var(--b) + var(--aw) * .866 + 12px);z-index:5;touch-action:none}
+  .pw-inner{position:absolute;inset:0 calc(var(--ph) * .42);pointer-events:none}   /* 이 영역이 0~100% 터치 범위 */
+  .pw-track{position:absolute;left:0;right:0;top:50%;height:calc(var(--ph) * .26);transform:translateY(-50%);border-radius:999px;overflow:hidden;
+    background:rgba(255,255,255,.12);box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+  .pw-fill{position:absolute;inset:0;background:linear-gradient(90deg,#7dffb5 0,#ffe66d 50%,#ff9f43 80%,#ff5e62 100%);clip-path:inset(0 50% 0 0)}
+  .pw-track::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,#0000 0 calc(10% - 1.5px),rgba(0,0,0,.35) calc(10% - 1.5px) 10%)}
+  .pw-mark{position:absolute;top:50%;left:50%;width:var(--th);height:var(--th);margin:calc(var(--th) / -2) 0 0 calc(var(--th) / -2);border-radius:50%;
+    background:linear-gradient(150deg,#fff,#e1e9e4);box-shadow:0 4px 12px rgba(0,0,0,.5),0 0 0 3px rgba(255,214,102,.3),inset 0 1px 0 #fff}
+  .pw-mark::after{content:"";position:absolute;inset:32%;border-radius:50%;background:#ff9f43;box-shadow:0 0 8px #ff9f43}
+  #pw.on .pw-mark{box-shadow:0 4px 12px rgba(0,0,0,.5),0 0 0 5px rgba(255,214,102,.3),0 0 18px rgba(255,159,67,.6),inset 0 1px 0 #fff}
 
-  /* ---------- 발사 버튼 (조이스틱과 분리된 독립 버튼) ---------- */
-  #fire{position:absolute;right:calc(var(--m) + var(--aw) + 22px);bottom:calc(var(--b) + 6px);width:var(--fw);height:var(--fw);padding:0;border:0;border-radius:50%;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--gl);touch-action:none;z-index:5;
-    background:radial-gradient(circle at 50% 28%,#1d3329 0,#07100c 60%,#000 100%);
-    box-shadow:0 0 0 3px var(--g),0 0 0 6px #030806,0 0 0 8px #0b6b3a,0 8px 16px 4px #000b,inset 0 0 18px #00bf6366,inset 0 6px 8px #ffffff1c;
-    animation:fpulse 1.4s ease-in-out infinite;transition:transform .08s}
-  #fire .fi{width:34%;height:auto;filter:drop-shadow(0 0 5px #00bf63)}
-  #fire b{font-size:clamp(14px,calc(var(--ch) * .042),20px);letter-spacing:2px;text-shadow:0 0 8px #00bf63}
-  #fire:active:not(:disabled){transform:scale(.93);background:radial-gradient(circle at 50% 28%,#4dffa8 0,#00bf63 70%,#04502b 100%);color:#021409;box-shadow:0 0 0 3px var(--gl),0 0 0 6px #030806,0 0 0 8px #0b6b3a,0 4px 8px 2px #000b,inset 0 0 14px #ffffff55}
+  /* ---------- 발사 버튼: 유리 원 + 퍼져나가는 링 ---------- */
+  #fire{position:absolute;right:calc(var(--m) + var(--aw) + 22px);bottom:calc(var(--b) + 6px);width:var(--fw);height:var(--fw);padding:0;border-radius:50%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ac2);touch-action:none;z-index:5;
+    border:1.5px solid rgba(93,255,176,.6);
+    background:radial-gradient(circle at 50% 28%,rgba(93,255,176,.32) 0,rgba(12,22,18,.6) 62%,rgba(6,12,10,.72) 100%);
+    -webkit-backdrop-filter:blur(8px) saturate(1.3);backdrop-filter:blur(8px) saturate(1.3);
+    box-shadow:0 10px 26px rgba(0,0,0,.45),0 0 22px rgba(93,255,176,.22),inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 18px rgba(93,255,176,.14);
+    transition:transform .08s,background .12s,box-shadow .12s,color .12s}
+  #fire::before{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--ac);opacity:0;pointer-events:none;animation:fring 1.8s ease-out infinite}
+  #fire .fi{width:34%;height:auto;filter:drop-shadow(0 0 5px var(--ac))}
+  #fire b{font-size:clamp(13px,calc(var(--ch) * .04),19px);letter-spacing:.2em;font-weight:700;text-shadow:0 0 8px rgba(93,255,176,.7)}
+  #fire:active:not(:disabled){transform:scale(.94);color:#05241a;
+    background:radial-gradient(circle at 50% 28%,#c8ffe4 0,var(--ac) 65%,#1fbf7d 100%);
+    box-shadow:0 6px 16px rgba(0,0,0,.5),0 0 34px rgba(93,255,176,.65),inset 0 1px 0 rgba(255,255,255,.6)}
   #fire:active:not(:disabled) .fi,#fire:active:not(:disabled) b{filter:none;text-shadow:none}
-  #fire:disabled{animation:none;filter:grayscale(.85) brightness(.55)}
-  @keyframes fpulse{0%,100%{filter:drop-shadow(0 0 4px #00bf6366)}50%{filter:drop-shadow(0 0 16px #4dffa8)}}
+  #fire:disabled{filter:grayscale(.85) brightness(.6)}
+  #fire:disabled::before{animation:none}
+  @keyframes fring{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.3);opacity:0}}
   @media (max-width:640px){#fire{right:calc(var(--m) + var(--aw) + 10px)}}
 
   /* ---------- 상태 표시 ---------- */
@@ -163,11 +188,11 @@
   <canvas id="c" width="1000" height="600"></canvas>
   <div id="info"></div>
   <div id="wind"><svg id="wsv" viewBox="-60 -12 120 24" width="84" height="17"><g id="wg"><line id="wln" x1="-40" y1="0" x2="34" y2="0" stroke="#4dffa8" stroke-width="5" stroke-linecap="round"/><polygon id="wpo" points="26,-8 44,0 26,8" fill="#4dffa8"/></g></svg><b id="wt"></b></div>
-  <div id="mv" class="pad hexpad" data-l="이동"><div class="hexbg"></div><svg id="fuelsvg" class="fuelsvg" viewBox="0 0 230 100" preserveAspectRatio="none"><defs><linearGradient id="fg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="230" y2="0"><stop offset="0" stop-color="#d9ff3d"/><stop offset="1" stop-color="#00d46f"/></linearGradient></defs><path d="M -6.1 42.1 L 61 -10 L 169 -10 L 236.1 42.1" pathLength="100" fill="none" stroke="#00bf63" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="M -6.1 42.1 L 61 -10 L 169 -10 L 236.1 42.1" pathLength="100" fill="none" stroke="#050a08" stroke-width="8.6" stroke-linecap="round" stroke-linejoin="round"/><path id="fuelf" d="M -6.1 42.1 L 61 -10 L 169 -10 L 236.1 42.1" pathLength="100" fill="none" stroke="url(#fg)" stroke-width="5" stroke-linejoin="round" stroke-dasharray="0 100"/></svg><i class="ar l">◀</i><i class="ar r">▶</i><div class="knob"></div></div>
+  <div id="mv" class="pad" data-l="이동"><div class="glass"></div><svg id="fuelsvg" class="fuelsvg" viewBox="0 0 230 100" preserveAspectRatio="none"><defs><linearGradient id="fg" gradientUnits="userSpaceOnUse" x1="58" y1="0" x2="172" y2="0"><stop offset="0" stop-color="#d9ff3d"/><stop offset="1" stop-color="#2ff0a0"/></linearGradient></defs><path class="ftrack" d="M 58 90 L 172 90" pathLength="100"/><path id="fuelf" d="M 58 90 L 172 90" pathLength="100" stroke="url(#fg)" stroke-dasharray="0 100"/></svg><i class="ar l"></i><i class="ar r"></i><div class="knob"></div></div>
   <div id="rd"></div>
-  <div id="am" class="pad" data-l="조준"><div class="hexbg"></div><svg class="arc" viewBox="-50 -43.3 100 86.6"><path d="M -27 0 A 27 27 0 0 1 27 0" fill="none" stroke="#4dffa8" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="1.6 3.4" stroke-linecap="round"/></svg><i id="beam" class="beam"></i><div class="knob"></div></div>
+  <div id="am" class="pad" data-l="조준"><div class="glass"></div><svg class="arc" viewBox="-50 -43.3 100 86.6"><path class="orbit" d="M -27 0 A 27 27 0 0 1 27 0"/><path class="ticks" d="M37.60 -0.00L41.40 -0.00M37.48 -10.04L39.02 -10.46M33.60 -19.40L34.99 -20.20M27.44 -27.44L28.57 -28.57M19.40 -33.60L20.20 -34.99M10.04 -37.48L10.46 -39.02M0.00 -37.60L0.00 -41.40M-10.04 -37.48L-10.46 -39.02M-19.40 -33.60L-20.20 -34.99M-27.44 -27.44L-28.57 -28.57M-33.60 -19.40L-34.99 -20.20M-37.48 -10.04L-39.02 -10.46M-37.60 -0.00L-41.40 -0.00"/><circle class="dot" r="1.8"/></svg><i id="beam" class="beam"></i><div class="knob"></div></div>
   <button id="fire"><svg class="fi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg><b>발사</b></button>
-  <div id="pw" data-l="파워 50"><div class="hexbg"></div><div class="pw-inner"><div class="pw-fill" id="pwf"></div><div class="pw-mark" id="pwm"></div></div></div>
+  <div id="pw" data-l="파워 50"><div class="glass"></div><div class="pw-inner"><div class="pw-track"><div class="pw-fill" id="pwf"></div></div><div class="pw-mark" id="pwm"></div></div></div>
   <div id="fs">👆 화면을 터치하면<br>가로 전체화면으로 시작해요</div>
 </div>
 
@@ -414,7 +439,7 @@ function ui() {
   $('fire').disabled = !canAct();
   $('rd').textContent = mine ? `${TN[st.players[me].tank] || ''} · 각도 ${my.angle}° · 파워 ${my.power}` : '관전 중';
   const fp = st.turn === me && st.winner === -1 ? Math.max(0, st.fuel) / FMAP.FUEL * 100 : 0;
-  $('fuelf').setAttribute('stroke-dasharray', `${fp} 100`); $('fuelsvg').classList.toggle('low', fp > 0 && fp <= 20);
+  $('fuelf').setAttribute('stroke-dasharray', `${fp} 100`); $('fuelf').style.opacity = fp > 0 ? 1 : 0; $('fuelsvg').classList.toggle('low', fp > 0 && fp <= 20);
   let t;
   if (st.winner !== -1) t = (st.winner === -2 ? '무승부' : st.mode === 'team' ? (st.winTeam === st.teams[me] ? '승리!' : `${TEAMN[st.winTeam]} 승리`) : st.winner === me ? '승리!' : `${st.players[st.winner].name} 승리`) + ' (잠시 후 대기실로)';
   else t = st.turn === me ? '내 차례' : `${st.players[st.turn].name}의 차례`;
@@ -441,6 +466,13 @@ function onFsChange() { layout(); if (!$('game').hidden) showFsPrompt(); }
 document.addEventListener('fullscreenchange', onFsChange);
 document.addEventListener('webkitfullscreenchange', onFsChange);
 
+// 지형·배경 캐시의 최대 배율: 큰 화면에서 흐려 보이지 않도록 기기에 맞춰 올려요 (캐시 = 월드 5000×1500 × 배율²)
+//  - 터치 기기: 1 (모바일 브라우저는 캔버스 면적 제한이 작아요)  - 데스크톱: 1.5  - 메모리 8GB 이상 데스크톱: 2
+function sceneCap() {
+  if (matchMedia('(pointer:coarse)').matches) return 1;
+  return (navigator.deviceMemory || 0) >= 8 ? 2 : 1.5;
+}
+
 // 화면 방향/크기에 맞춰 레이아웃 갱신: 터치 기기에서 세로면 게임 화면을 돌려서 가로로 보여줘요
 function layout() {
   const w = innerWidth, h = innerHeight, g = $('game');
@@ -450,7 +482,7 @@ function layout() {
   g.style.setProperty('--sh', h + 'px');
   g.style.setProperty('--ch', (rot ? w : h) + 'px');
   const fit = Math.min((rot ? h : w) / VW, (rot ? w : h) / VH);
-  const nv = Math.min(2.5, Math.max(.5, Math.round(fit * (devicePixelRatio || 1) * 4) / 4)), ns = Math.min(1, Math.max(.5, nv));
+  const nv = Math.min(2.5, Math.max(.5, Math.round(fit * (devicePixelRatio || 1) * 4) / 4)), ns = Math.min(sceneCap(), Math.max(.5, nv));
   if (nv !== SV || cv.width !== Math.round(VW * nv)) { SV = nv; cv.width = Math.round(VW * SV); cv.height = Math.round(VH * SV); }   // 화면 캔버스 = 카메라가 비추는 범위
   if (ns !== S || sceneCv.width !== Math.round(W * ns)) {   // 월드 전체를 한 번 그려 두는 캐시 (메모리 때문에 배율 최대 1)
     S = ns; sceneCv.width = Math.round(W * S); sceneCv.height = Math.round(H * S); sceneKey = null;
