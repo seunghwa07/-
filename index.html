@@ -44,7 +44,7 @@
   #info{position:absolute;top:6px;left:50%;transform:translateX(-50%);background:linear-gradient(#0b1230e6,#060a1ee6);border:1px solid #6a7ab8aa;box-shadow:0 3px 10px #0008;color:#fff;padding:6px 16px;border-radius:14px;font-size:15px;font-weight:bold;white-space:nowrap;z-index:5}
 
   /* 컨트롤 크기는 화면 높이에 맞춰 자동 조절 */
-  .pad,#fire,#fuel,#rd{--s:clamp(96px,calc(var(--ch) * .36),150px);--m:max(18px,env(safe-area-inset-left,0px));--b:max(16px,env(safe-area-inset-bottom,0px))}
+  .pad,#fire,#fuel,#rd,#pw{--s:clamp(96px,calc(var(--ch) * .36),150px);--m:max(18px,env(safe-area-inset-left,0px));--b:max(16px,env(safe-area-inset-bottom,0px))}
 
   /* ---------- 조이스틱 ---------- */
   .pad{position:absolute;bottom:var(--b);width:var(--s);height:var(--s);border-radius:50%;touch-action:none;z-index:5;
@@ -86,6 +86,22 @@
   #fire:active:not(:disabled){transform:scale(.93);background:radial-gradient(circle at 50% 28%,#ffb0a2 0,#ff4a3f 36%,#c4160f 72%,#6a0808 100%);box-shadow:0 0 0 3px #2a0707,0 0 0 6px #fff,0 0 0 8px #4a5064,0 4px 8px 2px #000a,inset 0 -5px 10px #0008,inset 0 5px 8px #ffffff55}
   #fire:disabled{animation:none;filter:grayscale(.75) brightness(.6)}
   @keyframes fpulse{0%,100%{filter:drop-shadow(0 0 4px #ff3b3088)}50%{filter:drop-shadow(0 0 16px #ff3b30)}}
+
+  /* ---------- 파워 막대 (직접 드래그) ---------- */
+  #pw{position:absolute;left:calc(var(--m) + var(--s) + 34px);right:calc(var(--m) + var(--s) * 1.7 + 62px);bottom:calc(var(--b) + 10px);z-index:5;touch-action:none;
+    padding:5px 14px 4px;border-radius:16px;background:linear-gradient(#0d1430ee,#070b1eee);border:1px solid #7f8fc888;box-shadow:0 6px 16px #000a,inset 0 2px 3px #ffffff22}
+  .pw-top{display:flex;justify-content:space-between;align-items:baseline;color:#cfd8ff;font-size:12px;font-weight:bold;letter-spacing:2px;pointer-events:none}
+  .pw-top b{font-size:18px;color:#fff;letter-spacing:0;text-shadow:0 0 8px #ffb347aa;min-width:2.2em;text-align:right}
+  .pw-hit{position:relative;height:40px;cursor:pointer}
+  .pw-track{position:absolute;left:0;right:0;top:50%;height:16px;margin-top:-8px;border-radius:9px;overflow:hidden;background:#05070f;border:1px solid #ffffff33;box-shadow:inset 0 3px 6px #000}
+  .pw-fill{position:absolute;inset:0;background:linear-gradient(90deg,#3ddc5a,#d8e83a 55%,#ffb020 78%,#ff3b30);clip-path:inset(0 50% 0 0)}
+  .pw-track::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,#0000 0 calc(10% - 1.5px),#000a calc(10% - 1.5px) 10%)}
+  .pw-thumb{position:absolute;top:50%;left:50%;width:22px;height:34px;margin:-17px 0 0 -11px;border-radius:8px;pointer-events:none;
+    background:linear-gradient(90deg,#8d96ad,#f4f6ff 40%,#aab3c9 60%,#5a627a);border:1px solid #1b2033;
+    box-shadow:0 4px 8px #000c,0 0 10px #ffffff55,inset 0 -3px 5px #0006}
+  .pw-thumb::after{content:"";position:absolute;left:50%;top:6px;bottom:6px;width:2px;margin-left:-1px;background:#2a3047;border-radius:1px}
+  #pw.on{border-color:#ffd98aee;box-shadow:0 6px 16px #000a,0 0 18px #ffb34788,inset 0 2px 3px #ffffff33}
+  @media (max-width:640px){#pw{left:calc(var(--m) + var(--s) + 14px);right:calc(var(--m) + var(--s) * 1.7 + 38px)}#fire{right:calc(var(--m) + var(--s) + 14px)}}
 
   /* ---------- 상태 표시 ---------- */
   #fuel{position:absolute;left:var(--m);bottom:calc(var(--b) + var(--s) + 38px);width:var(--s);height:12px;background:#000a;border:1px solid #ffffff44;border-radius:7px;overflow:hidden;z-index:5;box-shadow:inset 0 2px 4px #000a}
@@ -139,6 +155,7 @@
   <div id="rd"></div>
   <div id="am" class="pad" data-l="조준"><div class="knob"></div><svg class="arc" viewBox="-50 -50 100 100"><path d="M -35 0 A 35 35 0 0 1 35 0" fill="none" stroke="#ffb08a" stroke-opacity=".55" stroke-width="1.4" stroke-dasharray="1.6 3.4" stroke-linecap="round"/></svg><i id="beam" class="beam"></i></div>
   <button id="fire"><svg class="fi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg><b>발사</b></button>
+  <div id="pw"><div class="pw-top"><span>파워</span><b id="pwv">50</b></div><div class="pw-hit"><div class="pw-track"><div class="pw-fill" id="pwf"></div></div><div class="pw-thumb" id="pwt"></div></div></div>
   <div id="fs">👆 화면을 터치하면<br>가로 전체화면으로 시작해요</div>
 </div>
 
@@ -316,7 +333,7 @@ function apply(m) {
   if (fresh) {
     fresh = false;
     m.players.forEach((p, i) => { aims[i] = p.x < 500 ? 45 : 135; });
-    my.angle = aims[me]; my.power = 50; placeAim(); showFsPrompt();
+    my.angle = aims[me]; placeAim(); setPower(50); showFsPrompt();
   }
   ui();
 }
@@ -394,21 +411,41 @@ makePad($('mv'), (dx, dy, Rm) => { mvDir = dx > Rm * 0.3 ? 1 : dx < -Rm * 0.3 ? 
 setInterval(() => { if (mvDir && canAct() && st.fuel > 0) sendMsg({ type: 'move', dir: mvDir }); }, 40);
 
 // 조준: 방향 = 각도(0~180°), 당긴 거리 = 파워. 놓아도 값은 유지돼요.
-makePad($('am'), (dx, dy, Rm, h) => {
+makePad($('am'), (dx, dy, Rm, h) => {   // 조준 조이스틱: 각도만 담당
   if (me < 0) return;
+  if (h < Rm * 0.2) { placeAim(); return; }  // 중앙 근처는 무시
   let ang = Math.atan2(-dy, dx) * 180 / Math.PI;
   if (ang < 0) ang = dx >= 0 ? 0 : 180;
   my.angle = Math.round(ang);
-  my.power = Math.max(10, Math.min(100, Math.round(h / Rm * 100)));
-  aims[me] = my.angle; setBeam(); ui();
+  aims[me] = my.angle; placeAim(); ui();
 }, false);
+
+// 파워 막대: 막대를 직접 터치/드래그해서 조절
+function setPower(p) {
+  my.power = Math.max(10, Math.min(100, Math.round(p)));
+  $('pwv').textContent = my.power;
+  $('pwt').style.left = my.power + '%';
+  $('pwf').style.clipPath = `inset(0 ${100 - my.power}% 0 0)`;
+  ui();
+}
+(function () {
+  const pw = $('pw'), hit = pw.querySelector('.pw-hit'); let drag = false;
+  const upd = e => {
+    const r = hit.getBoundingClientRect(), rot = $('game').classList.contains('force-land');
+    const f = rot ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width; // 화면을 돌린 경우 가로축 = 화면 세로
+    setPower(f * 100);
+  };
+  pw.onpointerdown = e => { drag = true; pw.classList.add('on'); pw.setPointerCapture(e.pointerId); upd(e); };
+  pw.onpointermove = e => { if (drag) upd(e); };
+  pw.onpointerup = pw.onpointercancel = () => { drag = false; pw.classList.remove('on'); };
+})();
 function placeAim() {
-  const pad = $('am'), d = my.power / 100 * (pad.offsetWidth / 2 * 0.7), a = my.angle * Math.PI / 180;
+  const pad = $('am'), d = pad.offsetWidth / 2 * 0.7, a = my.angle * Math.PI / 180;
   pad.firstElementChild.style.transform = `translate(${Math.cos(a) * d}px,${-Math.sin(a) * d}px)`;
   setBeam();
 }
 function setBeam() {
-  const pad = $('am'), d = my.power / 100 * (pad.offsetWidth / 2 * 0.7), b = $('beam');
+  const pad = $('am'), d = pad.offsetWidth / 2 * 0.7, b = $('beam');
   b.style.width = d + 'px'; b.style.transform = `rotate(${-my.angle}deg)`;
 }
 
@@ -432,53 +469,55 @@ function lin(y0, y1, c0, c1, c2) {
   g.addColorStop(0, c0); if (c2) g.addColorStop(0.5, c1); g.addColorStop(1, c2 || c1); return g;
 }
 
-// 진짜 탱크: 궤도+바퀴, 경사진 차체, 포탑, 포신(제퇴기·포구제동기), 안테나. 지면 경사에 맞춰 기울어져요.
+// 레퍼런스 스타일 현대 전차: 납작한 색면, 쐐기형 포탑, 경사진 차체 + 패널 라인, 큰 바퀴 궤도.
+// 아래 도형은 원본 그림 좌표(폭≈505)로 그리고 K 배율로 줄여서 써요. 지면 경사에 맞춰 기울어져요.
+const TK = {
+  track:  new Path2D('M60 186H448Q500 186 500 230Q500 272 456 272H54Q10 272 10 230Q10 186 60 186Z'),
+  skirt:  new Path2D('M40 128H410L472 140Q505 148 505 176Q505 204 478 204H34Q0 204 0 172Q0 134 40 128Z'),
+  deck:   new Path2D('M72 128L86 108H378L456 128Z'),
+  turret: new Path2D('M82 100L72 62Q68 24 100 22H255L346 64V80L288 100Z'),
+  band:   new Path2D('M74 70H322L346 80L288 100H82Z'),
+  panels: new Path2D('M125 134V196M245 134V196M365 134V196'),
+};
 function drawTank(p, i, deg) {
-  const col = COLORS[i], a = deg * Math.PI / 180, dir = deg <= 90 ? 1 : -1, T = st.terrain;
+  const col = COLORS[i], a = deg * Math.PI / 180, dir = deg <= 90 ? 1 : -1, T = st.terrain, K = 0.08;
   const x0 = Math.max(0, Math.round(p.x) - 14), x1 = Math.min(W - 1, Math.round(p.x) + 14);
   const tilt = Math.max(-0.5, Math.min(0.5, Math.atan2(T[x1] - T[x0], x1 - x0)));
-  const dark = shade(col, -0.6), PV = -16; // 포 회전축 높이
+  const C = { hi: shade(col, .22), lo: shade(col, -.22), dk: shade(col, -.5), trk: shade(col, -.68), whl: shade(col, -.38), ln: shade(col, -.78) };
 
   ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(tilt);
-  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 1.5, 21, 3, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 1.5, 22, 3, 0, 0, 7); ctx.fill();
 
-  // 포신 (차체 뒤에서 뻗어 나옴)
-  ctx.save(); ctx.translate(0, PV); ctx.rotate(-a - tilt);
-  ctx.fillStyle = lin(-2.4, 2.4, '#9aa0ab', '#41454d', '#1b1d21'); ctx.fillRect(2, -2.2, 22, 4.4);
-  ctx.fillStyle = lin(-3.4, 3.4, '#7b808b', '#2c2f35', '#15171a'); ctx.fillRect(8, -3.1, 4, 6.2);   // 제퇴기
-  ctx.fillStyle = lin(-3.6, 3.6, '#8d929d', '#34373e', '#17191c'); ctx.fillRect(21, -3.6, 6, 7.2);   // 포구제동기
-  ctx.fillStyle = '#0009'; ctx.fillRect(23, -3.7, 1, 7.4); ctx.fillRect(25, -3.7, 1, 7.4);
+  ctx.save(); ctx.scale(dir * K, K); ctx.translate(-250, -258);
+  ctx.lineJoin = 'round'; ctx.strokeStyle = C.ln; ctx.lineWidth = 7;
+  ctx.fillStyle = C.trk; ctx.fill(TK.track); ctx.stroke(TK.track);                      // 궤도
+  [62, 140, 218, 296, 374, 452].forEach(x => {                                          // 바퀴
+    ctx.fillStyle = C.whl; ctx.beginPath(); ctx.arc(x, 232, 32, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = C.trk; ctx.beginPath(); ctx.arc(x, 232, 14, 0, 7); ctx.fill();
+    ctx.fillStyle = C.whl; ctx.beginPath(); ctx.arc(x, 232, 5, 0, 7); ctx.fill();
+  });
+  ctx.fillStyle = col; ctx.fill(TK.skirt); ctx.stroke(TK.skirt);                        // 측면 장갑(스커트)
+  ctx.strokeStyle = C.lo; ctx.lineWidth = 6; ctx.stroke(TK.panels);                      // 패널 라인
+  ctx.strokeStyle = C.ln; ctx.lineWidth = 7;
+  ctx.fillStyle = C.dk; ctx.fill(TK.deck); ctx.stroke(TK.deck);                          // 엔진 데크
+  ctx.fillStyle = C.hi; ctx.fillRect(392, 116, 64, 12);                                  // 전방 장비함
+  ctx.fillStyle = C.dk; ctx.fillRect(42, 100, 70, 28); ctx.strokeRect(42, 100, 70, 28);  // 후방 적재함
+  ctx.fillStyle = C.lo; ctx.fillRect(42, 100, 70, 8);
+  ctx.fillStyle = C.dk; ctx.fillRect(112, 8, 62, 16); ctx.fillRect(198, 6, 66, 18);       // 해치
+  ctx.fillRect(250, 10, 14, 10); ctx.fillRect(264, 12, 70, 4);                          // 기관총
+  ctx.fillStyle = C.hi; ctx.fill(TK.turret);                                             // 포탑
+  ctx.fillStyle = C.lo; ctx.fill(TK.band);
+  ctx.stroke(TK.turret);
   ctx.restore();
 
-  ctx.scale(dir, 1);
-  // 궤도
-  rrect(-18.5, -9, 37, 10.5, 5); ctx.fillStyle = lin(-9, 1.5, '#4a4e57', '#1f2227', '#0f1114'); ctx.fill();
-  ctx.strokeStyle = '#0c0d10'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = '#0007'; ctx.lineWidth = 1; ctx.beginPath();
-  for (let x = -15; x <= 15; x += 3) { ctx.moveTo(x, -9); ctx.lineTo(x, -7.6); ctx.moveTo(x, 0.1); ctx.lineTo(x, 1.4); }
-  ctx.stroke();
-  [-14, -7, 0, 7, 14].forEach((x, k) => {
-    const r = k === 0 || k === 4 ? 3.6 : 3.2;
-    ctx.fillStyle = lin(-3.5 - r, -3.5 + r, '#a4a9b3', '#5d626c', '#2b2e34');
-    ctx.beginPath(); ctx.arc(x, -3.7, r, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#111'; ctx.lineWidth = .8; ctx.stroke();
-    ctx.fillStyle = '#1a1c20'; ctx.beginPath(); ctx.arc(x, -3.7, 1.2, 0, 7); ctx.fill();
-  });
-  // 차체 (앞쪽이 경사진 장갑판)
-  ctx.beginPath(); ctx.moveTo(-17, -7); ctx.lineTo(18, -7); ctx.lineTo(11.5, -14); ctx.lineTo(-14, -14); ctx.closePath();
-  ctx.fillStyle = lin(-14, -7, shade(col, .28), col, shade(col, -.3)); ctx.fill();
-  ctx.strokeStyle = dark; ctx.lineWidth = 1; ctx.stroke();
-  ctx.strokeStyle = shade(col, .55); ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(-12.5, -13.2); ctx.lineTo(10.5, -13.2); ctx.stroke();
-  ctx.strokeStyle = '#0006'; ctx.lineWidth = 1; ctx.beginPath();            // 엔진 환기구
-  for (let k = 0; k < 3; k++) { ctx.moveTo(-12 + k * 2.6, -12.3); ctx.lineTo(-12 + k * 2.6, -9.2); } ctx.stroke();
-  ctx.fillStyle = '#ffe27a'; ctx.fillRect(14.2, -9.6, 2.4, 1.8);            // 전조등
-  // 포탑
-  ctx.beginPath(); ctx.moveTo(-9.5, -13.6); ctx.lineTo(-9.5, -17.5); ctx.lineTo(-5, -21); ctx.lineTo(4, -21); ctx.lineTo(9.5, -16.5); ctx.lineTo(9.5, -13.6); ctx.closePath();
-  ctx.fillStyle = lin(-21, -13.6, shade(col, .45), shade(col, .08), shade(col, -.25)); ctx.fill();
-  ctx.strokeStyle = dark; ctx.lineWidth = 1; ctx.stroke();
-  rrect(-6, -23.2, 6, 2.6, 1); ctx.fillStyle = shade(col, -.35); ctx.fill(); ctx.stroke();  // 해치
-  ctx.strokeStyle = '#222'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(-8, -20); ctx.lineTo(-10.5, -29); ctx.stroke();  // 안테나
-  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-10.5, -29); ctx.lineTo(-15, -27.5); ctx.lineTo(-10.2, -26); ctx.fill();
+  // 포신 (포탑 앞쪽 포방패에서 뻗어 나가며, 조준 각도로 회전)
+  ctx.save(); ctx.translate(7.2 * dir, -16.2); ctx.rotate(-a - tilt);
+  ctx.strokeStyle = C.ln; ctx.lineWidth = .6;
+  ctx.fillStyle = C.hi; ctx.fillRect(1, -1.5, 23, 3); ctx.strokeRect(1, -1.5, 23, 3);
+  ctx.fillStyle = C.lo; ctx.fillRect(9, -2.3, 6, 4.6); ctx.strokeRect(9, -2.3, 6, 4.6);   // 배기통
+  ctx.fillStyle = C.dk; ctx.fillRect(22.5, -2.3, 3, 4.6);                                  // 포구
+  rrect(-3.5, -3.9, 7, 7.8, 2); ctx.fillStyle = C.lo; ctx.fill(); ctx.stroke();            // 포방패
+  ctx.restore();
   ctx.restore();
 
   if (p.hp <= 35) { // 심하게 다치면 연기
@@ -486,7 +525,7 @@ function drawTank(p, i, deg) {
     for (let k = 0; k < 3; k++) {
       const u = (t + k / 3) % 1;
       ctx.fillStyle = `rgba(60,60,60,${0.5 * (1 - u)})`;
-      ctx.beginPath(); ctx.arc(p.x - 4 + Math.sin(u * 6 + k) * 4, p.y - 22 - u * 18, 3 + u * 5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x - 4 * dir + Math.sin(u * 6 + k) * 4, p.y - 22 - u * 18, 3 + u * 5, 0, 7); ctx.fill();
     }
   }
 }
