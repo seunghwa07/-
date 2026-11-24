@@ -14,13 +14,22 @@ const SPAWN = [100, 366, 633, 900].map(x => Math.round(x * W / 1000));   // 월�
 const ICONS = ['🪖', '🐸', '🚀', '🐱', '🤖', '🦖'];
 const rooms = new Map();
 
+// ---------- 탱크(포탄) 종류 ----------
+// dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing'];
+const SHELL = { basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 } };
+const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
+const FIRE_R = 90, BURN = 8;       // 소이탄 불길 반경 / 불 위 탱크가 자기 차례 시작 때 받는 피해
+const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
+const DUD = 0.3, HOMING_TURN = 2.2; // 유도탄 불발 확률 / 초당 최대 회전각(rad)
+
 const send = (ws, m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
 // FUEL, STEP 은 maps.js 에서 가져와요
 const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
 const toRoom = (r, m) => r.slots.forEach(s => s && send(s.ws, m));
-const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, teams: r.slots.map(s => s && s.team), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
+const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && s.tank), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
 const listMsg = () => ({
   type: 'rooms',
   rooms: [...rooms.values()].map(r => ({
@@ -49,8 +58,8 @@ function nextTurn(g, from) {
 function newGame(r) {
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
-    map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1,
-    players: SPAWN.map((x, i) => ({ x, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [],
+    players: SPAWN.map((x, i) => ({ x, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? r.slots[i].tank : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   r.game.turn = r.game.players.findIndex(p => p.on);
   r.game.fuel = FUEL;
@@ -61,7 +70,8 @@ function snapshot(r) {
   return {
     type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam,
     teams: g.players.map(p => p.team),
-    players: g.players.map(p => ({ team: p.team, x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
+    fires: g.fires.map(f => ({ x: f.x, y: f.y, r: f.r, life: f.life })),
+    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
   };
 }
 
@@ -79,50 +89,104 @@ function checkEnd(r) {
   return true;
 }
 
-function crater(g, cx, cy) {
-  for (let x = Math.max(0, Math.floor(cx - CRATER)); x <= Math.min(W - 1, Math.ceil(cx + CRATER)); x++) {
-    const dy = Math.sqrt(Math.max(0, CRATER * CRATER - (x - cx) ** 2));
+function crater(g, cx, cy, rad) {
+  for (let x = Math.max(0, Math.floor(cx - rad)); x <= Math.min(W - 1, Math.ceil(cx + rad)); x++) {
+    const dy = Math.sqrt(Math.max(0, rad * rad - (x - cx) ** 2));
     if (g.terrain[x] <= cy + dy) g.terrain[x] = Math.min(H, Math.round(cy + dy));
   }
 }
 
-function fire(r, shooter, angle, power) {
-  const g = r.game, p = g.players[shooter];
-  const ally = i => g.mode === 'team' && i !== shooter && g.players[i].team === p.team;
+// 직격(DIRECT 이내)은 전체 피해, 멀어질수록 줄어들어 최소 25%
+const dmgAt = (base, d, reach) => d >= reach ? 0 : d <= DIRECT ? base : Math.max(Math.round(base * .25), Math.round(base * (1 - (d - DIRECT) / (reach - DIRECT))));
+const isAlly = (g, a, b) => g.mode === 'team' && a !== b && g.players[a].team === g.players[b].team;
+const tankY = (g, q) => g.terrain[q.x] - 10 * TS;
+
+// 포탄 한 발의 비행 계산. 유도탄은 가장 가까운 적 쪽으로 휘어져요.
+function flight(g, shooter, angle, power, kind) {
+  const p = g.players[shooter];
   const a = angle * Math.PI / 180, v = power * 8 * K, dt = 1 / 120;
   let x = p.x, y = g.terrain[p.x] - 14 * TS;
   let vx = v * Math.cos(a), vy = -v * Math.sin(a);
   const path = [[x, y]];
-  let impact = null;
-
+  let impact = null, target = null;
+  if (kind === 'homing') {
+    g.players.forEach((q, i) => {
+      if (q.hp <= 0 || i === shooter || isAlly(g, shooter, i)) return;
+      if (!target || Math.abs(q.x - p.x) < Math.abs(target.x - p.x)) target = q;
+    });
+  }
   for (let t = 0; t < 3600; t++) {
-    vx += g.wind * 3 * K * dt; vy += G * dt; x += vx * dt; y += vy * dt;
+    if (target && t > 30) {
+      const want = Math.atan2(tankY(g, target) - y, target.x - x), cur = Math.atan2(vy, vx), sp = Math.hypot(vx, vy);
+      let d = want - cur;
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      const na = cur + Math.max(-HOMING_TURN * dt, Math.min(HOMING_TURN * dt, d));
+      vx = sp * Math.cos(na) + g.wind * 1.5 * K * dt; vy = sp * Math.sin(na) + G * .3 * dt;
+    } else { vx += g.wind * 3 * K * dt; vy += G * dt; }
+    x += vx * dt; y += vy * dt;
     if (t % 4 === 0) path.push([x, y]);
     if (x < 0 || x >= W || y > H) break;
     if (y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }
-    if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) && !ally(i) &&
-        Math.hypot(x - q.x, y - (g.terrain[q.x] - 10 * TS)) < HIT_R)) { impact = [x, y]; break; }
+    if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) && !isAlly(g, shooter, i) &&
+        Math.hypot(x - q.x, y - tankY(g, q)) < HIT_R)) { impact = [x, y]; break; }
   }
+  if (impact) path.push(impact);
+  return { path, impact };
+}
 
-  if (impact) {
-    path.push(impact);
-    crater(g, impact[0], impact[1]);
-    const reach = CRATER + 25;
-    g.players.forEach((q, i) => {
-      if (q.hp <= 0 || ally(i)) return;   // 팀전에서는 아군 피해 없음
-      const d = Math.hypot(q.x - impact[0], g.terrain[q.x] - 10 * TS - impact[1]);
-      if (d < reach) q.hp = Math.max(0, q.hp - Math.max(5, Math.round(40 * (1 - d / reach))));
-    });
+// 착탄: 땅 파임 + 피해(팀전에서는 아군 제외) + 소이탄이면 불길 생성
+function explode(g, shooter, impact, kind) {
+  const { dmg, rad } = SHELL[kind], reach = rad + 25;
+  crater(g, impact[0], impact[1], rad);
+  g.players.forEach((q, i) => {
+    if (q.hp <= 0 || isAlly(g, shooter, i)) return;
+    q.hp = Math.max(0, q.hp - dmgAt(dmg, Math.hypot(q.x - impact[0], tankY(g, q) - impact[1]), reach));
+  });
+  if (kind === 'incendiary') {
+    const fx = Math.max(0, Math.min(W - 1, Math.round(impact[0])));
+    g.fires.push({ x: fx, y: g.terrain[fx], r: FIRE_R, life: 2 * alive(g).length + 1, by: shooter });
   }
+}
 
-  if (!checkEnd(r)) { g.turn = nextTurn(g, shooter); g.wind = rndWind(); g.fuel = FUEL; }
-  return { type: 'shot', by: shooter, angle, path, impact, state: snapshot(r) };
+// 다음 차례로 넘기고, 불길의 수명을 줄이고, 불 위에 선 탱크에 화상 피해를 줘요
+function advance(r, from) {
+  const g = r.game;
+  g.turn = nextTurn(g, from); g.wind = rndWind(); g.fuel = FUEL;
+  g.fires.forEach(f => f.life--);
+  g.fires = g.fires.filter(f => f.life > 0);
+  for (let n = 0; n < MAX; n++) {
+    const qi = g.turn, q = g.players[qi];
+    const burn = g.fires.filter(f => !isAlly(g, f.by, qi) && Math.hypot(q.x - f.x, tankY(g, q) - f.y) < f.r).length;
+    if (!burn) return;
+    q.hp = Math.max(0, q.hp - BURN * burn);
+    if (q.hp > 0 || checkEnd(r)) return;
+    g.turn = nextTurn(g, qi);
+  }
+}
+
+function fire(r, shooter, angle, power) {
+  const g = r.game, kind = g.players[shooter].tank;
+  let shells, dud = false;
+  if (kind === 'cluster') {
+    shells = Array.from({ length: CLUSTER_N }, () =>
+      flight(g, shooter, Math.min(180, Math.max(0, angle + (Math.random() - .5) * 14)), Math.min(100, power * (.9 + Math.random() * .2)), kind));
+  } else if (kind === 'homing' && Math.random() < DUD) {   // 불발: 날아가다 떨어져 사라져요
+    const s = flight(g, shooter, angle, power, 'basic');
+    s.path = s.path.slice(0, Math.max(3, Math.floor(s.path.length * (.35 + Math.random() * .4)))); s.impact = null;
+    shells = [s]; dud = true;
+  } else shells = [flight(g, shooter, angle, power, kind)];
+
+  shells.forEach(s => { if (s.impact) explode(g, shooter, s.impact, kind); });
+
+  if (!checkEnd(r)) advance(r, shooter);
+  return { type: 'shot', by: shooter, angle, kind, dud, shells: shells.map(s => ({ path: s.path, impact: s.impact })), state: snapshot(r) };
 }
 
 function join(ws, r, name, icon) {
   const i = r.slots.indexOf(null);
   const t0 = r.slots.filter(s => s && s.team === 0).length, t1 = r.slots.filter(s => s && s.team === 1).length;
-  r.slots[i] = { ws, name, icon, team: t0 <= t1 ? 0 : 1 };   // 인원이 적은 팀에 자동 배정
+  r.slots[i] = { ws, name, icon, team: t0 <= t1 ? 0 : 1, tank: 'basic' };   // 인원이 적은 팀에 자동 배정
   ws.room = r; ws.slot = i;
   send(ws, { type: 'joined', code: r.code, you: i });
   toRoom(r, roomMsg(r));
@@ -138,7 +202,7 @@ function leave(ws) {
   else if (g) {
     if (g.players[i].on && g.winner === -1) {
       g.players[i].hp = 0;
-      if (!checkEnd(r) && g.turn === i) { g.turn = nextTurn(g, i); g.fuel = FUEL; }
+      if (!checkEnd(r) && g.turn === i) advance(r, i);
     }
     toRoom(r, snapshot(r));
   } else toRoom(r, roomMsg(r));
@@ -178,6 +242,8 @@ wss.on('connection', ws => {
       // 본인 팀은 누구나, 다른 사람의 팀은 방장만 바꿀 수 있어요
       const target = Number.isInteger(m.slot) && ws.slot === host(r) ? m.slot : ws.slot;
       if (r.mode === 'team' && r.slots[target]) { r.slots[target].team = m.team === 1 ? 1 : 0; toRoom(r, roomMsg(r)); }
+    } else if (r && m.type === 'tank' && !r.game && KINDS.includes(m.kind)) {
+      r.slots[ws.slot].tank = m.kind; toRoom(r, roomMsg(r));
     } else if (r && m.type === 'start' && !r.game && ws.slot === host(r) && count(r) >= 2) {
       if (r.mode === 'team') {
         const t0 = r.slots.filter(s => s && s.team === 0).length, t1 = r.slots.filter(s => s && s.team === 1).length;
