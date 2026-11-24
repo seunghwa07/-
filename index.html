@@ -52,16 +52,15 @@
   .pad,#fire,#fuel,#rd,#pw{--s:clamp(96px,calc(var(--ch) * .36),150px);--hh:clamp(66px,calc(var(--ch) * .22),96px);--mw:calc(var(--hh) * 2.3);--aw:calc(var(--s) * 1.15);--fw:calc(var(--s) * .74);--m:max(14px,env(safe-area-inset-left,0px));--b:max(14px,env(safe-area-inset-bottom,0px));--bw:6px}
 
   /* ---------- 조이스틱: 유리(글래스) 패널 + 민트 포인트 ---------- */
-  #game{--ac:#5dffb0;--ac2:#b9ffdf;--neon:#4dd2ff;--glass:rgba(12,20,17,.5);--line:rgba(255,255,255,.16)}
+  #game{--ac:#5dffb0;--ac2:#b9ffdf;--neon:#4dd2ff;--glass:rgba(12,20,17,.62);--line:rgba(255,255,255,.16)}
   .glass{position:absolute;inset:0;pointer-events:none;border-radius:999px;
     background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.03) 45%,rgba(0,0,0,.16)),var(--glass);
     border:1px solid rgba(77,210,255,.42);
     box-shadow:0 10px 26px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -10px 18px rgba(0,0,0,.18),inset 0 0 12px rgba(77,210,255,.1);
-    -webkit-backdrop-filter:blur(8px) saturate(1.3);backdrop-filter:blur(8px) saturate(1.3);
     transition:box-shadow .18s,border-color .18s}
   .glass::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;   /* 바깥으로 번지는 하늘색 네온: 투명도만 천천히 숨 쉬어요 */
     box-shadow:0 0 0 1px rgba(77,210,255,.3),0 0 10px rgba(77,210,255,.4),0 0 26px rgba(77,210,255,.2);
-    opacity:.8;animation:neonb 3.6s ease-in-out infinite;transition:opacity .18s}
+    opacity:.8;transition:opacity .18s}
   .pad.on .glass,#pw.on .glass{border-color:rgba(130,225,255,.8);
     box-shadow:0 10px 26px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 16px rgba(77,210,255,.2)}
   .pad.on .glass::after,#pw.on .glass::after{opacity:1;animation:none;
@@ -72,7 +71,7 @@
 
   .pad{position:absolute;bottom:var(--b);touch-action:none;z-index:5}
   .pad::after,#pw::after{content:attr(data-l);position:absolute;top:-27px;left:50%;transform:translateX(-50%);padding:3px 12px;border-radius:999px;
-    background:var(--glass);border:1px solid rgba(77,210,255,.32);box-shadow:0 0 10px rgba(77,210,255,.18);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    background:var(--glass);border:1px solid rgba(77,210,255,.32);box-shadow:0 0 10px rgba(77,210,255,.18);
     color:#e9fff4;font-size:11px;font-weight:600;letter-spacing:.14em;white-space:nowrap;pointer-events:none}
   #mv{left:var(--m);width:var(--mw);height:var(--hh);--k:calc(var(--hh) * .62)}
   #am{right:var(--m);width:var(--aw);height:calc(var(--aw) * .866);--k:calc(var(--aw) * .2)}  /* 정육각형 비율 그대로: 높이 = 폭 × √3/2 */
@@ -127,10 +126,9 @@
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ac2);touch-action:none;z-index:5;
     border:1.5px solid rgba(77,210,255,.6);
     background:radial-gradient(circle at 50% 28%,rgba(93,255,176,.32) 0,rgba(12,22,18,.6) 62%,rgba(6,12,10,.72) 100%);
-    -webkit-backdrop-filter:blur(8px) saturate(1.3);backdrop-filter:blur(8px) saturate(1.3);
     box-shadow:0 10px 26px rgba(0,0,0,.45),0 0 12px rgba(77,210,255,.45),0 0 30px rgba(77,210,255,.2),inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 18px rgba(93,255,176,.14);
     transition:transform .08s,background .12s,box-shadow .12s,color .12s}
-  #fire::before{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--neon);opacity:0;pointer-events:none;animation:fring 1.8s ease-out infinite}
+  #fire::before{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--neon);opacity:0;pointer-events:none}
   #fire .fi{width:34%;height:auto;filter:drop-shadow(0 0 5px var(--ac))}
   #fire b{font-size:clamp(13px,calc(var(--ch) * .04),19px);letter-spacing:.2em;font-weight:700;text-shadow:0 0 8px rgba(93,255,176,.7)}
   #fire:active:not(:disabled){transform:scale(.94);color:#05241a;
@@ -476,10 +474,11 @@ document.addEventListener('webkitfullscreenchange', onFsChange);
 //  - 터치 기기: 1 (모바일 브라우저는 캔버스 면적 제한이 작아요)  - 데스크톱: 1.5  - 메모리 8GB 이상 데스크톱: 2
 function sceneCap() {
   if (matchMedia('(pointer:coarse)').matches) return 1;
-  return (navigator.deviceMemory || 0) >= 8 ? 2 : 1.5;
+  return 1.25;
 }
 
 // 화면 방향/크기에 맞춰 레이아웃 갱신: 터치 기기에서 세로면 게임 화면을 돌려서 가로로 보여줘요
+let QCAP = 1.5;   // 화면 캔버스 배율 상한 (프레임이 느리면 자동으로 낮춰요)
 function layout() {
   const w = innerWidth, h = innerHeight, g = $('game');
   const rot = matchMedia('(pointer:coarse)').matches && h > w;
@@ -488,7 +487,7 @@ function layout() {
   g.style.setProperty('--sh', h + 'px');
   g.style.setProperty('--ch', (rot ? w : h) + 'px');
   const fit = Math.min((rot ? h : w) / VW, (rot ? w : h) / VH);
-  const nv = Math.min(2.5, Math.max(.5, Math.round(fit * (devicePixelRatio || 1) * 4) / 4)), ns = Math.min(sceneCap(), Math.max(.5, nv));
+  const raw = Math.min(2.5, Math.max(.5, Math.round(fit * (devicePixelRatio || 1) * 4) / 4)), nv = Math.min(QCAP, raw), ns = Math.min(sceneCap(), raw);
   if (nv !== SV || cv.width !== Math.round(VW * nv)) { SV = nv; cv.width = Math.round(VW * SV); cv.height = Math.round(VH * SV); }   // 화면 캔버스 = 카메라가 비추는 범위
   if (ns !== S || sceneCv.width !== Math.round(W * ns)) {   // 월드 전체를 한 번 그려 두는 캐시 (메모리 때문에 배율 최대 1)
     S = ns; sceneCv.width = Math.round(W * S); sceneCv.height = Math.round(H * S); sceneKey = null;
@@ -626,7 +625,10 @@ const bgCv = document.createElement('canvas');
 let S = 1, SV = 1;   // 렌더 배율: 화면에 실제로 보이는 크기 × devicePixelRatio (선명도)
 let sceneKey = null, bgKey = null, edgePath = null, twink = [], TC = null;
 const FX = { booms: [], floats: [], muzzle: null, shake: 0, flash: 0 };
-const cam = { x: 0, y: 0, snap: true };   // 카메라 왼쪽 위 (월드 좌표)
+const cam = { x: 0, y: 0, snap: true };
+let FS = 1;   // 이번 프레임이 60fps 프레임의 몇 배인지 (주사율이 달라도 같은 속도로 움직이게)
+const vis = [];   // 탱크 화면 표시 위치 (서버 좌표를 부드럽게 따라가요)
+const ptAt = (P, v) => { const n = P.length - 1; v = v < 0 ? 0 : v > n ? n : v; const i = v | 0, f = v - i, a = P[i], b = P[i < n ? i + 1 : i]; return f ? [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f] : a; };   // 카메라 왼쪽 위 (월드 좌표)
 
 // ----- 배경: 별 + 레트로 네온 태양 + 먼 능선 -----
 function buildBg(th, id) {
@@ -667,46 +669,71 @@ function buildBg(th, id) {
 }
 
 // ----- 지형: 빛나는 본체 + 안쪽 등고선 + 네온 튜브 같은 윗선 -----
-function buildScene(th, T, id) {
+// x0~x1(설계 좌표)만 지정하면 그 구간만 다시 그려요. (포탄이 땅을 파낼 때마다 전체를 다시 그리면 뚝 끊겨요)
+let sceneT = null, sceneMap = -1, edgeChunks = [];
+function buildScene(th, T, id, x0, x1) {
   const W = 2000, H = 600;   // 지형 장식은 2000×600 기준 좌표(edgePath도 이 좌표)로 그리고 K배 확대해요
   const c = sceneCv.getContext('2d'); TC = tcol(th);
   if (bgKey !== id + '@' + S) { buildBg(th, id); bgKey = id + '@' + S; }
+  const part = x0 !== undefined;
+  const PAD = 45, MG = 32;                                  // PAD: 다시 그릴 여유, MG: 경계에서 빛이 끊기지 않게 경로를 더 길게 잡는 길이
+  const px0 = part ? Math.max(0, Math.floor(x0 - PAD)) : 0, px1 = part ? Math.min(W, Math.ceil(x1 + PAD)) : W;
+  const q0 = Math.max(0, px0 - MG), q1 = Math.min(W - 1, px1 + MG);
   c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
-  c.drawImage(bgCv, 0, 0);
+  c.save();
+  if (part) {
+    const sx = Math.floor(px0 * K * S), ex = Math.ceil(px1 * K * S);
+    c.beginPath(); c.rect(sx, 0, ex - sx, sceneCv.height); c.clip();
+    c.drawImage(bgCv, sx, 0, ex - sx, sceneCv.height, sx, 0, ex - sx, sceneCv.height);
+  } else c.drawImage(bgCv, 0, 0);
   c.setTransform(S * K, 0, 0, S * K, 0, 0);
   const rnd = seeded(99 + id * 31);
   const Y = new Float32Array(W);   // 부드러운 윗선 (충돌 판정은 원본 T 그대로)
-  for (let x = 0; x < W; x++) { let s = 0, n = 0; const cx = Math.round(x * K); for (let k = -5; k <= 5; k++) { const i = cx + k; if (i >= 0 && i < T.length) { s += T[i]; n++; } } Y[x] = s / n / K; }
-  const fillP = new Path2D(); fillP.moveTo(0, H + 4); fillP.lineTo(0, Y[0]);
-  edgePath = new Path2D(); edgePath.moveTo(0, Y[0]);
-  for (let x = 1; x < W; x++) { fillP.lineTo(x, Y[x]); edgePath.lineTo(x, Y[x]); }
-  fillP.lineTo(W - 1, H + 4); fillP.closePath();
+  for (let x = q0; x <= q1; x++) { let s = 0, n = 0; const cx = Math.round(x * K); for (let k = -5; k <= 5; k++) { const i = cx + k; if (i >= 0 && i < T.length) { s += T[i]; n++; } } Y[x] = s / n / K; }
+  const fillP = new Path2D(); fillP.moveTo(q0, H + 4); fillP.lineTo(q0, Y[q0]);
+  const edge = new Path2D(); edge.moveTo(q0, Y[q0]);
+  for (let x = q0 + 1; x <= q1; x++) { fillP.lineTo(x, Y[x]); edge.lineTo(x, Y[x]); }
+  fillP.lineTo(q1, H + 4); fillP.closePath();
   c.lineJoin = 'round'; c.lineCap = 'round';
   c.globalCompositeOperation = 'lighter';   // 바깥으로 번지는 빛
-  [[46, .02], [32, .03], [20, .05], [11, .09], [6, .14]].forEach(([w, a]) => { c.lineWidth = w; c.strokeStyle = TC.glow(a); c.stroke(edgePath); });
+  [[46, .02], [32, .03], [20, .05], [11, .09], [6, .14]].forEach(([w, a]) => { c.lineWidth = w; c.strokeStyle = TC.glow(a); c.stroke(edge); });
   c.globalCompositeOperation = 'source-over';
   const gf = c.createLinearGradient(0, 110, 0, H);
   gf.addColorStop(0, TC.top); gf.addColorStop(.45, TC.mid); gf.addColorStop(1, TC.bot);
   c.fillStyle = gf; c.fill(fillP);
   c.save(); c.clip(fillP);
   c.globalCompositeOperation = 'lighter';
-  [[26, .06], [12, .09]].forEach(([w, a]) => { c.lineWidth = w; c.strokeStyle = TC.lite(a); c.stroke(edgePath); });
+  [[26, .06], [12, .09]].forEach(([w, a]) => { c.lineWidth = w; c.strokeStyle = TC.lite(a); c.stroke(edge); });
   c.globalCompositeOperation = 'source-over';
   c.lineWidth = 2;   // 등고선: 윗선을 아래로 복사해 깊이를 표현
-  for (let k = 1; k <= 8; k++) { c.save(); c.translate(0, k * 22); c.strokeStyle = hsl(TC.h, 100, 88, .22 / Math.pow(k, .55)); c.stroke(edgePath); c.restore(); }
+  for (let k = 1; k <= 8; k++) { c.save(); c.translate(0, k * 22); c.strokeStyle = hsl(TC.h, 100, 88, .22 / Math.pow(k, .55)); c.stroke(edge); c.restore(); }
   c.strokeStyle = 'rgba(255,255,255,.035)'; c.lineWidth = 7; c.beginPath();   // 아주 은은한 사선 무늬
-  for (let x = -H; x < W; x += 28) { c.moveTo(x, 0); c.lineTo(x + H, H); }
+  for (let x = -H + 28 * (Math.floor(q0 / 28) - 1); x < q1 + 28; x += 28) { c.moveTo(x, 0); c.lineTo(x + H, H); }
   c.stroke();
-  for (let i = 0; i < 520; i++) {   // 반짝 점
-    const x = Math.floor(rnd() * W), y = Y[x] + 4 + rnd() * (H - Y[x]);
-    c.fillStyle = rnd() < .5 ? 'rgba(255,255,255,.16)' : TC.lite(.2); c.fillRect(x, y, 1 + rnd() * 2, 1.4);
+  for (let i = 0; i < 520; i++) {   // 반짝 점 (난수 호출 순서는 항상 같게 유지해야 부분 재생성해도 모양이 같아요)
+    const x = Math.floor(rnd() * W), r1 = rnd(), r2 = rnd(), r3 = rnd(), r4 = rnd();
+    if (x < q0 || x > q1) continue;
+    const y = Y[x] + 4 + r1 * (H - Y[x]);
+    c.fillStyle = r2 < .5 ? 'rgba(255,255,255,.16)' : TC.lite(.2); c.fillRect(x, y, 1 + r3 * 2, 1.4);
   }
   const bg = c.createLinearGradient(0, H - 110, 0, H); bg.addColorStop(0, 'rgba(0,0,0,0)'); bg.addColorStop(1, 'rgba(0,0,0,.45)');
-  c.fillStyle = bg; c.fillRect(0, H - 110, W, 114);
+  c.fillStyle = bg; c.fillRect(q0 - 2, H - 110, q1 - q0 + 4, 114);
   c.restore();
-  c.lineWidth = 6; c.strokeStyle = TC.glow(.35); c.stroke(edgePath);   // 윗선: 네온 튜브
-  c.lineWidth = 3; c.strokeStyle = TC.rim; c.stroke(edgePath);
-  c.lineWidth = 1.2; c.strokeStyle = 'rgba(255,255,255,.95)'; c.stroke(edgePath);
+  c.lineWidth = 6; c.strokeStyle = TC.glow(.35); c.stroke(edge);   // 윗선: 네온 튜브
+  c.lineWidth = 3; c.strokeStyle = TC.rim; c.stroke(edge);
+  c.lineWidth = 1.2; c.strokeStyle = 'rgba(255,255,255,.95)'; c.stroke(edge);
+  c.restore();
+  // 숨쉬는 지형 빛용 윗선: 화면에 보이는 조각만 그릴 수 있게 250칸씩 나눠 둬요 (전체 경로를 매 프레임 그리면 무거워요)
+  edgeChunks = [];
+  for (let a = 0; a < W; a += 250) {
+    const e = new Path2D(); let first = true;
+    for (let x = a; x <= Math.min(W - 1, a + 250); x++) {
+      let s2 = 0, n = 0; const cx = Math.round(x * K); for (let k = -5; k <= 5; k++) { const i = cx + k; if (i >= 0 && i < T.length) { s2 += T[i]; n++; } }
+      const yy = s2 / n / K; first ? e.moveTo(x, yy) : e.lineTo(x, yy); first = false;
+    }
+    edgeChunks.push({ x0: a, x1: a + 250, p: e });
+  }
+  edgePath = edgeChunks;
 }
 
 // ----- 탱크: 종류마다 개성 있는 외형 -----
@@ -1070,7 +1097,7 @@ function drawPreview(p, col) {
 // 레이저: 쏘는 순간 길게 뻗는 곧은 광선. 머리가 끝에 닿으면 전체가 한꺼번에 가늘어지며 사라져요.
 // 굵기가 일정한 빔(바깥 후광 → 색 광채 → 밝은 몸통 → 하얀 심지) + 머리/발사구/반사 지점의 섬광
 function drawLaser(an) {
-  const P = an.path, n = P.length, hi = Math.min(an.i, n - 1), TAIL = 36, col = pc(an.by) || '#ffffff', now = performance.now();
+  const P = an.path, n = P.length, hi = Math.min(an.i, n - 1), hf = hi | 0, TAIL = 36, col = pc(an.by) || '#ffffff', now = performance.now();
   const f = an.i < n ? 1 : Math.max(0, 1 - (an.i - (n - 1)) / TAIL);   // 끝난 뒤 사라지는 정도
   const w = (.3 + .7 * f) * (1 + .06 * Math.sin(now / 35));            // 살짝 일렁이는 굵기
   const flare = (x, y, r, a) => {
@@ -1079,19 +1106,24 @@ function drawLaser(an) {
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
   };
   ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]); for (let k = 1; k <= hi; k++) ctx.lineTo(P[k][0], P[k][1]);
+  ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]); for (let k = 1; k <= hf; k++) ctx.lineTo(P[k][0], P[k][1]);
+  const hp = ptAt(P, hi); if (hi > hf) ctx.lineTo(hp[0], hp[1]);
   [[52, .13, col], [28, .4, col], [12, .85, '#ffffff'], [5, 1, '#ffffff']].forEach(([lw, al, c], j) => {
     ctx.strokeStyle = j < 2 ? rgba(c, al * f) : j === 2 ? rgba(col, .55 * f) : `rgba(255,255,255,${al * f})`; ctx.lineWidth = lw * w; ctx.stroke();
   });
   if (hi > 0) ctx.stroke();   // 하얀 심지를 한 번 더 겹쳐 가장 밝게
-  for (let k = 1; k < hi; k++) {   // 벽·경계에서 꺾이는 지점마다 불꽃 섬광
-    const a = P[k - 1], b = P[k], c = P[k + 1], cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
-    const dt = (b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1]);
-    if (Math.abs(Math.atan2(cr, dt)) > .15) flare(b[0], b[1], 44 * (.5 + .5 * f), .9 * f);
+  if (!P.bends) {   // 꺾이는 지점은 한 번만 계산해 둬요
+    P.bends = [];
+    for (let k = 1; k < n - 1; k++) {
+      const a = P[k - 1], b = P[k], c = P[k + 1], cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+      const dt = (b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1]);
+      if (Math.abs(Math.atan2(cr, dt)) > .15) P.bends.push(k);
+    }
   }
+  for (const k of P.bends) { if (k >= hi) break; flare(P[k][0], P[k][1], 44 * (.5 + .5 * f), .9 * f); }
   if (an.i < 14) flare(P[0][0], P[0][1], 70 * (1 - an.i / 14) + 20, 1 - an.i / 18);   // 발사구 섬광
   if (an.i < n) {   // 머리: 큰 섬광 + 십자 반짝임
-    const pt = P[hi], len = 46 + 10 * Math.sin(now / 30);
+    const pt = hp, len = 46 + 10 * Math.sin(now / 30);
     flare(pt[0], pt[1], 50, 1);
     ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(pt[0] - len, pt[1]); ctx.lineTo(pt[0] + len, pt[1]); ctx.moveTo(pt[0], pt[1] - len); ctx.lineTo(pt[0], pt[1] + len); ctx.stroke();
@@ -1101,17 +1133,17 @@ function drawLaser(an) {
 
 function drawShell(an) {   // an: { path, i, by, kind, small, big }
   if (an.kind === 'laser') { drawLaser(an); return; }
-  const idx = Math.min(an.i, an.path.length - 1), pt = an.path[idx], col = pc(an.by) || '#ffffff', L = an.small ? 18 : 34;
+  const idx = Math.min(an.i, an.path.length - 1), pt = ptAt(an.path, idx), col = pc(an.by) || '#ffffff', L = an.small ? 18 : 34;
   ctx.save();
   if (an.small || an.big) { const z = an.small ? .55 : 1.6; ctx.translate(pt[0], pt[1]); ctx.scale(z, z); ctx.translate(-pt[0], -pt[1]); }   // 집속탄 소탄은 작게, 광폭탄은 크게   // 집속탄 소탄은 작게
   ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
   for (let j = L - 1; j >= 0; j--) {
-    const p0 = an.path[Math.max(0, idx - j - 1)], p1 = an.path[Math.max(0, idx - j)], f = 1 - j / L;
+    const p0 = ptAt(an.path, idx - j - 1), p1 = ptAt(an.path, idx - j), f = 1 - j / L;
     ctx.strokeStyle = rgba(col, .6 * f); ctx.lineWidth = (1 + 9 * f) * Z; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
     ctx.strokeStyle = `rgba(255,255,255,${.75 * f * f})`; ctx.lineWidth = (.5 + 2.2 * f) * Z; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
   }
   for (let k = 0; k < 5; k++) {   // 흩날리는 불티
-    const q = an.path[Math.max(0, idx - Math.floor(Math.random() * 16))];
+    const q = ptAt(an.path, idx - Math.random() * 16);
     ctx.fillStyle = rgba(col, .4 + Math.random() * .5); ctx.beginPath(); ctx.arc(q[0] + (Math.random() - .5) * 12 * Z, q[1] + (Math.random() - .5) * 12 * Z, (.6 + Math.random() * 1.1) * Z, 0, 7); ctx.fill();
   }
   const hg = ctx.createRadialGradient(pt[0], pt[1], 0, pt[0], pt[1], 20 * Z); hg.addColorStop(0, 'rgba(255,255,255,.95)'); hg.addColorStop(.3, rgba(col, .5)); hg.addColorStop(1, rgba(col, 0));
@@ -1119,7 +1151,7 @@ function drawShell(an) {   // an: { path, i, by, kind, small, big }
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(pt[0], pt[1], 3.4 * Z, 0, 7); ctx.fill();
   if (an.kind === 'pierce' && idx > 0) {   // 관통탄: 진행 방향을 가리키는 뾰족한 촉
-    const q = an.path[idx - 1], ang = Math.atan2(pt[1] - q[1], pt[0] - q[0]);
+    const q = ptAt(an.path, idx - 1), ang = Math.atan2(pt[1] - q[1], pt[0] - q[0]);
     ctx.translate(pt[0], pt[1]); ctx.rotate(ang); ctx.scale(Z, Z);
     ctx.fillStyle = '#e8f0ff'; ctx.strokeStyle = col; ctx.lineWidth = 1.4; ctx.lineJoin = 'round';
     ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-6, -5); ctx.lineTo(-3, 0); ctx.lineTo(-6, 5); ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -1160,7 +1192,7 @@ function drawFx() {
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(m.x, m.y, r, 0, 7); ctx.fill();
     ctx.strokeStyle = `rgba(255,255,255,${.8 * f})`; ctx.lineWidth = 2 * Z; ctx.lineCap = 'round';
     for (let k = -1; k <= 1; k++) { const aa = m.a + k * .35; ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x + Math.cos(aa) * 18 * Z * f, m.y - Math.sin(aa) * 18 * Z * f); ctx.stroke(); }
-    ctx.restore(); if (++m.t > 9) FX.muzzle = null;
+    ctx.restore(); m.t += FS; if (m.t > 9) FX.muzzle = null;
   }
   for (const b of FX.booms) {
     const t = b.t, n = b.n;
@@ -1190,7 +1222,7 @@ function drawFx() {
       ctx.save(); ctx.translate(b.x + Math.cos(d.a) * d.v * t * .8, b.y + Math.sin(d.a) * d.v * t * .8 + .1 * t * t);
       ctx.rotate(d.r + d.w * t); ctx.scale(Z, Z); ctx.globalAlpha = Math.min(1, f * 1.6); ctx.fillStyle = hsl(TC ? TC.h : 150, 90, 42 + d.c * 26); ctx.fillRect(-d.s / 2, -d.s / 2, d.s, d.s * .7); ctx.restore();
     });
-    b.t++;
+    b.t += FS;
   }
   FX.booms = FX.booms.filter(b => b.t < 46);
   ctx.textAlign = 'center'; ctx.lineJoin = 'round';
@@ -1198,7 +1230,7 @@ function drawFx() {
     const u = f.t / 70, al = Math.min(1, (1 - u) * 2.2);
     ctx.font = `bold ${(f.big ? 24 : 18) * TGS}px sans-serif`; ctx.lineWidth = 4 * TGS; ctx.strokeStyle = `rgba(20,0,10,${.8 * al})`;
     const y = f.y - 26 * TGS * (1 - (1 - u) * (1 - u)); ctx.strokeText(f.txt, f.x, y);
-    ctx.fillStyle = f.big ? `rgba(255,90,90,${al})` : `rgba(255,236,150,${al})`; ctx.fillText(f.txt, f.x, y); f.t++;
+    ctx.fillStyle = f.big ? `rgba(255,90,90,${al})` : `rgba(255,236,150,${al})`; ctx.fillText(f.txt, f.x, y); f.t += FS;
   });
   FX.floats = FX.floats.filter(f => f.t < 70);
 }
@@ -1227,9 +1259,9 @@ const endLook = e => {
 cv.addEventListener('pointerup', endLook); cv.addEventListener('pointercancel', endLook);
 function updateCam() {
   let fx = W / 2, fy = H / 2, k = .1;
-  if (anim) { const pts = anim.shells.filter(s => anim.i < s.path.length).map(s => s.path[Math.floor(anim.i)]), L0 = anim.shells[0].path, use = pts.length ? pts : [L0[L0.length - 1]]; fx = use.reduce((t, q) => t + q[0], 0) / use.length; fy = use.reduce((t, q) => t + q[1], 0) / use.length; k = .22; }
+  if (anim) { const pts = anim.shells.filter(s => anim.i < s.path.length).map(s => ptAt(s.path, anim.i)), L0 = anim.shells[0].path, use = pts.length ? pts : [L0[L0.length - 1]]; fx = use.reduce((t, q) => t + q[0], 0) / use.length; fy = use.reduce((t, q) => t + q[1], 0) / use.length; k = .22; }
   else {
-    const p = st.players[st.winner >= 0 ? st.winner : st.turn];
+    const ti = st.winner >= 0 ? st.winner : st.turn, p = vis[ti] ? { ...st.players[ti], x: vis[ti].x, y: vis[ti].y } : st.players[ti];
     if (p && p.on) { fx = p.x; fy = p.y - 20 * TS; }
   }
   let tx = clamp(fx - VW / 2, 0, W - VW), ty = clamp(fy - VH * .6, 0, H - VH);
@@ -1238,7 +1270,7 @@ function updateCam() {
     tx += look.x; ty += look.y; if (look.drag) k = .45;
   } else { look.x = look.y = 0; look.drag = null; }
   if (cam.snap) { cam.x = tx; cam.y = ty; cam.snap = false; }
-  else { cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; }
+  else { const kk = 1 - Math.pow(1 - k, FS); cam.x += (tx - cam.x) * kk; cam.y += (ty - cam.y) * kk; }
 }
 
 // ----- 화면 밖 상대: 가장자리에 방향 화살표 + 내 탱크로부터의 거리(m) -----
@@ -1293,6 +1325,8 @@ function drawFires() {
   const now = performance.now(), gy = x => st.terrain[Math.max(0, Math.min(W - 1, Math.round(x)))];
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   st.fires.forEach((f, fi) => {
+    ctx.globalAlpha = 1;
+    if (f.x + f.r * 1.2 < cam.x || f.x - f.r * 1.2 > cam.x + VW) return;
     const rem = f.life - (now - (f.at || now)); if (rem <= 0) return;
     const fade = Math.min(1, rem / 1000), y0 = gy(f.x);
     const gl = ctx.createRadialGradient(f.x, y0, 0, f.x, y0, f.r);
@@ -1300,50 +1334,79 @@ function drawFires() {
     ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(f.x, y0, f.r, f.r * .45, 0, 0, 7); ctx.fill();
     for (let k = 0; k < 16; k++) {
       const u = (now / 800 + k * .618 + fi * .3) % 1, fx = f.x + (((k * 53 + fi * 17) % 100) / 100 - .5) * 1.8 * f.r, fy = gy(fx) - u * 60;
-      const r = (14 + (k % 3) * 5) * (1 - u * .7) * fade, gr = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
-      gr.addColorStop(0, `rgba(255,240,170,${.8 * (1 - u)})`); gr.addColorStop(.45, `rgba(255,120,30,${.6 * (1 - u)})`); gr.addColorStop(1, 'rgba(220,40,20,0)');
-      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(fx, fy, r, 0, 7); ctx.fill();
+      const r = (14 + (k % 3) * 5) * (1 - u * .7) * fade;
+      ctx.globalAlpha = 1 - u; ctx.drawImage(flameSprite(), fx - r, fy - r, r * 2, r * 2);
     }
   });
   ctx.restore();
+}
+let _fs = null;
+function flameSprite() {   // 불꽃 알갱이 그림을 한 번만 만들어 두고 재사용해요 (매 프레임 그라데이션 수십 개를 만들지 않도록)
+  if (_fs) return _fs;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,240,170,.8)'); gr.addColorStop(.45, 'rgba(255,120,30,.6)'); gr.addColorStop(1, 'rgba(220,40,20,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return (_fs = c);
+}
+
+// 탱크 표시 위치: 서버가 알려 준 좌표(걸음마다 뚝뚝 바뀜)를 시간 기준으로 부드럽게 따라가요
+function stepVis() {
+  const k = 1 - Math.exp(-FS * 16.667 / 70);
+  st.players.forEach((p, i) => {
+    const v = vis[i];
+    if (!v || cam.snap || Math.abs(p.x - v.x) > 260 || Math.abs(p.y - v.y) > 400) { vis[i] = { x: p.x, y: p.y }; return; }
+    v.x += (p.x - v.x) * k; v.y += (p.y - v.y) * k;
+    if (Math.abs(p.x - v.x) < .05) v.x = p.x; if (Math.abs(p.y - v.y) < .05) v.y = p.y;
+  });
 }
 
 function draw() {
   if (!st || st.type !== 'state') return;
   const th = MAPS[st.map], now = performance.now();
   if (sceneKey !== st.terrain) {
-    try { buildScene(th, st.terrain, st.map); }
-    catch (e) {   // 배경 생성이 실패해도 게임은 보이게: 단순 배경 + 지형만 그려요
-      console.error('buildScene', e);
-      const c = sceneCv.getContext('2d'); c.setTransform(S, 0, 0, S, 0, 0); c.fillStyle = '#0a1030'; c.fillRect(0, 0, W, H);
-      c.fillStyle = th.neon; c.beginPath(); c.moveTo(0, H); st.terrain.forEach((y, x) => c.lineTo(x, y)); c.lineTo(W, H); c.closePath(); c.fill();
-      edgePath = new Path2D(); edgePath.moveTo(0, st.terrain[0] / K); st.terrain.forEach((y, x) => edgePath.lineTo(x / K, y / K));
+    let full = !sceneT || sceneMap !== st.map || sceneKey === null, x0 = 0, x1 = 0;
+    if (!full) {   // 지난번과 달라진 구간만 찾아요
+      const A = sceneT, B = st.terrain; let lo = -1, hi = -1;
+      for (let i = 0; i < B.length; i++) if (A[i] !== B[i]) { if (lo < 0) lo = i; hi = i; }
+      if (lo < 0) { sceneKey = st.terrain; sceneT = B; }
+      else { x0 = lo / K; x1 = hi / K; if (x1 - x0 > 1400) full = true; }
+      if (lo < 0) { full = false; x0 = -1; }
     }
-    sceneKey = st.terrain;
+    if (x0 !== -1) {
+      try { buildScene(th, st.terrain, st.map, full ? undefined : x0, full ? undefined : x1); }
+      catch (e) {   // 배경 생성이 실패해도 게임은 보이게: 단순 배경 + 지형만 그려요
+        console.error('buildScene', e);
+        const c = sceneCv.getContext('2d'); c.setTransform(S, 0, 0, S, 0, 0); c.fillStyle = '#0a1030'; c.fillRect(0, 0, W, H);
+        c.fillStyle = th.neon; c.beginPath(); c.moveTo(0, H); st.terrain.forEach((y, x) => c.lineTo(x, y)); c.lineTo(W, H); c.closePath(); c.fill();
+        edgePath = null;
+      }
+      sceneKey = st.terrain; sceneT = st.terrain; sceneMap = st.map;
+    }
   }
-  const shk = FX.shake; FX.shake = shk < .25 ? 0 : shk * .86;
+  const shk = FX.shake; FX.shake = shk < .25 ? 0 : shk * Math.pow(.86, FS);
+  stepVis();
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
   updateCam();
   ctx.setTransform(SV, 0, 0, SV, (Math.random() - .5) * 2 * shk * SV, (Math.random() - .5) * 2 * shk * SV);
   ctx.translate(-cam.x, -cam.y);
-  ctx.imageSmoothingQuality = 'high';
+  ctx.imageSmoothingQuality = 'low';
   ctx.drawImage(sceneCv, cam.x * S, cam.y * S, VW * S, VH * S, cam.x, cam.y, VW, VH);
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  twink.forEach(s => { ctx.fillStyle = `rgba(255,255,255,${.12 + .55 * Math.abs(Math.sin(now / 1000 * s.sp + s.ph))})`; ctx.beginPath(); ctx.arc(s.x * K, s.y * K, s.r * K, 0, 7); ctx.fill(); });
-  if (TC && edgePath) { ctx.globalAlpha = .08 + .07 * Math.sin(now / 450); ctx.strokeStyle = TC.glow(1); ctx.lineWidth = 14; ctx.lineJoin = 'round'; ctx.save(); ctx.scale(K, K); ctx.stroke(edgePath); ctx.restore(); }   // 숨쉬는 지형 빛
+  twink.forEach(s => { const sx = s.x * K; if (sx < cam.x - 20 || sx > cam.x + VW + 20) return; ctx.fillStyle = `rgba(255,255,255,${.12 + .55 * Math.abs(Math.sin(now / 1000 * s.sp + s.ph))})`; ctx.beginPath(); ctx.arc(s.x * K, s.y * K, s.r * K, 0, 7); ctx.fill(); });
+  if (TC && edgePath) { ctx.globalAlpha = .08 + .07 * Math.sin(now / 450); ctx.strokeStyle = TC.glow(1); ctx.lineWidth = 14; ctx.save(); ctx.scale(K, K); const vx0 = cam.x / K - 20, vx1 = (cam.x + VW) / K + 20; edgePath.forEach(e => { if (e.x1 >= vx0 && e.x0 <= vx1) ctx.stroke(e.p); }); ctx.restore(); }   // 숨쉬는 지형 빛
   ctx.restore();
 
   drawFires();
   const alive = st.players.map((p, i) => p.on && p.hp > 0);
-  st.players.forEach((p, i) => { if (alive[i]) drawTank(p, i, aims[i], st.turn === i && st.winner === -1); });
-  st.players.forEach((p, i) => { if (alive[i]) drawTag(p, i, st.turn === i && st.winner === -1); });
-  if (!anim && st.winner === -1 && st.turn === me && me >= 0 && alive[me]) drawPreview(st.players[me], pc(me));
+  const rp = st.players.map((p, i) => vis[i] ? { ...p, x: vis[i].x, y: vis[i].y } : p);
+  rp.forEach((p, i) => { if (alive[i]) drawTank(p, i, aims[i], st.turn === i && st.winner === -1); });
+  rp.forEach((p, i) => { if (alive[i]) drawTag(p, i, st.turn === i && st.winner === -1); });
+  if (!anim && st.winner === -1 && st.turn === me && me >= 0 && alive[me]) drawPreview(rp[me], pc(me));
 
   if (anim) {
     const A = anim; let maxLen = 0;
     const tail = A.kind === 'laser' ? 36 : 0;   // 레이저는 머리가 끝난 뒤에도 꼬리가 사라질 때까지 그려요
-    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length + tail); if (A.i < s.path.length + tail) drawShell({ path: s.path, i: Math.floor(A.i), by: A.by, kind: A.kind, small: A.kind === 'cluster', big: A.kind === 'heavy' }); });
-    A.i += A.kind === 'heavy' ? .6 : 1;   // 광폭탄은 느리게 날아가요
+    A.shells.forEach(s => { maxLen = Math.max(maxLen, s.path.length + tail); if (A.i < s.path.length + tail) drawShell({ path: s.path, i: A.i, by: A.by, kind: A.kind, small: A.kind === 'cluster', big: A.kind === 'heavy' }); });
+    A.i += (A.kind === 'heavy' ? .6 : 1) * FS;   // 광폭탄은 느리게 날아가요
     A.shells.forEach(s => {
       if (s.boomed || A.i < s.path.length) return;
       s.boomed = true;
@@ -1354,10 +1417,22 @@ function draw() {
     if (A.i >= maxLen) { const next = A.pending; fxFromDiff(st, next); anim = null; apply(next); if (A.by === me) sendMsg({ type: 'landed' }); }
   }
   drawFx();
-  if (FX.flash > .01) { ctx.fillStyle = `rgba(255,255,255,${FX.flash})`; ctx.fillRect(-20, -20, W + 40, H + 40); FX.flash *= .78; }
+  if (FX.flash > .01) { ctx.fillStyle = `rgba(255,255,255,${FX.flash})`; ctx.fillRect(-20, -20, W + 40, H + 40); FX.flash *= Math.pow(.78, FS); }
   drawOffscreen();
 }
-(function loop() { draw(); requestAnimationFrame(loop); })();
+// 프레임 시간을 재서 애니메이션 속도를 맞추고, 계속 느리면 화면 해상도를 한 단계씩 낮춰요
+let lastT = 0, slow = 0, qLock = 0;
+(function loop(t) {
+  const dt = lastT ? Math.min(100, t - lastT) : 16.667; lastT = t;
+  FS = Math.min(4, Math.max(.25, dt / 16.667));
+  draw();
+  if (!$('game').hidden && document.visibilityState === 'visible') {
+    slow = dt > 26 ? slow + 1 : Math.max(0, slow - 1);
+    if (qLock > 0) qLock--;
+    if (slow > 45 && !qLock && SV > .75) { slow = 0; qLock = 180; QCAP = Math.max(.75, SV - .25); layout(); }
+  }
+  requestAnimationFrame(loop);
+})(0);
 
 show('menu');
 layout();
