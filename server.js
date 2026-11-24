@@ -19,6 +19,7 @@ const rooms = new Map();
 const KINDS = ['basic', 'incendiary', 'cluster', 'homing'];
 const SHELL = { basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 } };
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
+const MAX_CLIMB = 30;              // 한 걸음(6px)당 최대 오르막 높이 → 약 78° 경사까지 (이전 8 ≈ 53°)
 const FIRE_R = 90, BURN = 8;       // 소이탄 불길 반경 / 불 위 탱크가 자기 차례 시작 때 받는 피해
 const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
 const DUD = 0.3, HOMING_TURN = 2.2; // 유도탄 불발 확률 / 초당 최대 회전각(rad)
@@ -257,7 +258,7 @@ wss.on('connection', ws => {
       const dir = m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0, p = g.players[ws.slot];
       const nx = p.x + dir * STEP;
       if (!dir || nx < 40 || nx > W - 40) return;
-      if (g.terrain[nx] < g.terrain[p.x] - 8) return; // 너무 가파른 오르막은 못 올라감
+      if (g.terrain[nx] < g.terrain[p.x] - MAX_CLIMB) return; // 한 걸음(STEP)에 오를 수 있는 최대 높이
       if (g.players.some((q, i) => i !== ws.slot && q.hp > 0 && Math.abs(q.x - nx) < 40)) return;
       p.x = nx; g.fuel -= STEP;
       toRoom(r, { type: 'moved', i: ws.slot, x: nx, y: g.terrain[nx], fuel: g.fuel });

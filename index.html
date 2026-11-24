@@ -466,7 +466,8 @@ function makePad(pad, onMove, resetOnEnd, opts = {}) {
 // 이동: 좌우로 밀면 이동 (턴마다 연료 한도 안에서)
 let mvDir = 0;
 makePad($('mv'), (dx, dy, Rm) => { mvDir = dx > Rm * 0.3 ? 1 : dx < -Rm * 0.3 ? -1 : 0; }, true, { horiz: true, rm: p => p.offsetHeight * 0.46 });
-setInterval(() => { if (mvDir && canAct() && st.fuel > 0) sendMsg({ type: 'move', dir: mvDir }); }, 40);
+let kbDir = 0;   // 키보드 A/D 이동 방향
+setInterval(() => { const d = mvDir || kbDir; if (d && canAct() && st.fuel > 0) sendMsg({ type: 'move', dir: d }); }, 40);
 
 // 조준: 방향 = 각도(0~180°), 당긴 거리 = 파워. 놓아도 값은 유지돼요.
 makePad($('am'), (dx, dy, Rm, h) => {   // 조준 조이스틱: 각도만 담당
@@ -513,6 +514,29 @@ $('fire').onclick = () => {
   sendMsg({ type: 'fire', angle: my.angle, power: my.power });
   $('fire').disabled = true;
 };
+
+// ---------- 키보드 ----------
+// A/D: 이동 · ←/→: 조준 각도 · W/S: 파워 · 스페이스: 발사
+const keys = new Set();
+function kbStep() {
+  kbDir = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
+  if (!st || st.type !== 'state' || me < 0 || $('game').hidden) return;
+  const da = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);   // 0°=오른쪽, 180°=왼쪽
+  if (da) { my.angle = Math.max(0, Math.min(180, my.angle + da)); aims[me] = my.angle; placeAim(); ui(); }
+  const dp = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
+  if (dp) setPower(my.power + dp);
+}
+setInterval(kbStep, 40);
+const KB = ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'];
+addEventListener('keydown', e => {
+  if ($('game').hidden || !KB.includes(e.code) || e.ctrlKey || e.metaKey || e.altKey) return;
+  e.preventDefault();
+  if (e.code === 'Space') { if (!e.repeat) $('fire').onclick(); return; }
+  keys.add(e.code);
+  if (!e.repeat) kbStep();   // 짧게 눌러도 한 칸은 움직이도록
+});
+addEventListener('keyup', e => { if (KB.includes(e.code)) { keys.delete(e.code); if (!$('game').hidden) e.preventDefault(); } kbDir = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0); });
+addEventListener('blur', () => { keys.clear(); kbDir = 0; });
 
 // ---------- 렌더링: 네온 아케이드 ----------
 // 어두운 밤하늘 + 레트로 네온 태양/능선 + 빛나는 지형, 림라이트 탱크, 색 있는 포탄 꼬리, 폭발 연출.
