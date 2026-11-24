@@ -264,8 +264,8 @@
     <div style="width:420px;flex-shrink:0;display:flex;flex-direction:column;gap:18px">
       <div style="display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#4dd2ff"></span><span class="sec">내 탱크</span></div>
-        <div id="tanks" style="display:flex;align-items:center;gap:16px;padding:14px 18px;border-radius:16px;background:#0d1433;border:1px dashed #3a4770"></div>
-        <div id="tdesc" style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;min-height:44px;background:rgba(160,170,210,.06);border:1px solid #2a3556"><span style="font-size:14px;line-height:1.5;color:#c9d3f0">🎲 <b style="color:#eaf0ff">랜덤 탱크</b> · 게임이 시작되면 ${TANKS_N}종 중 하나가 무작위로 정해져요. 다른 사람의 탱크도 시작해야 알 수 있어요.</span></div>
+        <div id="tanks" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px"></div>
+        <div id="tdesc" style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;min-height:44px"></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#ff3df2"></span><span class="sec">맵</span><span id="mapnote" style="font-size:13px;color:#a9b8de"></span></div>
@@ -495,8 +495,14 @@ const drawTanks = root => root.querySelectorAll('canvas.tkc').forEach(c => tankT
 const tankChip = (name, acc, css) => `<span style="display:flex;align-items:center;gap:8px;${css}"><span style="width:10px;height:10px;border-radius:50%;flex:none;background:${acc};box-shadow:0 0 8px ${acc}"></span>${esc(name)}</span>`;
 
 // 내 탱크 / 맵 버튼은 한 번만 만들고, 선택 표시만 바꿔요
-$('tanks').innerHTML = tankSvg(120, 0, '#8e9bc4', '?') + `<div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:24px;font-weight:900;color:#eaf0ff;letter-spacing:.06em">???</span><span style="font-size:13px;color:#a9b8de">어떤 탱크일까요?</span></div>`;
-$('tdesc').innerHTML = $('tdesc').innerHTML.replace('${TANKS_N}', TANKS.length);
+const TANKS_UI = [...TANKS, ['random', '랜덤', `게임이 시작되면 ${TANKS.length}종 중 하나가 무작위로 정해져요 · 다른 사람도 시작해야 무슨 탱크인지 알 수 있어요`]];   // 맵처럼 맨 끝에 '랜덤'
+const RANDC = '#a9b4dc';
+const tankBtns = TANKS_UI.map(([k, n]) => {
+  const b = el('button', null, $('tanks')); b.className = 'tk';
+  b.innerHTML = tankSvg(58, 40, '#8e9bc4', k === 'random' ? '?' : k) + `<span>${esc(n)}</span>`;
+  b.onclick = () => sendMsg({ type: 'tank', kind: k });
+  return b;
+});
 const mapCards = [];
 for (let id = 0; id <= RANDOM; id++) {
   const d = el('button', null, $('maps')); d.className = 'mp';
@@ -511,7 +517,7 @@ $('copy').onclick = () => {
 };
 
 function slotCard(i, col, team) {   // 개인전(큰 카드) / 팀전(가로 카드) 참가자 한 칸
-  const n = st.names[i], k = '?', acc = '#7a86ad', tn = '???', ico = esc(st.icons[i] || ''), host = i === st.host, mine = i === me;
+  const n = st.names[i], rk = st.tanks[i] || 'random', k = rk === 'random' ? '?' : rk, acc = rk === 'random' ? '#7a86ad' : TANKC[k] || '#fff6b0', tn = rk === 'random' ? '???' : TN[k] || '기본탄', ico = esc(st.icons[i] || ''), host = i === st.host, mine = i === me;
   const nm = `${ico ? ico + ' ' : ''}${esc(n)}`;
   if (!team) return `<div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid ${col};padding:16px 20px;display:flex;flex-direction:column">
     <div style="position:absolute;right:-50px;top:-70px;width:260px;height:260px;border-radius:50%;background:${col};opacity:.2;filter:blur(46px)"></div>
@@ -575,7 +581,11 @@ function renderRoom() {
   }
   drawTanks(box);
   // 내 탱크
-  $('tanks').querySelector('canvas').dataset.c = pc(me >= 0 ? me : 0);
+  const mk = st.tanks[me] || 'random', macc = mk === 'random' ? RANDC : TANKC[mk];
+  tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const k = TANKS_UI[i][0], sel = k === mk, c = k === 'random' ? RANDC : TANKC[k]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
+  $('tdesc').style.cssText += `;background:${hexA(macc, .08)};border:1px solid ${hexA(macc, .35)}`;
+  const td = TANKS_UI.find(t => t[0] === mk);
+  $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${mk === 'random' ? '🎲 ' : ''}${esc(td[1])}</b> · ${esc(td[2])}</span>`;
   drawTanks($('tanks'));
   // 맵
   $('mapnote').textContent = isHost ? '눌러서 선택해요' : '방장이 선택해요';

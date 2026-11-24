@@ -46,8 +46,8 @@ const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
 const toRoom = (r, m) => r.slots.forEach(s => s && send(s.ws, m));
-// 탱크는 게임이 시작될 때 랜덤으로 정해져요. 대기실에서는 모두 '?' 로 보내요
-const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && '?'), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
+// 탱크: 직접 고르거나 '랜덤'을 고르면 게임이 시작될 때 무작위로 정해져요
+const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && s.tank), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
 const listMsg = () => ({
   type: 'rooms',
   rooms: [...rooms.values()].map(r => ({
@@ -85,13 +85,13 @@ function spawnXs(r) {
   return xs;
 }
 
-// 게임이 시작될 때 참가자마다 탱크를 랜덤으로 뽑아요
+// 게임이 시작될 때 '랜덤'을 고른 참가자는 탱크를 무작위로 뽑아요
 function newGame(r) {
   const xs = spawnXs(r);
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [],
-    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: KINDS[Math.floor(Math.random() * KINDS.length)], name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: !r.slots[i] ? 'basic' : r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank, name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
   g.turn = g.players.findIndex(p => p.on);
@@ -413,7 +413,7 @@ function fire(r, shooter, angle, power) {
 function join(ws, r, name, icon) {
   const i = r.slots.indexOf(null);
   const t0 = r.slots.filter(s => s && s.team === 0).length, t1 = r.slots.filter(s => s && s.team === 1).length;
-  r.slots[i] = { ws, name, icon, team: t0 <= t1 ? 0 : 1, tank: 'basic' };   // 인원이 적은 팀에 자동 배정
+  r.slots[i] = { ws, name, icon, team: t0 <= t1 ? 0 : 1, tank: 'random' };   // 인원이 적은 팀에 자동 배정 / 탱크는 처음엔 랜덤
   ws.room = r; ws.slot = i;
   send(ws, { type: 'joined', code: r.code, you: i });
   toRoom(r, roomMsg(r));
@@ -472,7 +472,8 @@ wss.on('connection', ws => {
       // 본인 팀은 누구나, 다른 사람의 팀은 방장만 바꿀 수 있어요
       const target = Number.isInteger(m.slot) && ws.slot === host(r) ? m.slot : ws.slot;
       if (r.mode === 'team' && r.slots[target]) { r.slots[target].team = m.team === 1 ? 1 : 0; toRoom(r, roomMsg(r)); }
-    } else if (r && m.type === 'tank') {   // 탱크는 랜덤이라 직접 고를 수 없어요
+    } else if (r && m.type === 'tank' && !r.game && (KINDS.includes(m.kind) || m.kind === 'random')) {
+      r.slots[ws.slot].tank = m.kind; toRoom(r, roomMsg(r));
     } else if (r && m.type === 'start' && !r.game && ws.slot === host(r) && count(r) >= 2) {
       if (r.mode === 'team') {
         const t0 = r.slots.filter(s => s && s.team === 0).length, t1 = r.slots.filter(s => s && s.team === 1).length;
