@@ -316,7 +316,7 @@ function resolveShot(r, g) {
   endBusy(g);
   if (g.winner !== -1) return;
   advance(r, g.turn);
-  if (startMid(r, g)) return;   // 체력이 10% 깎인 플레이어가 있으면 증강을 먼저 고르고, 끝나면 다음 차례를 알려요
+  if (startMid(r, g)) return;   // 체력바 한 칸이 깎인 플레이어가 있으면 증강을 먼저 고르고, 끝나면 다음 차례를 알려요
   toRoom(r, turnMsg(g));
 }
 
@@ -356,7 +356,7 @@ function resolveOrder(r, g) {
 
 // ===== 증강 선택 단계: 순서가 정해진 뒤, 모두 3개 중 하나를 골라야 본 게임이 시작돼요 =====
 const allPicked = g => (g.pickers || []).every(i => !g.players[i].on || g.players[i].hp <= 0 || g.picks[i]);
-// who: 증강을 고를 사람들(없으면 살아있는 모두) / why: 'start' = 게임 시작 때, 'hit' = 체력이 10% 깎여서 받는 보상
+// who: 증강을 고를 사람들(없으면 살아있는 모두) / why: 'start' = 게임 시작 때, 'hit' = 체력바 한 칸이 깎여서 받는 보상
 function startAugment(r, g, who, why = 'start') {
   if (r.game !== g || g.winner !== -1) return;
   const ps = who || g.players.map((p, i) => (p.on && p.hp > 0 ? i : -1)).filter(i => i >= 0);
@@ -367,8 +367,9 @@ function startAugment(r, g, who, why = 'start') {
   g.augTimer = setTimeout(() => finishAugment(r, g), FAUG.PICK_MS + 800);   // 시간이 지나면 못 고른 사람은 랜덤
   r.slots.forEach((sl, i) => sl && send(sl.ws, { type: 'augment', offers: g.offers[i], left: FAUG.PICK_MS, why, n: g.pickers.length, who: g.pickers }));
 }
-// 체력이 최대 체력의 10%씩 깎일 때마다 그 플레이어에게 증강 선택권이 생겨요 (한 번에 여러 번 깎였으면 차례로 여러 번)
-const owed = p => Math.floor(p.lostFrac * 10 + 1e-6) - p.augTaken;
+// 체력바 한 칸(최대 체력의 25%)이 깎일 때마다 그 플레이어에게 증강 선택권이 생겨요 (한 번에 여러 번 깎였으면 차례로 여러 번)
+const HP_SEGS = 4;   // 체력바 칸 수 (클라이언트 drawTag 의 seg 와 같아야 해요)
+const owed = p => Math.floor(p.lostFrac * HP_SEGS + 1e-6) - p.augTaken;
 function startMid(r, g) {
   if (r.game !== g || g.winner !== -1) return false;
   g.players.forEach(p => { const d = p.lastHp - p.hp; if (d > 0) p.lostFrac += d / p.maxHp; p.lastHp = p.hp; });
