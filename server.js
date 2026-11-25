@@ -97,7 +97,7 @@ function newGame(r) {
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [],
-    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, mods: FAUG.calc([]), aug: [], on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? r.slots[i].tank : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, mods: FAUG.calc([]), aug: [], on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
   g.turn = g.players.findIndex(p => p.on);
@@ -521,7 +521,7 @@ wss.on('connection', ws => {
       // 본인 팀은 누구나, 다른 사람의 팀은 방장만 바꿀 수 있어요
       const target = Number.isInteger(m.slot) && ws.slot === host(r) ? m.slot : ws.slot;
       if (r.mode === 'team' && r.slots[target]) { r.slots[target].team = m.team === 1 ? 1 : 0; toRoom(r, roomMsg(r)); }
-    } else if (r && m.type === 'tank' && !r.game && KINDS.includes(m.kind)) {
+    } else if (r && m.type === 'tank' && !r.game && (KINDS.includes(m.kind) || m.kind === 'random')) {
       r.slots[ws.slot].tank = m.kind; toRoom(r, roomMsg(r));
     } else if (r && m.type === 'start' && !r.game && ws.slot === host(r) && count(r) >= 2) {
       if (r.mode === 'team') {
