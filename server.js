@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const FMAP = require('./maps.js');
+const FAUG = require('./augments.js');
 
 const app = express();
 app.use(express.static(__dirname));
@@ -62,6 +63,13 @@ function newCode() {
   return c;
 }
 
+// ----- 증강 헬퍼: 능력치는 p.mods (augments.js 의 calc 결과) 에 모여 있어요 -----
+const fuelOf = (g, i) => Math.round(FUEL * g.players[i].mods.fuel);
+const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn) });
+function scaleDmg(g, from, to, amt, kind, mul = 1) {   // 주는 쪽 · 받는 쪽 증강을 반영한 최종 피해
+  const a = g.players[from] && g.players[from].mods, b = g.players[to].mods, k = String(kind).replace(/\d+$/, '');
+  return Math.round(amt * mul * (a ? a.dmg * (a.kindDmg[k] || 1) : 1) * b.taken);
+}
 const alive = g => g.players.map((p, i) => (p.on && p.hp > 0 ? i : -1)).filter(i => i >= 0);
 
 function nextTurn(g, from) {   // 순서 정하기로 정해진 차례(g.order)를 따라 돌아요
@@ -89,11 +97,11 @@ function newGame(r) {
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [],
-    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? r.slots[i].tank : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, mods: FAUG.calc([]), aug: [], on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? r.slots[i].tank : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
   g.turn = g.players.findIndex(p => p.on);
-  g.fuel = FUEL;
+  g.fuel = fuelOf(g, g.turn);
   // 순서 정하기: 목표물 하나를 맵 가운데 쪽 랜덤 위치에 세우고, 모두 동시에 한 발씩 쏴서 가장 가까운 순서대로 차례를 정해요
   g.phase = 'order'; g.order = null; g.oshots = {};
   g.target = { x: Math.round(W * (.4 + Math.random() * .2)) };
@@ -104,12 +112,12 @@ function newGame(r) {
 function snapshot(r) {
   const g = r.game;
   return {
-    type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam, busy: !!g.busy,
+    type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam, busy: !!g.busy, fuelMax: fuelOf(g, g.turn),
     phase: g.phase, target: g.target, order: g.order, ofired: g.players.map((_, i) => !!g.oshots[i]),
     orderGo: Math.max(0, g.orderGoAt - Date.now()), orderLeft: Math.max(0, g.orderEnd - Date.now()),
     teams: g.players.map(p => p.team),
     fires: fireList(g),
-    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, on: p.on, name: p.name, icon: p.icon })),
+    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, maxHp: p.maxHp, aug: p.aug, on: p.on, name: p.name, icon: p.icon })),
   };
 }
 
@@ -121,7 +129,7 @@ function checkEnd(r, animMs = 0) {   // animMs: 이번 포탄 화면 연출 길�
     g.winTeam = ts.size ? [...ts][0] : -1;
   } else if (a.length > 1) return false;
   g.winner = a.length ? a[0] : -2; // -2: 무승부
-  clearTimeout(g.orderTimer);
+  clearTimeout(g.orderTimer); clearTimeout(g.augTimer);
   setTimeout(() => {
     if (r.game === g) { r.game = null; toRoom(r, roomMsg(r)); pushList(); }
   }, 5000 + animMs);
@@ -141,7 +149,7 @@ const isAlly = (g, a, b) => g.mode === 'team' && a !== b && g.players[a].team ==
 const tankY = (g, q) => g.terrain[q.x] - 10 * TS;
 
 // 포탄 한 발의 비행 계산. 유도탄은 가장 가까운 적 쪽으로 휘어져요.
-function flight(g, shooter, angle, power, kind, free = false) {   // free: 탱크에 맞지 않고 지형에만 닿아요 (순서 정하기용)
+function flight(g, shooter, angle, power, kind, free = false, pick = 0) {   // free: 탱크에 맞지 않고 지형에만 닿아요 (순서 정하기용)
   const p = g.players[shooter];
   const a = angle * Math.PI / 180, v = power * 8 * K * (SPEED[kind] || 1), dt = 1 / 120;
   let x = p.x, y = g.terrain[p.x] - 14 * TS;
@@ -149,10 +157,8 @@ function flight(g, shooter, angle, power, kind, free = false) {   // free: 탱�
   const path = [[x, y]];
   let impact = null, target = null, out = false;
   if (kind === 'homing') {
-    g.players.forEach((q, i) => {
-      if (q.hp <= 0 || i === shooter || isAlly(g, shooter, i)) return;
-      if (!target || Math.abs(q.x - p.x) < Math.abs(target.x - p.x)) target = q;
-    });
+    const foes = g.players.filter((q, i) => q.hp > 0 && i !== shooter && !isAlly(g, shooter, i)).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x));
+    target = foes[pick] || foes[0] || null;   // pick: 몇 번째로 가까운 적을 노릴지 (듀얼의 두 번째 탄은 1)
   }
   for (let t = 0; t < 3600; t++) {
     if (target && t > 30) {
@@ -178,6 +184,7 @@ function flight(g, shooter, angle, power, kind, free = false) {   // free: 탱�
 // 쪼개진 탄의 path 는 '부모가 튀기 전까지의 경로 + 자기 경로'로 이어 붙여서, 화면에서는 모든 탄이 같은 시간축으로 날아가요. splits = 튄 지점의 path 인덱스
 function bumperFlight(g, shooter, angle, power) {
   const p = g.players[shooter], a = angle * Math.PI / 180, v = power * 8 * K, dt = 1 / 120, out = [];
+  const { jumbo, split } = p.mods, maxB = jumbo ? 3 : BUMPER_BOUNCES;   // 증강: 점보(큰 탄 하나가 3번 튕김) / 분열(튈 때 4개)
   const run = (x, y, vx, vy, gen, prefix, splits) => {
     const path = []; let impact = null, hitTank = false;
     for (let t = 0; t < 3600; t++) {
@@ -185,16 +192,19 @@ function bumperFlight(g, shooter, angle, power) {
       if (t % 4 === 0) path.push([x, y]);
       if (x < 0 || x >= W || y > H) break;
       if (y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }
-      if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || gen > 0 || t > 40) && !isAlly(g, shooter, i) && Math.hypot(x - q.x, y - tankY(g, q)) < BUMPER_HIT)) { impact = [x, y]; hitTank = true; break; }
+      if (g.players.some((q, i) => q.hp > 0 && (i !== shooter || splits.length > 0 || t > 40) && !isAlly(g, shooter, i) && Math.hypot(x - q.x, y - tankY(g, q)) < BUMPER_HIT)) { impact = [x, y]; hitTank = true; break; }
     }
     if (impact) path.push(impact);
     const full = prefix.concat(path);
-    if (impact && !hitTank && gen < BUMPER_BOUNCES) {   // 땅에 닿음 → 튀면서 좌우로 쪼개져요 (이 지점에서는 폭발·피해 없음)
-      for (const dir of [-1, 1]) {
+    if (impact && !hitTank && jumbo && splits.length < maxB) {   // 점보: 쪼개지지 않고 앞으로 통통 튀어요
+      const dir = vx >= 0 ? 1 : -1, sx = Math.max(2, Math.min(W - 3, Math.round(impact[0] + dir * 5))), sy = Math.min(impact[1], g.terrain[sx]) - 4;
+      run(sx, sy, dir * Math.max(Math.abs(vx) * .7, v * .12), -Math.max(Math.abs(vy) * .55, v * .27), gen, full, splits.concat(full.length - 1));
+    } else if (impact && !hitTank && splits.length < maxB) {   // 땅에 닿음 → 튀면서 좌우로 쪼개져요 (이 지점에서는 폭발·피해 없음)
+      for (const dir of split >= 4 ? [-1.7, -.6, .6, 1.7] : [-1, 1]) {
         const sx = Math.max(2, Math.min(W - 3, Math.round(impact[0] + dir * 5))), sy = Math.min(impact[1], g.terrain[sx]) - 4;
         run(sx, sy, dir * Math.max(Math.abs(vx) * .22, v * .06) * BUMPER_SPREAD / .2, -Math.max(Math.abs(vy) * .5, v * .27), gen + 1, full, splits.concat(full.length - 1));
       }
-    } else out.push({ path: full, impact, gen, splits, fizzled: false });
+    } else out.push({ path: full, impact, gen, splits, fizzled: false, jumbo });
   };
   run(p.x, g.terrain[p.x] - 14 * TS, v * Math.cos(a), -v * Math.sin(a), 0, [[p.x, g.terrain[p.x] - 14 * TS]], []);
   return out;
@@ -203,7 +213,7 @@ function bumperFlight(g, shooter, angle, power) {
 // 레이저: 포물선 없이 직선으로 날아가고, 벽(지형)과 맵 경계(왼쪽·오른쪽·위)에 닿으면 반사돼요. 4번 반사한 뒤 또 닿으면 사라져요.
 const LASER_BOUNCES = 4;
 function laserFlight(g, shooter, angle) {
-  const p = g.players[shooter], a = angle * Math.PI / 180, STEP = 4, MAXLEN = 60000;   // 맵 폭(5000)보다 훨씬 길게: 4번 튕기는 동안 거리 제한에 걸려 사라지지 않게 해요
+  const p = g.players[shooter], a = angle * Math.PI / 180, STEP = 4, maxB = LASER_BOUNCES + p.mods.bounce, hitR = LASER_HIT * p.mods.beam, MAXLEN = 60000 * (maxB / LASER_BOUNCES);   // 증강: 반사 횟수·판정 범위   // 맵 폭(5000)보다 훨씬 길게: 4번 튕기는 동안 거리 제한에 걸려 사라지지 않게 해요
   let x = p.x, y = g.terrain[p.x] - 20 * TS, dx = Math.cos(a), dy = -Math.sin(a);
   let bounces = 0, len = 0, rec = 0, hit = null, impact = null;
   const path = [[x, y]];
@@ -218,7 +228,7 @@ function laserFlight(g, shooter, angle) {
       continue;
     }
     const ti = g.players.findIndex((q, i) => q.hp > 0 && (i !== shooter || bounces > 0 || len > 90) && !isAlly(g, shooter, i) &&
-      Math.hypot(nx - q.x, ny - tankY(g, q)) < LASER_HIT);
+      Math.hypot(nx - q.x, ny - tankY(g, q)) < hitR);
     if (ti >= 0) { hit = ti; impact = [nx, ny]; x = nx; y = ny; break; }          // 탱크 명중
     if (ny >= g.terrain[Math.floor(nx)]) {                                       // 벽에 닿음
       path.push([x, y]); rec = 0;
@@ -240,22 +250,22 @@ function laserFlight(g, shooter, angle) {
 }
 
 // 착탄: 땅 파임 + 피해(팀전에서는 아군 제외) + 소이탄이면 불길 생성 (delay: 클라이언트 화면에서 폭발이 보일 때까지의 시간)
-function explode(g, shooter, impact, kind, delay = 0) {
+function explode(g, shooter, impact, kind, delay = 0, mul = 1) {   // mul: 이 포탄의 피해 배율 (듀얼 0.7)
   const { dmg, rad } = SHELL[kind], direct = kind === 'pierce' ? PIERCE_HIT + 8 : DIRECT, reach = kind === 'pierce' ? Math.max(rad + 25, direct + 20) : rad + 25;
   crater(g, impact[0], impact[1], rad);
   g.players.forEach((q, i) => {
     if (q.hp <= 0 || isAlly(g, shooter, i)) return;
     const d = Math.hypot(q.x - impact[0], tankY(g, q) - impact[1]);
-    q.hp = Math.max(0, q.hp - (kind === 'carpet' ? (d <= direct ? dmg : d < Math.max(reach, direct + 20) ? CARPET_GRAZE : 0) : dmgAt(dmg, d, reach, direct)));   // 융단 폭격: 정통 20 / 스치면 일정하게 13
+    q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, i, kind === 'carpet' ? (d <= direct ? dmg : d < Math.max(reach, direct + 20) ? CARPET_GRAZE : 0) : dmgAt(dmg, d, reach, direct), kind, mul));   // 융단 폭격: 정통 20 / 스치면 일정하게 13
   });
   if (kind === 'incendiary') {
     const fx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), t0 = Date.now() + delay;
-    g.fires.push({ x: fx, y: g.terrain[fx], r: FIRE_R, by: shooter, startAt: t0, endsAt: t0 + FIRE_MS, next: t0 + BURN_TICK });
+    g.fires.push({ x: fx, y: g.terrain[fx], r: Math.round(FIRE_R * g.players[shooter].mods.area), by: shooter, startAt: t0, endsAt: t0 + FIRE_MS, next: t0 + BURN_TICK });
   }
 }
 
 // 관통탄: 원래대로 착탄 피해(14, 주변은 줄어든 피해)를 주고, 맞은 탱크 하나는 드릴로 2 피해씩 3번 더 갈아요
-function drill(g, shooter, s, delay) {
+function drill(g, shooter, s, delay, mul = 1) {   // mul: 작은 드릴 0.5
   let hit = -1, best = Infinity;
   g.players.forEach((q, i) => {
     if (q.hp <= 0 || isAlly(g, shooter, i)) return;
@@ -263,10 +273,10 @@ function drill(g, shooter, s, delay) {
     if (d < PIERCE_HIT + 2 && d < best) { best = d; hit = i; }
   });
   const hp0 = hit >= 0 ? g.players[hit].hp : 0;
-  explode(g, shooter, s.impact, 'pierce', delay);
+  explode(g, shooter, s.impact, 'pierce', delay, mul);
   if (hit < 0) return;
   s.hit = hit; s.hd = hp0 - g.players[hit].hp;   // hd: 착탄 피해 (화면에서 드릴 틱보다 먼저 보여줘요)
-  g.players[hit].hp = Math.max(0, g.players[hit].hp - DRILL_TICK * DRILL_N);
+  g.players[hit].hp = Math.max(0, g.players[hit].hp - scaleDmg(g, shooter, hit, DRILL_TICK * DRILL_N, 'pierce', mul));
 }
 
 const fireList = g => g.fires.map(f => ({ x: f.x, y: f.y, r: f.r, life: Math.max(0, f.endsAt - Math.max(Date.now(), f.startAt)) }));
@@ -284,7 +294,7 @@ function burnTick(r, g) {
       f.next += BURN_TICK; changed = true;
       g.players.forEach((q, i) => {
         if (q.hp <= 0 || isAlly(g, f.by, i) || Math.hypot(q.x - f.x, tankY(g, q) - f.y) >= f.r) return;
-        q.hp = Math.max(0, q.hp - BURN_DMG);
+        q.hp = Math.max(0, q.hp - scaleDmg(g, f.by, i, BURN_DMG, 'incendiary'));
         if (q.hp <= 0) died = true;
       });
     }
@@ -302,11 +312,11 @@ function burnTick(r, g) {
 // 쏜 사람의 화면에서 포탄이 끝나면 'landed'를 보내고, 안 오면 예상 시간 뒤에 서버가 넘겨요.
 function endBusy(g) { g.busy = false; g.orderBusy = false; clearTimeout(g.busyTimer); }
 function resolveShot(r, g) {
-  if (r.game !== g || !g.busy) return;
+  if (r.game !== g || !g.busy || g.phase === 'augment') return;
   endBusy(g);
   if (g.winner !== -1) return;
   advance(r, g.turn);
-  toRoom(r, { type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel });
+  toRoom(r, turnMsg(g));
 }
 
 const allFired = g => g.players.every((p, i) => !p.on || p.hp <= 0 || g.oshots[i]);
@@ -327,13 +337,13 @@ function resolveOrder(r, g) {
   });
   const rank = [...res].sort((a, b) => a.dist < b.dist ? -1 : a.dist > b.dist ? 1 : a.tb - b.tb);
   g.order = rank.map(e => e.i);
-  g.turn = g.order[0] ?? g.turn; g.wind = rndWind(); g.fuel = FUEL;
+  g.turn = g.order[0] ?? g.turn; g.wind = rndWind(); g.fuel = fuelOf(g, g.turn);
   g.busy = true; g.orderBusy = true;
   const ms = Math.max(0, ...res.filter(e => e.path).map(e => SHOT_MS(e.path.length))) + 4800;   // 포탄 비행 + 결과 카드 시간
   g.busyTimer = setTimeout(() => {
     if (r.game !== g || !g.busy) return;
     endBusy(g);
-    toRoom(r, { type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel });
+    startAugment(r, g);   // 순서가 정해졌으니 증강을 고르고 시작해요
   }, ms);
   toRoom(r, {
     type: 'oshot', order: g.order,
@@ -343,9 +353,35 @@ function resolveOrder(r, g) {
   });
 }
 
+// ===== 증강 선택 단계: 순서가 정해진 뒤, 모두 3개 중 하나를 골라야 본 게임이 시작돼요 =====
+const allPicked = g => g.players.every((p, i) => !p.on || p.hp <= 0 || g.picks[i]);
+function startAugment(r, g) {
+  if (r.game !== g || g.winner !== -1) return;
+  g.phase = 'augment'; g.busy = true; g.picks = {};
+  g.offers = g.players.map(p => (p.on && p.hp > 0 ? FAUG.offer(p.tank, p.aug) : []));
+  g.augTimer = setTimeout(() => finishAugment(r, g), FAUG.PICK_MS + 800);   // 시간이 지나면 못 고른 사람은 랜덤
+  r.slots.forEach((sl, i) => sl && send(sl.ws, { type: 'augment', offers: g.offers[i], left: FAUG.PICK_MS }));
+}
+function finishAugment(r, g) {
+  if (r.game !== g || g.phase !== 'augment') return;
+  clearTimeout(g.augTimer);
+  g.players.forEach((p, i) => {
+    if (!p.on || p.hp <= 0) return;
+    const id = g.picks[i] || g.offers[i][Math.floor(Math.random() * g.offers[i].length)];
+    if (!id) return;
+    g.picks[i] = id; p.aug.push(id);
+    const before = p.mods.hp; p.mods = FAUG.calc(p.aug);
+    p.maxHp = 100 + p.mods.hp; p.hp = Math.max(1, p.hp + p.mods.hp - before);   // 체력 증강은 현재 체력도 같이 올려요
+  });
+  g.phase = 'play'; g.fuel = fuelOf(g, g.turn); endBusy(g);
+  toRoom(r, { type: 'augdone', picks: g.picks });
+  toRoom(r, snapshot(r));
+  toRoom(r, turnMsg(g));
+}
+
 function advance(r, from) {   // 다음 차례로 넘겨요
   const g = r.game;
-  g.turn = nextTurn(g, from); g.wind = rndWind(); g.fuel = FUEL;
+  g.turn = nextTurn(g, from); g.wind = rndWind(); g.fuel = fuelOf(g, g.turn);
 }
 
 function fireCarpet(r, shooter, angle, power) {
@@ -364,7 +400,8 @@ function fireCarpet(r, shooter, angle, power) {
       path.push([nx, g.terrain[nx] - 6 - 16 * Math.abs(Math.sin(u * Math.PI * 2.5)) * (1 - u)]);
     }
     const rest = path[path.length - 1];
-    for (const k of [-1, 0, 1]) {   // 신호탄 위치와 양옆, 위에서 수직으로 떨어져요
+    const nm = 3 + g.players[shooter].mods.missiles;   // 증강(신호탄): 미사일 수
+    for (const k of Array.from({ length: nm }, (_, j) => j - (nm - 1) / 2)) {   // 신호탄 위치와 양옆, 위에서 수직으로 떨어져요
       const x = Math.max(2, Math.min(W - 3, Math.round(rest[0] + k * CARPET_SPREAD))), y0 = Math.max(-300, g.terrain[x] - 1100);
       let y1 = g.terrain[x], hit = false;
       for (let y = y0; y < g.terrain[x]; y += 5) {
@@ -374,7 +411,7 @@ function fireCarpet(r, shooter, angle, power) {
       missiles.push({ x, y0, y1, hit });
     }
   }
-  const total = path.length + (missiles.length ? CARPET_GLOW + CARPET_GAP * 2 + CARPET_FALL : 20);
+  const total = path.length + (missiles.length ? CARPET_GLOW + CARPET_GAP * (missiles.length - 1) + CARPET_FALL : 20);
   if (!checkEnd(r, SHOT_MS(total))) { g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), SHOT_MS(total) + 2000); }
   return { type: 'shot', by: shooter, angle, kind: 'carpet', dud: false, shells: [],
     carpet: { path, landIdx, missiles, glow: CARPET_GLOW, gap: CARPET_GAP, fall: CARPET_FALL, total }, state: snapshot(r) };
@@ -385,19 +422,32 @@ function fire(r, shooter, angle, power) {
   if (kind === 'carpet') return fireCarpet(r, shooter, angle, power);
   let shells, dud = false;
   if (kind === 'cluster') {
-    shells = Array.from({ length: CLUSTER_N }, () =>
+    shells = Array.from({ length: Math.round(CLUSTER_N * g.players[shooter].mods.shells) }, () =>
       flight(g, shooter, Math.min(180, Math.max(0, angle + (Math.random() - .5) * 14)), Math.min(100, power * (.9 + Math.random() * .2)), kind));
-  } else if (kind === 'homing' && Math.random() < DUD) {   // 불발: 날아가다 떨어져 사라져요
-    const s = flight(g, shooter, angle, power, 'basic');
-    s.path = s.path.slice(0, Math.max(3, Math.floor(s.path.length * (.35 + Math.random() * .4)))); s.impact = null;
-    shells = [s]; dud = true;
+  } else if (kind === 'homing') {   // 유도탄: 듀얼 증강이면 2발(각 피해 70%) · 발마다 따로 30% 불발
+    const n = g.players[shooter].mods.dual ? 2 : 1;
+    shells = Array.from({ length: n }, (_, k) => {
+      const ang = n > 1 ? Math.min(180, Math.max(0, angle + (k ? -3 : 3))) : angle;   // 두 발이 살짝 벌어져 나가요
+      let s;
+      if (Math.random() < DUD) {   // 불발: 날아가다 떨어져 사라져요
+        s = flight(g, shooter, ang, power, 'basic');
+        s.path = s.path.slice(0, Math.max(3, Math.floor(s.path.length * (.35 + Math.random() * .4)))); s.impact = null; s.dudShell = true;
+      } else s = flight(g, shooter, ang, power, 'homing', false, k);   // 두 번째 탄은 두 번째로 가까운 적 (적이 하나면 같은 적)
+      if (n > 1) s.mul = .7;
+      return s;
+    });
+    dud = shells.every(s => s.dudShell);
   } else if (kind === 'laser') shells = [laserFlight(g, shooter, angle)];
   else if (kind === 'bumper') shells = bumperFlight(g, shooter, angle, power);
+  else if (kind === 'pierce' && g.players[shooter].mods.drills) {   // 다중 드릴: 기존 드릴 + 양옆으로 작은 드릴 2발 (각 피해 50%)
+    shells = [flight(g, shooter, angle, power, kind)];
+    [4, -4].forEach(d => { const s = flight(g, shooter, Math.min(180, Math.max(0, angle + d)), power, kind); s.small = true; s.mul = .5; shells.push(s); });
+  }
   else shells = [flight(g, shooter, angle, power, kind)];
 
   if (shells.length === 1 && shells[0].fizzled) dud = true;   // 맴돌다 사라진 포탄도 불발로 처리
   // 클라이언트 애니메이션(약 60프레임/초)이 끝나 폭발이 보일 때쯤 불길이 시작되도록 맞춰요
-  shells.forEach(s => { if (kind === 'pierce') { if (s.impact) drill(g, shooter, s, Math.round(s.path.length * 1000 / 60 / FMAP.SHOT_SPEED) + 300); } else if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - SHELL.laser.dmg); } else if (s.impact) explode(g, shooter, s.impact, kind === 'bumper' ? 'bumper' + s.gen : kind, Math.round(s.path.length * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED)) + 300); });
+  shells.forEach(s => { if (kind === 'pierce') { if (s.impact) drill(g, shooter, s, Math.round(s.path.length * 1000 / 60 / FMAP.SHOT_SPEED) + 300, s.mul || 1); } else if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - scaleDmg(g, shooter, s.hit, SHELL.laser.dmg, 'laser')); } else if (s.impact) explode(g, shooter, s.impact, kind === 'bumper' ? 'bumper' + s.gen : kind, Math.round(s.path.length * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED)) + 300, s.mul || 1); });
   if (g.fires.length) startBurn(r);
 
   const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED) + 2000 + (kind === 'pierce' ? DRILL_MS : 0);
@@ -405,7 +455,7 @@ function fire(r, shooter, angle, power) {
     g.busy = true;
     g.busyTimer = setTimeout(() => resolveShot(r, g), ms);
   }
-  return { type: 'shot', by: shooter, angle, kind, dud, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd })), state: snapshot(r) };
+  return { type: 'shot', by: shooter, angle, kind, dud, beam: kind === 'laser' ? g.players[shooter].mods.beam : 1, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd, small: !!s.small, jumbo: !!s.jumbo })), state: snapshot(r) };
 }
 
 function join(ws, r, name, icon) {
@@ -429,6 +479,7 @@ function leave(ws) {
       g.players[i].hp = 0;
       if (!checkEnd(r)) {
         if (g.phase === 'order') { if (allFired(g)) { toRoom(r, snapshot(r)); resolveOrder(r, g); pushList(); return; } }
+        else if (g.phase === 'augment') { if (allPicked(g)) finishAugment(r, g); }
         else if (g.turn === i) { endBusy(g); advance(r, i); }
       }
     }
@@ -480,7 +531,7 @@ wss.on('connection', ws => {
       newGame(r); toRoom(r, snapshot(r)); pushList();
     } else if (r && m.type === 'landed') {
       const g = r.game;
-      if (g && g.busy && !g.orderBusy && g.phase !== 'order' && g.turn === ws.slot) resolveShot(r, g);
+      if (g && g.busy && !g.orderBusy && g.phase !== 'order' && g.phase !== 'augment' && g.turn === ws.slot) resolveShot(r, g);
     } else if (r && m.type === 'move') {
       const g = r.game, now = Date.now();
       if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.fuel <= 0 || now - (ws.lastMove || 0) < 30) return;
@@ -498,6 +549,11 @@ wss.on('connection', ws => {
       g.oshots[ws.slot] = { angle: Math.min(180, Math.max(0, +m.angle || 0)), power: Math.min(100, Math.max(10, +m.power || 10)) };
       toRoom(r, { type: 'ofired', i: ws.slot });
       if (allFired(g)) resolveOrder(r, g);
+    } else if (r && m.type === 'aug') {   // 증강 선택
+      const g = r.game;
+      if (!g || g.phase !== 'augment' || !g.offers || g.picks[ws.slot] || !(g.offers[ws.slot] || []).includes(m.id)) return;
+      g.picks[ws.slot] = m.id; toRoom(r, { type: 'augpicked', i: ws.slot });
+      if (allPicked(g)) finishAugment(r, g);
     } else if (r && m.type === 'fire') {
       const g = r.game;
       if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.players[ws.slot].hp <= 0) return;
