@@ -17,16 +17,22 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper'];
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
   bumper0: { dmg: 20, rad: 52 }, bumper1: { dmg: 12, rad: 42 }, bumper2: { dmg: 8, rad: 34 },   // 범퍼: 첫 탄 20 / 한 번 튄 탄 12 / 두 번 튄 가장 작은 탄 8
   pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함 · 맞은 탱크는 드릴로 2×3 추가 피해) / 레이저(직격만, 기본탄 17보다 센 22)
+  sniper: { dmg: 50, rad: 16 },   // 스나이퍼: 작고 가벼운 탄 · 직격 50 = 체력 100의 절반 · 폭발은 아주 작아요
   heavy: { dmg: 68, rad: Math.round(CRATER * Math.sqrt(6)) },   // 광폭탄: 피해 4배(기본탄 17의 4배), 폭발 면적 6배(반지름 √6배)
 };
 const SPEED = { heavy: Math.sqrt(0.7) };   // 광폭탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
+const SNIPER_G = .3, SNIPER_HIT = HIT_R * .55, SNIPER_ANIM = 1.8;   // 스나이퍼탄: 중력 30% / 피격 범위 55%(작아서 맞추기 어려워요) / 화면에서 날아가는 속도 배율(빨라요)
+const segDist = (px, py, x, y, cx, cy) => {   // 점 (cx,cy)와 선분 (px,py)-(x,y) 사이의 거리 (빠른 탄이 작은 판정을 건너뛰지 않게)
+  const dx = x - px, dy = y - py, l2 = dx * dx + dy * dy, u = l2 ? Math.max(0, Math.min(1, ((cx - px) * dx + (cy - py) * dy) / l2)) : 0;
+  return Math.hypot(px + dx * u - cx, py + dy * u - cy);
+};
 const PIERCE_HIT = HIT_R * 2;      // 관통탄 피격 범위: 기본 판정의 2배
 const DRILL_TICK = 2, DRILL_N = 3, DRILL_MS = 850;   // 관통탄 드릴: 맞은 탱크를 2 피해씩 3번 더 갈아요 / 화면에서 갈리는 시간
 const LASER_HIT = HIT_R * 1.9;     // 레이저 판정 범위: 기본 판정의 약 1.9배 (빔이 굵은 만큼 넓게)
@@ -65,7 +71,17 @@ function newCode() {
 
 // ----- 증강 헬퍼: 능력치는 p.mods (augments.js 의 calc 결과) 에 모여 있어요 -----
 const fuelOf = (g, i) => Math.round(FUEL * g.players[i].mods.fuel);
-const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn) });
+const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn), rings: g.rings });
+
+// ----- 튕김 링: 2~3개가 떠 있다가 2~5턴 뒤에 사라지고, 다른 자리에 새로 나타나요 -----
+function tickRings(g, init) {
+  if (!init) { g.rings.forEach(q => q.ttl--); g.rings = g.rings.filter(q => q.ttl > 0); }
+  const target = 2 + Math.floor(Math.random() * 2), xs = g.players.filter(p => p.on && p.hp > 0).map(p => p.x);
+  if (g.rings.length >= target) return;
+  const add = FMAP.makeRings(g.terrain, xs, target - g.rings.length, g.rings);
+  add.forEach(q => { q.id = ++g.ringSeq; q.ttl = 2 + Math.floor(Math.random() * 4); });
+  g.rings = g.rings.concat(add);
+}
 function scaleDmg(g, from, to, amt, kind, mul = 1) {   // 주는 쪽 · 받는 쪽 증강을 반영한 최종 피해
   const a = g.players[from] && g.players[from].mods, b = g.players[to].mods, k = String(kind).replace(/\d+$/, '');
   return Math.round(amt * mul * (a ? a.dmg * (a.kindDmg[k] || 1) : 1) * b.taken);
@@ -100,6 +116,7 @@ function newGame(r) {
     players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
+  g.rings = []; g.ringSeq = 0; tickRings(g, true);   // 튕김 링 (2~3개)
   g.turn = g.players.findIndex(p => p.on);
   g.fuel = fuelOf(g, g.turn);
   // 순서 정하기: 목표물 하나를 맵 가운데 쪽 랜덤 위치에 세우고, 모두 동시에 한 발씩 쏴서 가장 가까운 순서대로 차례를 정해요
@@ -113,7 +130,7 @@ function snapshot(r) {
   const g = r.game;
   return {
     type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam, busy: !!g.busy, fuelMax: fuelOf(g, g.turn),
-    phase: g.phase, target: g.target, order: g.order, ofired: g.players.map((_, i) => !!g.oshots[i]),
+    phase: g.phase, target: g.target, rings: g.rings, order: g.order, ofired: g.players.map((_, i) => !!g.oshots[i]),
     orderGo: Math.max(0, g.orderGoAt - Date.now()), orderLeft: Math.max(0, g.orderEnd - Date.now()),
     teams: g.players.map(p => p.team),
     fires: fireList(g),
@@ -168,13 +185,16 @@ function flight(g, shooter, angle, power, kind, free = false, pick = 0) {   // f
       while (d < -Math.PI) d += 2 * Math.PI;
       const na = cur + Math.max(-HOMING_TURN * dt, Math.min(HOMING_TURN * dt, d));
       vx = sp * Math.cos(na) + g.wind * 1.5 * K * dt; vy = sp * Math.sin(na) + G * .3 * dt;
-    } else { vx += g.wind * 3 * K * dt * (kind === 'carpet' ? CARPET_WIND : 1); vy += G * dt; }
+    } else { vx += g.wind * 3 * K * dt * (kind === 'carpet' ? CARPET_WIND : 1); vy += G * dt * (kind === 'sniper' ? SNIPER_G * p.mods.grav : 1); }   // 스나이퍼탄은 가벼워서 중력을 덜 받아요
+    const px = x, py = y;
     x += vx * dt; y += vy * dt;
+    const rb = FMAP.ringBounce(g.rings, px, py, x, y, vx, vy);   // 링에 닿으면 튕겨요 (어떤 탄이든)
+    if (rb) { x = rb.x; y = rb.y; vx = rb.vx; vy = rb.vy; path.push([rb.cx, rb.cy]); }
     if (t % 4 === 0) path.push([x, y]);
     if (x < 0 || x >= W || y > H) { out = true; break; }
-    if (kind !== 'pierce' && y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }   // 관통탄은 땅을 그냥 통과해요
+    if (kind !== 'pierce' && (y >= g.terrain[Math.floor(x)] || (kind === 'sniper' && (py + y) / 2 >= g.terrain[Math.floor((px + x) / 2)]))) { impact = [x, y]; break; }   // 관통탄은 땅을 그냥 통과해요 (스나이퍼탄은 빨라서 걸음 중간도 검사)
     if (!free && g.players.some((q, i) => q.hp > 0 && (i !== shooter || t > 40) && !isAlly(g, shooter, i) &&
-        Math.hypot(x - q.x, y - tankY(g, q)) < (kind === 'pierce' ? PIERCE_HIT : HIT_R))) { impact = [x, y]; break; }
+        (kind === 'sniper' ? segDist(px, py, x, y, q.x, tankY(g, q)) < SNIPER_HIT * p.mods.hitr : Math.hypot(x - q.x, y - tankY(g, q)) < (kind === 'pierce' ? PIERCE_HIT : HIT_R)))) { impact = [x, y]; break; }
   }
   if (impact) path.push(impact);
   return { path, impact, fizzled: !impact && !out, vx, vy };   // fizzled: 30초 넘게 날다 소멸
@@ -188,7 +208,9 @@ function bumperFlight(g, shooter, angle, power) {
   const run = (x, y, vx, vy, gen, prefix, splits) => {
     const path = []; let impact = null, hitTank = false;
     for (let t = 0; t < 3600; t++) {
-      vx += g.wind * 3 * K * dt; vy += G * dt; x += vx * dt; y += vy * dt;
+      vx += g.wind * 3 * K * dt; vy += G * dt; const px = x, py = y; x += vx * dt; y += vy * dt;
+      const rb = FMAP.ringBounce(g.rings, px, py, x, y, vx, vy);   // 링에 닿으면 튕겨요
+      if (rb) { x = rb.x; y = rb.y; vx = rb.vx; vy = rb.vy; path.push([rb.cx, rb.cy]); }
       if (t % 4 === 0) path.push([x, y]);
       if (x < 0 || x >= W || y > H) break;
       if (y >= g.terrain[Math.floor(x)]) { impact = [x, y]; break; }
@@ -241,6 +263,8 @@ function laserFlight(g, shooter, angle) {
       else { bounces--; x = nx; y = ny; len += STEP; rec += STEP; }   // 이미 벽에서 멀어지는 중(스치기/파묻힘): 튕김으로 세지 않고 그냥 빠져나가요
       continue;
     }
+    const rb = FMAP.ringBounce(g.rings, x, y, nx, ny, dx, dy);                   // 링에 닿으면 반사 (반사 횟수에는 안 세요)
+    if (rb) { path.push([rb.cx, rb.cy]); const L = Math.hypot(rb.vx, rb.vy) || 1; dx = rb.vx / L; dy = rb.vy / L; x = rb.x; y = rb.y; len += STEP; rec = 0; continue; }
     x = nx; y = ny; len += STEP; rec += STEP;
     if (rec >= 50) { path.push([x, y]); rec = 0; }
   }
@@ -251,7 +275,7 @@ function laserFlight(g, shooter, angle) {
 
 // 착탄: 땅 파임 + 피해(팀전에서는 아군 제외) + 소이탄이면 불길 생성 (delay: 클라이언트 화면에서 폭발이 보일 때까지의 시간)
 function explode(g, shooter, impact, kind, delay = 0, mul = 1) {   // mul: 이 포탄의 피해 배율 (듀얼 0.7)
-  const { dmg } = SHELL[kind], rad = SHELL[kind].rad * g.players[shooter].mods.rad, direct = kind === 'pierce' ? PIERCE_HIT + 8 : DIRECT, reach = kind === 'pierce' ? Math.max(rad + 25, direct + 20) : rad + 25;
+  const { dmg } = SHELL[kind], rad = SHELL[kind].rad * g.players[shooter].mods.rad, direct = kind === 'pierce' ? PIERCE_HIT + 8 : kind === 'sniper' ? SNIPER_HIT * g.players[shooter].mods.hitr + 8 : DIRECT, reach = kind === 'pierce' ? Math.max(rad + 25, direct + 20) : kind === 'sniper' ? direct + 16 : rad + 25;
   crater(g, impact[0], impact[1], rad);
   g.players.forEach((q, i) => {
     if (q.hp <= 0 || isAlly(g, shooter, i)) return;
@@ -411,6 +435,7 @@ function finishAugment(r, g) {
 function advance(r, from) {   // 다음 차례로 넘겨요
   const g = r.game;
   g.turn = nextTurn(g, from); g.wind = rndWind(); g.fuel = fuelOf(g, g.turn);
+  tickRings(g);   // 차례가 넘어갈 때마다 링이 사라지고 새로 나타나요
 }
 
 function fireCarpet(r, shooter, angle, power) {
@@ -480,7 +505,7 @@ function fire(r, shooter, angle, power) {
   shells.forEach(s => { if (kind === 'pierce') { if (s.impact) drill(g, shooter, s, Math.round(s.path.length * 1000 / 60 / FMAP.SHOT_SPEED) + 300, s.mul || 1); } else if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - scaleDmg(g, shooter, s.hit, SHELL.laser.dmg, 'laser')); } else if (s.impact) explode(g, shooter, s.impact, kind === 'bumper' ? 'bumper' + s.gen : kind, Math.round(s.path.length * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED)) + 300, s.mul || 1); });
   if (g.fires.length) startBurn(r);
 
-  const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED) + 2000 + (kind === 'pierce' ? DRILL_MS : 0);
+  const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((kind === 'heavy' ? .6 : kind === 'sniper' ? SNIPER_ANIM : 1) * FMAP.SHOT_SPEED) + 2000 + (kind === 'pierce' ? DRILL_MS : 0);
   if (!checkEnd(r, ms - 2000)) {   // 턴은 바로 넘기지 않고, 포탄이 끝날 때까지 기다려요
     g.busy = true;
     g.busyTimer = setTimeout(() => resolveShot(r, g), ms);

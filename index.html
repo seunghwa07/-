@@ -460,7 +460,7 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 
 const ls = {
@@ -582,7 +582,7 @@ function onMsg(m) {
   }
   else if (m.type === 'turn') {   // 포탄이 끝나서 차례가 넘어갔어요 (애니메이션 중이면 끝난 뒤 적용될 상태에 반영)
     const t = anim ? anim.pending : st;
-    if (t && t.players) { t.turn = m.turn; t.wind = m.wind; t.fuel = m.fuel; t.fuelMax = m.fuelMax; t.busy = false; }
+    if (t && t.players) { if (m.rings) t.rings = m.rings; t.turn = m.turn; t.wind = m.wind; t.fuel = m.fuel; t.fuelMax = m.fuelMax; t.busy = false; }
     hideRank();
     ui();
   }
@@ -665,7 +665,7 @@ function preview(c, id) {
   x.lineWidth = 1.4; x.strokeStyle = TC.lite(.6); x.stroke(E);
 }
 // ---- 대기실 (1280×720 디자인 무대) ----
-const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', homing: '#4dffe0', heavy: '#d0a15a', pierce: '#ff4d6a', laser: '#7df3ff', carpet: '#ff5a3c', bumper: '#7dff6a', random: '#c9d3ff' };   // 탱크 종류별 포인트 색
+const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', homing: '#4dffe0', heavy: '#d0a15a', pierce: '#ff4d6a', laser: '#7df3ff', carpet: '#ff5a3c', bumper: '#7dff6a', sniper: '#c58cff', random: '#c9d3ff' };   // 탱크 종류별 포인트 색
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
 const CROWN = w => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="currentColor" aria-label="방장" role="img"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"></path></svg>`;
@@ -802,7 +802,7 @@ function apply(m) {
   show('game');
   if (m.phase === 'order') { const n = performance.now(); m.goAt = n + m.orderGo; m.endAt = n + m.orderLeft; }
   if (fresh) {
-    fresh = false; cam.snap = true; zm.on = m.phase === 'order' && me >= 0 && !!m.target; zm.t0 = performance.now(); zm.z = zm.on ? .5 : 1; startIntro(); hideRank(); orderMarks = []; resetDeathFx();
+    fresh = false; ringFx.clear(); ringT0 = performance.now() + 2300; cam.snap = true; zm.on = m.phase === 'order' && me >= 0 && !!m.target; zm.t0 = performance.now(); zm.z = zm.on ? .5 : 1; startIntro(); hideRank(); orderMarks = []; resetDeathFx();
     m.players.forEach((p, i) => { aims[i] = p.x < W / 2 ? 45 : 135; });
     my.angle = aims[me]; placeAim(); setPower(50); showFsPrompt();
   }
@@ -1176,6 +1176,7 @@ const TK = {   // acc/acc2: 종류별 포인트 색
   pierce:     { acc: '#ff4d6a', acc2: '#eef4ff' },   // 저격: 낮고 날렵한 차체 + 스파이크 포신
   laser:      { acc: '#7df3ff', acc2: '#d28bff' },   // 미래형: 부유 + 에너지 코어
   carpet:     { acc: '#ff5a3c', acc2: '#ffd9b0' },
+  sniper:     { acc: '#c58cff', acc2: '#2a2f48' },   // 스나이퍼: 낮은 차체 + 위장 무늬 + 긴 포신과 조준경
   bumper:     { acc: '#7dff6a', acc2: '#ff8ad8' },   // 범퍼: 등에 스프링 + 통통 튀는 탱탱볼   // 융단 폭격: 등에 진 미사일 3발 + 짧은 신호탄 박격포
 };
 const poly = pts => { const q = new Path2D(); pts.forEach(([x, y], n) => n ? q.lineTo(x, y) : q.moveTo(x, y)); q.closePath(); return q; };
@@ -1188,6 +1189,7 @@ const TPK = {
   pierce: { hull: poly([[-21, -7], [-21, -11], [-12, -14], [14, -14], [24, -8.5], [24, -7]]), turret: poly([[-10, -14], [-6, -20.5], [8, -20.5], [16, -14]]) },
   carpet: { hull: poly([[-22, -7], [-22, -12], [-17, -15], [15, -15], [22, -10.5], [22, -7]]), turret: poly([[-10, -15], [-8, -20.5], [4, -20.5], [9, -15]]) },
   bumper: { hull: poly([[-21, -7], [-21, -11.5], [-17, -15.5], [14, -15.5], [22, -10.5], [22, -7]]), turret: poly([[-12, -15.5], [-10, -21], [-4, -24.5], [7, -24.5], [14, -19.5], [14, -15.5]]) },
+  sniper: { hull: poly([[-22, -7], [-22, -10.5], [-14, -13], [16, -13], [23, -9], [23, -7]]), turret: poly([[-9, -13], [-6, -19.5], [7, -19.5], [13, -13]]) },
   laser: { hull: poly([[-20, -10], [-17, -15], [13, -15], [21, -11], [20, -10]]), turret: poly([[-8, -15], [-5, -22], [6, -22], [10, -15]]) },
 };
 const HF = [.35, 0, -.5], TF = [.65, .2, -.25];   // 차체/포탑 명암
@@ -1266,6 +1268,15 @@ const BARREL = {
     C.fillStyle = lg(-2.8, 2.8, [[0, '#ffffff'], [.5, '#dce6fa'], [1, '#8794b0']]);
     C.beginPath(); C.moveTo(22.4, -2.8); C.lineTo(32, 0); C.lineTo(22.4, 2.8); C.closePath(); C.fill(); C.lineWidth = .8; C.strokeStyle = o.edge; C.stroke();
     glow(31.5, 0, 4.5, o.k.acc, .55 + .3 * Math.sin(o.now / 260));
+  },
+  sniper(o) {   // 아주 긴 가는 포신 + 제퇴기 + 위에 얹은 조준경(렌즈가 반짝여요)
+    C.fillStyle = lg(-1.2, 1.2, STEEL); C.fillRect(-2, -1.2, 40, 2.4);
+    C.fillStyle = '#2f364c'; C.fillRect(32, -2.1, 6, 4.2); C.fillStyle = '#0a0c14'; C.fillRect(34, -2.1, .8, 4.2); C.fillRect(36, -2.1, .8, 4.2);
+    C.fillStyle = o.lite; C.fillRect(37.5, -2.1, 1, 4.2);
+    rr(7, -6.4, 14, 3.4, 1.5); C.fillStyle = '#1b1f31'; C.fill(); C.lineWidth = .8; C.strokeStyle = o.edge; C.stroke();   // 조준경 몸통
+    C.fillStyle = '#2f364c'; C.fillRect(9, -3.2, 1.6, 2.2); C.fillRect(17, -3.2, 1.6, 2.2);                              // 거치대
+    const lp = .6 + .4 * Math.sin(o.now / 240 + o.i);
+    glow(21.4, -4.7, 4.5, o.k.acc, .55 * lp + .15); C.fillStyle = rgba(o.k.acc, .85); C.fillRect(20.6, -6, 1.6, 2.6);   // 앞 렌즈
   },
   bumper(o) {   // 짧은 스프링 포신 + 끝에 물린 탱탱볼
     C.fillStyle = lg(-2.4, 2.4, STEEL); C.fillRect(-2, -2.4, 9, 4.8);
@@ -1394,6 +1405,17 @@ const BODY = {
     paint(o, o.tp.turret, -20.5, -14, TF);
     rr(1.5, -19.2, 9, 2.4, 1.2); C.fillStyle = '#10131f'; C.fill();   // 붉은 스코프 눈
     glow(8, -18, 6, k.acc, .6 * pu); C.fillStyle = rgba(k.acc, .6 + .4 * pu); C.fillRect(5, -18.8, 5, 1.2);
+  },
+  sniper(o) {
+    const k = o.k, pu = .6 + .4 * Math.sin(o.now / 300 + o.i);
+    tracks(o, -23, 46, 7, 3.5, [-17, -8.5, 0, 8.5, 17]);
+    paint(o, o.tp.hull, -13, -7, HF);
+    C.save(); C.clip(o.tp.hull); C.fillStyle = k.acc2; [[-15, -10.5, 3.2], [-6, -8.8, 2.4], [5, -11, 3.4], [14, -9, 2.4]].forEach(([x, y, r]) => { C.beginPath(); C.arc(x, y, r, 0, 7); C.fill(); }); C.restore();   // 위장 무늬
+    C.strokeStyle = k.acc; C.lineWidth = 1; C.beginPath(); C.moveTo(-18, -13); C.lineTo(-18, -25); C.stroke();   // 안테나
+    beacon(o, -18, -25.5, k.acc);
+    lamp(20, -10.5, '#e6d2ff');
+    paint(o, o.tp.turret, -19.5, -13, TF);
+    glow(3, -16, 6, k.acc, .45 * pu); C.fillStyle = rgba(k.acc, .6 + .4 * pu); C.fillRect(0, -16.6, 5, 1.2);   // 포탑 눈
   },
   bumper(o) {
     const k = o.k, bn = Math.abs(Math.sin(o.now / 320 + o.i * 1.7));
@@ -1551,12 +1573,12 @@ function dotSprite(col) {   // 점 주변 빛: 그라데이션을 점마다 만�
 }
 function drawPreview(p, col) {
   if (p.tank === 'laser') {   // 레이저는 직선: 첫 번째 벽까지만 점선으로 보여줘요 (파워 무관)
-    const a = pv.a * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), T = st.terrain, LM = 900 * K / 2.5, GP = 13 * K;
+    const a = pv.a * Math.PI / 180, T = st.terrain, LM = 900 * K / 2.5, GP = 13 * K; let dx = Math.cos(a), dy = -Math.sin(a);
     let x = p.x, y = T[Math.floor(p.x)] - 20 * TS, len = 0, next = 30 * K - GP + (performance.now() / 50) % GP;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     while (len < LM) {
       const x0 = x, y0 = y, l0 = len;
-      x += dx * 4; y += dy * 4; len += 4;
+      { let nx = x + dx * 4, ny = y + dy * 4; const rb = FMAP.ringBounce(st.rings, x, y, nx, ny, dx, dy); if (rb) { const L = Math.hypot(rb.vx, rb.vy) || 1; dx = rb.vx / L; dy = rb.vy / L; nx = rb.x; ny = rb.y; } x = nx; y = ny; len += 4; }
       if (x < 0 || x >= W || y < 0 || y >= T[Math.floor(x)]) break;   // 지형·맵 경계 모두 '벽'
       while (len >= next) {   // 점은 걸음 끝이 아니라 정확한 거리 위치에 찍어야 흐를 때 덜덜거리지 않아요
         const f = (next - l0) / 4, qx = x0 + (x - x0) * f, qy = y0 + (y - y0) * f, nl = next; next += GP; if (nl < 30 * K) continue;
@@ -1568,13 +1590,16 @@ function drawPreview(p, col) {
     ctx.restore(); return;
   }
   const a = pv.a * Math.PI / 180, v = pv.p * 8 * K * (p.tank === 'heavy' ? Math.sqrt(.7) : 1), dt = 1 / 120;
+  const pm = FAUG.calc(p.aug || []), sn = p.tank === 'sniper', gs = sn ? .3 * pm.grav : 1;   // 스나이퍼탄: 중력 30%, 조준경 증강이면 점선이 더 길어져요   // (아래 루프: 링에 닿으면 점선도 같이 튕겨요)
   let x = p.x, y = st.terrain[Math.floor(p.x)] - 14 * TS, vx = v * Math.cos(a), vy = -v * Math.sin(a), len = 0;
-  const LMAX = (60 + pv.p * 1.1) * K, START = 30 * K, GAP = 13 * K;
+  const LMAX = (60 + pv.p * 1.1) * K * (sn ? pm.scope : 1), START = 30 * K, GAP = 13 * K;
   let next = START - GAP + (performance.now() / 50) % GAP;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   for (let t = 0; t < 1200 && len < LMAX; t++) {
-    vx += st.wind * 3 * K * dt * (p.tank === 'carpet' ? 1.6 : 1); vy += 500 * K * dt;
-    const nx = x + vx * dt, ny = y + vy * dt, l0 = len, sl = Math.hypot(nx - x, ny - y);
+    vx += st.wind * 3 * K * dt * (p.tank === 'carpet' ? 1.6 : 1); vy += 500 * K * dt * gs;
+    let nx = x + vx * dt, ny = y + vy * dt; const rb = FMAP.ringBounce(st.rings, x, y, nx, ny, vx, vy);
+    if (rb) { nx = rb.x; ny = rb.y; vx = rb.vx; vy = rb.vy; }
+    const l0 = len, sl = Math.hypot(nx - x, ny - y);
     len += sl;
     while (len >= next) {   // 점을 정확한 거리 위치에 찍어서 흐를 때 걸음 단위로 덜덜거리지 않게 해요
       const f = sl ? (next - l0) / sl : 0, qx = x + (nx - x) * f, qy = y + (ny - y) * f, nl = next; next += GAP;
@@ -1822,7 +1847,7 @@ function killTank(i, next) {
 function fireFx(by, deg) {
   const p = st && st.players && st.players[by]; if (!p) return;
   const dir = deg <= 90 ? 1 : -1, a = deg * Math.PI / 180;
-  (FX.muzzles = FX.muzzles || []).push({ x: p.x + (8 * dir + Math.cos(a) * 26) * TS, y: p.y - (19.5 + Math.sin(a) * 26) * TS, a, t: 0, col: pc(by) });
+  (FX.muzzles = FX.muzzles || []).push({ x: p.x + (8 * dir + Math.cos(a) * (p.tank === 'sniper' ? 38 : 26)) * TS, y: p.y - (19.5 + Math.sin(a) * (p.tank === 'sniper' ? 38 : 26)) * TS, a, t: 0, col: pc(by) });
   FX.shake = Math.max(FX.shake, 3);
 }
 function fxFromDiff(prev, next) {   // 포탄 결과로 체력이 깎인 탱크: 피해 숫자, 파괴되면 큰 폭발
@@ -1927,7 +1952,7 @@ function drawFx() {
 
 // ----- 시작 연출 / 안내 문구 / 순서 결과 카드 -----
 const TIPS = ['💡 바람 방향을 보고 포탄이 휘는 것을 계산해 보세요', '💡 지형을 부수면 적의 발밑이 무너져요', '💡 화면 밖 적은 가장자리 화살표와 거리(m)로 알 수 있어요', '💡 탱크마다 포탄 성능이 달라요. 상대의 탱크를 확인하세요'];
-let introT = [], rankT = 0, orderMarks = [], rankUntil = 0;
+let introT = [], rankT = 0, orderMarks = [], rankUntil = 0, ringT0 = 0;   // ringT0: 링이 하나씩 나타나기 시작하는 시각
 function startIntro() {
   const el = $('intro'); introT.forEach(clearTimeout); introT = [];
   el.hidden = false; el.className = ''; void el.offsetWidth; el.className = 'load';   // 로딩 바 애니메이션을 처음부터 다시
@@ -1950,6 +1975,38 @@ function showRank(ranks) {
   box.hidden = false; rankT = setTimeout(hideRank, 3800);
 }
 function hideRank() { clearTimeout(rankT); $('rank').hidden = true; rankUntil = 0; orderMarks = []; }
+
+// 튕김 링: 하얀 네온의 얇은 링. 포탄이 닿으면 반사돼요 (판정은 서버·조준선과 같은 선)
+// 링은 몇 턴 뒤에 사라지고 다른 자리에 새로 나타나요 → 화면에서는 나타나는/사라지는 연출을 위해 id별로 상태를 따로 들고 있어요
+const ringFx = new Map();   // id → { g: 링 정보, born: 나타나기 시작한 시각, die: 사라지기 시작한 시각 }
+const RING_IN = 700, RING_OUT = 550;
+function syncRings(now) {
+  const cur = new Set((st.rings || []).map(g => g.id));
+  (st.rings || []).forEach((g, n) => { if (!ringFx.has(g.id)) ringFx.set(g.id, { g, born: Math.max(now, ringT0) + n * 170, die: 0 }); else { const f = ringFx.get(g.id); f.g = g; f.die = 0; } });
+  ringFx.forEach((f, id) => { if (!cur.has(id)) { if (!f.die) f.die = now; else if (now - f.die > RING_OUT) ringFx.delete(id); } });
+}
+function drawRings(now) {
+  syncRings(now);
+  if (anim && anim.shells && st.rings) anim.shells.forEach(s => {   // 포탄이 링에 닿는 순간 번쩍
+    if (anim.i >= s.path.length) return; const q = ptAt(s.path, anim.i);
+    st.rings.forEach(g => { if (Math.abs(Math.hypot(q[0] - g.x, q[1] - g.y) - g.r) < 30) g.flash = now; });
+  });
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  let n = 0;
+  ringFx.forEach(f => {
+    const g = f.g; n++;
+    if (g.x + g.r + 60 < VX0 || g.x - g.r - 60 > VX1) return;
+    const b = clamp((now - f.born) / RING_IN, 0, 1), d = f.die ? clamp((now - f.die) / RING_OUT, 0, 1) : 0;
+    if (b <= 0 || d >= 1) return;
+    const s = (1 - Math.pow(1 - b, 3)) * (1 - d), r = g.r * (1 - Math.pow(1 - b, 3) + Math.sin(b * Math.PI) * .12) * (1 + d * .25);   // 나타날 땐 팟 커지고, 사라질 땐 살짝 커지며 흐려져요
+    const fl = Math.max(0, 1 - (now - (g.flash || 0)) / 380), pul = .75 + .25 * Math.sin(now / 520 + n * 1.7);
+    [[18, .05], [10, .1], [5, .18]].forEach(([w, a]) => { ctx.lineWidth = w + fl * 12; ctx.strokeStyle = `rgba(200,238,255,${(a * pul + fl * .35) * s})`; ctx.beginPath(); ctx.arc(g.x, g.y, r, 0, 7); ctx.stroke(); });
+    ctx.lineWidth = 2.4 + fl * 2; ctx.strokeStyle = `rgba(255,255,255,${.95 * s})`; ctx.beginPath(); ctx.arc(g.x, g.y, r, 0, 7); ctx.stroke();
+    const an = now / 1100 + n * 2.1;   // 링을 따라 도는 작은 불빛
+    ctx.fillStyle = `rgba(255,255,255,${.9 * s})`; ctx.beginPath(); ctx.arc(g.x + Math.cos(an) * r, g.y + Math.sin(an) * r, 3.5, 0, 7); ctx.fill();
+  });
+  ctx.restore();
+}
 
 // 목표물: 땅에 꽂힌 깃발 + 과녁 링 + 하늘로 뻗는 빛기둥
 function drawTarget() {
@@ -2232,6 +2289,7 @@ function draw() {
   ctx.restore();
 
   drawFires();
+  drawRings(now);
   if (st.target && (st.phase === 'order' || performance.now() < rankUntil)) drawTarget();
   const alive = st.players.map((p, i) => p.on && p.hp > 0 && !dying.has(i));
   const rp = st.players.map((p, i) => vis[i] ? { ...p, x: vis[i].x, y: vis[i].y } : p);
@@ -2255,12 +2313,12 @@ function draw() {
       const tl = tail + (A.kind === 'pierce' && s.hit != null ? GR : 0);
       maxLen = Math.max(maxLen, s.path.length + tl);
       if (A.i >= s.path.length + tl) return;
-      const an = { path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy', z: s.jumbo ? 1.7 : s.small ? .65 : A.kind === 'bumper' ? [1.7, 1.3, 1][s.splits.filter(q => q <= A.i).length] : 0 };
+      const an = { path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy', z: s.jumbo ? 1.7 : s.small ? .65 : A.kind === 'bumper' ? [1.7, 1.3, 1][s.splits.filter(q => q <= A.i).length] : A.kind === 'sniper' ? .5 : 0 };
       if (A.kind === 'pierce') pierceFx(A, s, an);
       drawShell(an);
     });
     if (A.carpet) drawCarpet(A);
-    A.i += (A.kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED * FS;   // 광폭탄은 느리게 날아가요
+    A.i += (A.kind === 'heavy' ? .6 : A.kind === 'sniper' ? 1.8 : 1) * FMAP.SHOT_SPEED * FS;   // 광폭탄은 느리게 날아가요
     A.shells.forEach(s => {
       if (A.kind === 'bumper') { A.bset = A.bset || new Set(); s.splits.forEach(q => { const key = s.path[q][0] + ',' + q; if (A.i >= q && !A.bset.has(key)) { A.bset.add(key); spawnBoom(s.path[q][0], s.path[q][1], .3); } }); }   // 튈 때마다 작은 불꽃
       if (s.boomed || A.i < s.path.length) return;
@@ -2269,7 +2327,7 @@ function draw() {
       if (!A.order && A.kind !== 'pierce' && s.hit != null && A.pending && A.pending.players && A.pending.players[s.hit] && A.pending.players[s.hit].hp <= 0 && A.shells.filter(q => q.hit === s.hit).every(q => q.boomed)) killTank(s.hit, A.pending);   // 마지막 포탄에 맞은 순간 그 자리에서 폭발
       if (s.impact && A.order) spawnBoom(s.impact[0], s.impact[1], .9);   // 순서 정하기: 지형은 안 파여요
       else if (s.impact && A.kind === 'pierce') spawnBoom(s.impact[0], s.impact[1], (s.hit == null ? 1 : .8) * (s.small ? .6 : 1));
-      else if (s.impact) spawnBoom(s.impact[0], s.impact[1], A.kind === 'bumper' ? [1.6, 1.25, .95][s.gen || 0] : { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 3.4, pierce: 1, laser: .5 }[A.kind] || 1.5);
+      else if (s.impact) spawnBoom(s.impact[0], s.impact[1], A.kind === 'bumper' ? [1.6, 1.25, .95][s.gen || 0] : { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 3.4, pierce: 1, laser: .5, sniper: .75 }[A.kind] || 1.5);
       else if (A.dud) { spawnBoom(e[0], e[1], 1.1, true); FX.floats.push({ x: e[0], y: e[1] - 30, t: 0, txt: '불발!', big: false }); }
     });
     if (A.i >= maxLen) { const next = A.pending; if (A.kind === 'pierce') A.shells.forEach(s => (FX.tunnels = FX.tunnels || []).push({ path: s.path, t: 0 })); fxFromDiff(st, next); anim = null; apply(next); if (A.order) showRank(A.ranks); else if (A.by === me) sendMsg({ type: 'landed' }); }
