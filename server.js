@@ -17,7 +17,7 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire'];
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
@@ -25,9 +25,11 @@ const SHELL = {
   pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함 · 맞은 탱크는 드릴로 2×3 추가 피해) / 레이저(직격만, 기본탄 17보다 센 22)
   sniper: { dmg: 50, rad: 16 },   // 스나이퍼: 작고 가벼운 탄 · 직격 50 = 체력 100의 절반 · 폭발은 아주 작아요
   heavy: { dmg: 68, rad: Math.round(CRATER * Math.sqrt(6)) },   // 광폭탄: 피해 4배(기본탄 17의 4배), 폭발 면적 6배(반지름 √6배)
-  gravity: { dmg: 45, rad: 95 },   // 중력탄: 블랙홀에 끌려온 탱크가 받는 붕괴 폭발 피해 / 붕괴 크레이터 (아래 GRAV_* 와 같은 값)
+  gravity: { dmg: 32, rad: 95 },   // 중력탄: 블랙홀에 끌려온 탱크가 받는 붕괴 폭발 피해 / 붕괴 크레이터 (아래 GRAV_* 와 같은 값)
   rail: { dmg: 0, rad: 0 },        // 레일건: 단계별 값은 RAIL_LV 에 있어요
   electro: { dmg: 3, rad: 0 },     // 일렉트로: 전깃줄에 닿은 탱크가 틱마다 받는 피해 (아래 ELEC_* 와 같은 값) · 땅은 안 파여요
+  vampire: { dmg: 17, rad: CRATER },   // 흡혈탄: 기본탄과 같은 피해·폭발 · 실제로 입힌 피해의 절반만큼 쏜 사람이 회복 (VAMP_RATE)
+  frost: { dmg: 8, rad: 40 },      // 냉각탄: 약한 피해 + 착탄 주변 바닥이 얼어요 (아래 FROST_* 참고)
   grinder: { dmg: 10, rad: 0 },    // 그라인더: 톱니바퀴에 닿은 탱크가 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
 };
 const SPEED = { heavy: Math.sqrt(0.7), gravity: Math.sqrt(0.7) };   // 광폭탄·중력탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
@@ -45,7 +47,7 @@ const RAIL_AIM_MIN = -45;       // 레일건은 수평보다 아래(-45°~225°)
 const RAIL_CHARGE_MS = 1300;   // 충전 연출 시간 (이 뒤에 턴이 넘어가요)
 
 // ----- 중력탄: 광폭탄과 같은 사거리. 떨어진 곳에 블랙홀이 생겨 범위 안의 탱크를 중심으로 끌어당긴 뒤 붕괴 폭발 -----
-const GRAV_R = 420, GRAV_DMG = 45, GRAV_CRATER = 95, GRAV_GAP = 46;   // 끌어당기는 반경 / 폭파 피해 / 붕괴 크레이터 / 끌려온 탱크끼리 간격
+const GRAV_R = 420, GRAV_DMG = 32, GRAV_CRATER = 95, GRAV_GAP = 46;   // 끌어당기는 반경 / 폭파 피해 / 붕괴 크레이터 / 끌려온 탱크끼리 간격
 const GRAV_FRAMES = 150;           // 블랙홀 연출 길이 (화면 프레임) — 클라이언트와 같아야 해요
 const GRAV_MS = GRAV_FRAMES * 1000 / 60 + 200;
 // ----- 일렉트로 · 그라인더: 땅에 닿으면 장판이 생겨 3초 동안 '앞으로(포탄이 날아오던 방향)' 나아가요 -----
@@ -66,6 +68,10 @@ const DRILL_TICK = 2, DRILL_N = 3, DRILL_MS = 850;   // 관통탄 드릴: 맞은
 const LASER_HIT = HIT_R * 1.9;     // 레이저 판정 범위: 기본 판정의 약 1.9배 (빔이 굵은 만큼 넓게)
 const MAX_CLIMB = 90;              // 한 걸음(6px)당 최대 오르막 높이 → 약 86° 경사까지 (거의 수직 절벽만 막혀요)
 const FIRE_R = 170, FIRE_MS = 3000, BURN_TICK = 500, BURN_DMG = 2;   // 소이탄: 불길 반경 / 3초 지속 / 0.5초마다 2 피해
+const FROST_R = 150, FROST_TURNS = 3;   // 냉각탄: 얼음 바닥 반경(px) / 얼음이 남아 있는 차례 수 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동 불가(발사는 가능)
+const ICE_GAP = 70, ICE_FUEL = 2;   // 얼음 바닥 위: 이동 간격 70ms(기본 30~40ms 대비 절반 속도) / 한 걸음당 연료 2배
+const onIce = (g, q) => (g.ice || []).some(f => Math.hypot(q.x - f.x, tankY(g, q) - f.y) < f.r);
+const VAMP_RATE = .5;                // 흡혈탄: 입힌 피해 대비 회복 비율
 const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
 const ORDER_GO = 3600, ORDER_MS = 15000;   // 순서 정하기: 시작 연출(로딩+등장) 시간 / 조준·발사 제한시간
 // 융단 폭격: 가벼운 신호탄(피해 없음)이 날아가 땅에서 조금 구른 뒤, 붉은 연기가 피어나고 위에서 미사일 3발이 수직으로 떨어져요. (시간 단위 = 화면 애니메이션 프레임)
@@ -99,7 +105,8 @@ function newCode() {
 
 // ----- 증강 헬퍼: 능력치는 p.mods (augments.js 의 calc 결과) 에 모여 있어요 -----
 const fuelOf = (g, i) => Math.round(FUEL * g.players[i].mods.fuel);
-const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn), rings: g.rings });
+const iceList = g => (g.ice || []).map(q => ({ id: q.id, x: q.x, y: q.y, r: q.r, left: q.left }));
+const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn), rings: g.rings, frozen: !!g.frozen, frz: g.players.map(p => p.frz || 0), ice: iceList(g) });
 
 // ----- 튕김 링: 2~3개가 떠 있다가 2~5턴 뒤에 사라지고, 다른 자리에 새로 나타나요 -----
 function tickRings(g, init) {
@@ -157,7 +164,7 @@ function newGame(r) {
   const xs = spawnXs(r);
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
-    map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [],
+    map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [], ice: [], frozen: false, iceSeq: 0,
     players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
@@ -178,8 +185,8 @@ function snapshot(r) {
     phase: g.phase, target: g.target, rings: g.rings, order: g.order, ofired: g.players.map((_, i) => !!g.oshots[i]),
     orderGo: Math.max(0, g.orderGoAt - Date.now()), orderLeft: Math.max(0, g.orderEnd - Date.now()),
     teams: g.players.map(p => p.team),
-    fires: fireList(g),
-    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, maxHp: p.maxHp, aug: p.aug, on: p.on, name: p.name, icon: p.icon, charge: p.charge || 0 })),
+    fires: fireList(g), ice: iceList(g), frozen: !!g.frozen,
+    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, maxHp: p.maxHp, aug: p.aug, on: p.on, name: p.name, icon: p.icon, charge: p.charge || 0, frz: p.frz || 0 })),
   };
 }
 
@@ -322,11 +329,19 @@ function laserFlight(g, shooter, angle) {
 function explode(g, shooter, impact, kind, delay = 0, mul = 1) {   // mul: 이 포탄의 피해 배율 (듀얼 0.7)
   const { dmg } = SHELL[kind], rad = SHELL[kind].rad * g.players[shooter].mods.rad, direct = kind === 'pierce' ? PIERCE_HIT + 8 : kind === 'sniper' ? SNIPER_HIT * g.players[shooter].mods.hitr + 8 : DIRECT, reach = kind === 'pierce' ? Math.max(rad + 25, direct + 20) : kind === 'sniper' ? direct + 16 : rad + 25;
   crater(g, impact[0], impact[1], rad);
+  let drained = 0;   // 흡혈탄: 다른 탱크에게 실제로 깎은 체력 합계
   g.players.forEach((q, i) => {
     if (q.hp <= 0 || isAlly(g, shooter, i)) return;
-    const d = Math.hypot(q.x - impact[0], tankY(g, q) - impact[1]);
+    const d = Math.hypot(q.x - impact[0], tankY(g, q) - impact[1]), before = q.hp;
     q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, i, kind === 'carpet' ? (d <= direct ? dmg : d < Math.max(reach, direct + 20) ? CARPET_GRAZE : 0) : dmgAt(dmg, d, reach, direct), kind, mul));   // 융단 폭격: 정통 20 / 스치면 일정하게 13
+    if (i !== shooter) drained += before - q.hp;
   });
+  if (kind === 'vampire') { const sp = g.players[shooter]; if (sp.hp > 0 && drained > 0) sp.hp = Math.min(sp.maxHp, sp.hp + Math.round(drained * VAMP_RATE)); }   // 입힌 피해의 절반을 회복 (최대 체력까지)
+  if (kind === 'frost') {   // 냉각탄: 착탄 주변 바닥이 얼고, 그 위에 있는 (적) 탱크는 자기 다음 차례에 이동할 수 없어요
+    const fx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), fy = g.terrain[fx], fr = Math.round(FROST_R * g.players[shooter].mods.area);
+    g.ice.push({ id: ++g.iceSeq, x: fx, y: fy, r: fr, left: FROST_TURNS + 1 });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
+    g.players.forEach((q, i) => { if (q.hp > 0 && !isAlly(g, shooter, i) && Math.hypot(q.x - fx, tankY(g, q) - fy) < fr) q.frz = 1; });
+  }
   if (kind === 'incendiary') {
     const fx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), t0 = Date.now() + delay;
     g.fires.push({ x: fx, y: g.terrain[fx], r: Math.round(FIRE_R * g.players[shooter].mods.area), by: shooter, startAt: t0, endsAt: t0 + Math.round(FIRE_MS * g.players[shooter].mods.fireMs), next: t0 + BURN_TICK });
@@ -480,6 +495,9 @@ function finishAugment(r, g) {
 function advance(r, from) {   // 다음 차례로 넘겨요
   const g = r.game;
   g.turn = nextTurn(g, from); g.wind = rndWind(); g.fuel = fuelOf(g, g.turn);
+  g.frozen = false; const tp = g.players[g.turn];
+  if (tp.frz > 0) { tp.frz--; g.frozen = true; g.fuel = 0; }   // 얼어붙은 탱크: 이번 차례는 이동 불가 (연료 0)
+  g.ice = (g.ice || []).map(q => ({ ...q, left: q.left - 1 })).filter(q => q.left > 0);   // 얼음 바닥은 몇 차례 뒤에 녹아요
   tickRings(g);   // 차례가 넘어갈 때마다 링이 사라지고 새로 나타나요
 }
 
@@ -709,14 +727,16 @@ wss.on('connection', ws => {
       if (g && g.busy && !g.orderBusy && g.phase !== 'order' && g.phase !== 'augment' && g.turn === ws.slot) resolveShot(r, g);
     } else if (r && m.type === 'move') {
       const g = r.game, now = Date.now();
-      if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.fuel <= 0 || now - (ws.lastMove || 0) < 30) return;
+      if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.fuel <= 0) return;
+      const p = g.players[ws.slot], icy = onIce(g, p);   // 얼음 위에서는 이동이 느려지고 연료를 더 써요
+      if (now - (ws.lastMove || 0) < (icy ? ICE_GAP : 30)) return;
       ws.lastMove = now;
-      const dir = m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0, p = g.players[ws.slot];
+      const dir = m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0;
       const nx = p.x + dir * STEP;
       if (!dir || nx < 40 || nx > W - 40) return;
       if (g.terrain[nx] < g.terrain[p.x] - MAX_CLIMB) return; // 한 걸음(STEP)에 오를 수 있는 최대 높이
       if (g.players.some((q, i) => i !== ws.slot && q.hp > 0 && Math.abs(q.x - nx) < 40)) return;
-      p.x = nx; g.fuel -= STEP;
+      p.x = nx; g.fuel = Math.max(0, g.fuel - STEP * (icy ? ICE_FUEL : 1));
       toRoom(r, { type: 'moved', i: ws.slot, x: nx, y: g.terrain[nx], fuel: g.fuel });
     } else if (r && m.type === 'ofire') {   // 순서 정하기: 각자 동시에 조준을 확정해요 (모두 확정하거나 시간이 끝나면 한꺼번에 발사)
       const g = r.game;
@@ -739,6 +759,7 @@ wss.on('connection', ws => {
     } else if (r && m.type === 'fire') {
       const g = r.game;
       if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.players[ws.slot].hp <= 0) return;
+      if (g.players[ws.slot].tank === 'rail' && (g.players[ws.slot].charge || 0) < 1) return;   // 레일건은 최소 1번 충전해야 발사할 수 있어요
       const railAim = g.players[ws.slot].tank === 'rail';   // 레일건만 수평 아래로도 조준 가능
       toRoom(r, fire(r, ws.slot,
         Math.min(railAim ? 180 - RAIL_AIM_MIN : 180, Math.max(railAim ? RAIL_AIM_MIN : 0, +m.angle || 0)),

@@ -117,6 +117,15 @@
   #lobby .tk{box-sizing:border-box;height:84px;padding:6px 4px 8px;border-radius:14px;border:2px solid #2a3556;background:#0d1433;color:#eaf0ff;display:flex;flex-direction:column;align-items:center;justify-content:space-between;font-size:14px;font-weight:700}
   #lobby .mp{box-sizing:border-box;padding:4px 4px 8px;border-radius:14px;border:2px solid #2a3556;background:#0d1433;color:#eaf0ff;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;font-weight:700;white-space:nowrap}
   #lobby .mp canvas{display:block;width:100%;height:auto;border-radius:9px}
+  /* 내 탱크 칸: 탱크가 많아도 게임 시작 버튼이 가려지지 않게, 칸 안에서 휠/터치로 위아래 스크롤해요 */
+  #tkbox{position:relative;flex:1 1 0;min-height:96px;display:flex;flex-direction:column}
+  #tanks{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:2px 8px 2px 2px;align-content:start;scrollbar-width:thin;scrollbar-color:#4dd2ff #0d1433;scroll-snap-type:y proximity}
+  #tanks .tk{scroll-snap-align:start}
+  #tanks::-webkit-scrollbar{width:6px}
+  #tanks::-webkit-scrollbar-track{background:#0d1433;border-radius:3px}
+  #tanks::-webkit-scrollbar-thumb{background:#4dd2ff;border-radius:3px}
+  #tkfade{position:absolute;left:0;right:8px;bottom:0;height:28px;pointer-events:none;border-radius:0 0 12px 12px;background:linear-gradient(180deg,rgba(6,10,30,0),#060a1e);transition:opacity .2s}
+  #tkfade.off{opacity:0}
   #start{height:64px;padding:0 56px 0 44px;display:flex;align-items:center;gap:14px;border-radius:20px;background:linear-gradient(180deg,#7dffc4,#2fd48b);color:#04210f;font-size:24px;font-weight:900;letter-spacing:.06em;box-shadow:0 8px 30px rgba(93,255,176,.35),inset 0 1px 0 rgba(255,255,255,.7)}
   #start:disabled{opacity:.4;filter:grayscale(.8);box-shadow:none}
   #start[hidden],#vs[hidden]{display:none !important}
@@ -421,13 +430,13 @@
     </div>
 
     <!-- 설정: 내 탱크 / 맵 -->
-    <div style="width:420px;flex-shrink:0;display:flex;flex-direction:column;gap:18px">
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#4dd2ff"></span><span class="sec">내 탱크</span></div>
-        <div id="tanks" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px"></div>
-        <div id="tdesc" style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;min-height:44px"></div>
+    <div style="width:420px;flex-shrink:0;min-height:0;display:flex;flex-direction:column;gap:18px">
+      <div style="flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#4dd2ff"></span><span class="sec">내 탱크</span><span id="tknote" style="font-size:13px;color:#a9b8de">휠로 위아래로 넘겨요</span></div>
+        <div id="tkbox"><div id="tanks" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px"></div><div id="tkfade" class="off"></div></div>
+        <div id="tdesc" style="flex:none;display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;min-height:44px"></div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#ff3df2"></span><span class="sec">맵</span><span id="mapnote" style="font-size:13px;color:#a9b8de"></span></div>
         <div id="maps" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px"></div>
       </div>
@@ -477,7 +486,7 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 15/28/45/70'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 45'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크에 0.2초마다 3 피해'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿은 탱크에 10 피해 · 너무 가파른 벽에서는 멈춰요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최소 1번 충전해야 발사 가능 · 최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 15/28/45/70'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 32'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크에 0.2초마다 3 피해'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿은 탱크에 10 피해 · 너무 가파른 벽에서는 멈춰요'], ['frost', '냉각탄', '얼음 포탄 · 맞은 자리 주변 바닥이 3턴간 얼어요 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동할 수 없어요(조준·발사는 가능) · 얼음 바닥 위에서는 이동이 느려지고 연료를 2배로 써요 · 피해 8'], ['vampire', '흡혈탄', '기본탄과 같은 피해(17) · 적에게 입힌 피해의 절반만큼 내 체력을 회복해요 · 맞히지 못하면 회복도 없어요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 const RAIL_LEN = [1500, 2300, 3200, 4600], RAIL_WF = [1, 1.5, 2.1, 3], RAIL_MAX = 3, RAIL_AIM_MIN = -45;   // 레일건 충전 단계별 사거리(px) / 빔 반폭 배율(×탱크 피격 반경) — 서버(server.js RAIL_LV)와 같아야 해요
 
@@ -600,7 +609,7 @@ function onMsg(m) {
   }
   else if (m.type === 'turn') {   // 포탄이 끝나서 차례가 넘어갔어요 (애니메이션 중이면 끝난 뒤 적용될 상태에 반영)
     const t = anim ? anim.pending : st;
-    if (t && t.players) { if (m.rings) t.rings = m.rings; t.turn = m.turn; t.wind = m.wind; t.fuel = m.fuel; t.fuelMax = m.fuelMax; t.busy = false; }
+    if (t && t.players) { if (m.rings) t.rings = m.rings; t.turn = m.turn; t.wind = m.wind; t.fuel = m.fuel; t.fuelMax = m.fuelMax; t.busy = false; t.frozen = !!m.frozen; if (m.ice) t.ice = m.ice; if (m.frz) m.frz.forEach((z, i) => { if (t.players[i]) t.players[i].frz = z; }); }
     hideRank();
     ui();
   }
@@ -687,7 +696,7 @@ function preview(c, id) {
   x.lineWidth = 1.4; x.strokeStyle = TC.lite(.6); x.stroke(E);
 }
 // ---- 대기실 (1280×720 디자인 무대) ----
-const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', homing: '#4dffe0', heavy: '#d0a15a', pierce: '#ff4d6a', laser: '#7df3ff', carpet: '#ff5a3c', bumper: '#7dff6a', sniper: '#c58cff', rail: '#4d7bff', gravity: '#b84dff', electro: '#d4ff3a', grinder: '#c4cfdf', random: '#c9d3ff' };   // 탱크 종류별 포인트 색
+const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', homing: '#4dffe0', heavy: '#d0a15a', pierce: '#ff4d6a', laser: '#7df3ff', carpet: '#ff5a3c', bumper: '#7dff6a', sniper: '#c58cff', rail: '#4d7bff', gravity: '#b84dff', electro: '#d4ff3a', grinder: '#c4cfdf', random: '#c9d3ff' , frost: '#b4e6ff' , vampire: '#ff3b5c' };   // 탱크 종류별 포인트 색
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
 const CROWN = w => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="currentColor" aria-label="방장" role="img"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"></path></svg>`;
@@ -716,6 +725,10 @@ const tankBtns = TANKS.map(([k, n]) => {
   b.onclick = () => sendMsg({ type: 'tank', kind: k });
   return b;
 });
+// 탱크 칸 스크롤: 아래에 더 있으면 하단 그림자 표시
+const tkFade = () => { const t = $('tanks'); $('tkfade').classList.toggle('off', t.scrollTop + t.clientHeight >= t.scrollHeight - 2); };
+$('tanks').addEventListener('scroll', tkFade, { passive: true });
+addEventListener('resize', () => setTimeout(tkFade, 50));
 const mapCards = [];
 for (let id = 0; id <= RANDOM; id++) {
   const d = el('button', null, $('maps')); d.className = 'mp';
@@ -800,6 +813,7 @@ function renderRoom() {
   const td = TANKS.find(t => t[0] === mk);
   $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${esc(td[1])}</b> · ${esc(td[2])}</span>`;
   drawTanks($('tanks'));
+  requestAnimationFrame(tkFade);
   // 맵
   $('mapnote').textContent = isHost ? '눌러서 선택해요' : '방장이 선택해요';
   mapCards.forEach((d, i) => { const sel = i === st.mapId; d.style.borderColor = sel ? '#ffe94a' : '#2a3556'; d.style.background = sel ? 'rgba(255,233,74,.1)' : '#0d1433'; d.style.opacity = isHost || sel ? 1 : .6; d.style.pointerEvents = isHost ? '' : 'none'; });
@@ -820,7 +834,7 @@ $('leave').onclick = () => { sendMsg({ type: 'leave' }); me = -1; st = null; sho
 function apply(m) {
   st = m;
   if (m.fires) { const now = performance.now(); m.fires.forEach(f => { f.at = now; }); }   // 남은 시간을 화면에서 줄여가요
-  if (m.type === 'room') { fresh = true; show('room'); renderRoom(); return; }
+  if (m.type === 'room') { iceSeen.clear(); fresh = true; show('room'); renderRoom(); return; }
   show('game');
   if (m.phase === 'order') { const n = performance.now(); m.goAt = n + m.orderGo; m.endAt = n + m.orderLeft; }
   if (fresh) {
@@ -858,12 +872,13 @@ function renderOL() {   // 정해진 차례 표시 (왼쪽 위)
   box.innerHTML = st.order.map((i, n) => `<span class="oc${st.turn === i && st.winner === -1 ? ' cur' : ''}${st.players[i].hp <= 0 ? ' dead' : ''}" style="--c:${pc(i)}"><i>${n + 1}</i>${esc(st.players[i].icon || '')} ${esc(st.players[i].name)}</span>`).join('');
 }
 
+let frzShown = false;
 function ui() {
   if (!st || st.type !== 'state') return;
   const mine = me >= 0 && st.players[me].on && st.players[me].hp > 0;
   const ordering = st.phase === 'order';
-  $('fire').disabled = !(canAct() || canOrderFire());
-  const rail = mine && !ordering && st.players[me].tank === 'rail', rc = rail ? (st.players[me].charge || 0) : 0;   // 레일건: 충전 버튼은 내 차례에 최대 3번까지
+  const rail = mine && !ordering && st.players[me].tank === 'rail', rc = rail ? (st.players[me].charge || 0) : 0;
+  $('fire').disabled = !(canAct() || canOrderFire()) || (rail && rc < 1);   // 레일건은 최소 1번 충전해야 발사할 수 있어요 (순서 정하기에서는 기본탄이라 제외)   // 레일건: 충전 버튼은 내 차례에 최대 3번까지
   $('charge').hidden = !rail; $('chg').textContent = `${rc}/${RAIL_MAX}`; $('charge').disabled = !(rail && canAct() && rc < RAIL_MAX);
   const myAug = mine && st.players[me].aug ? st.players[me].aug.map(id => (FAUG.byId[id] || {}).icon || '').join('') : '';
   $('rd').textContent = mine ? `${ordering ? '순서 정하기' : TN[st.players[me].tank] || ''}${rail ? ' ⚡' + rc + '/' + RAIL_MAX : ''}${myAug ? ' ' + myAug : ''} · 각도 ${my.angle}° · 파워 ${my.power}` : '관전 중';
@@ -874,6 +889,10 @@ function ui() {
   else if (ordering) t = orderText();
   else t = st.turn === me ? '내 차례' : `${st.players[st.turn].name}의 차례`;
   if (laserTurn()) t += ' · 드래그로 시야 이동';
+  const frzMe = !ordering && st.winner === -1 && st.turn === me && !!st.frozen;
+  if (!ordering && st.winner === -1 && st.turn === me && !st.frozen && mine && (st.ice || []).some(f => Math.hypot(st.players[me].x - f.x, st.players[me].y - f.y) < f.r)) t += ' · 🧊 얼음 위 (느림 · 연료 2배)';
+  if (!ordering && st.winner === -1 && st.frozen) t += st.turn === me ? ' · 🧊 얼어서 이동 불가' : ' · 🧊 얼어붙음';
+  if (frzMe && !frzShown) { frzShown = true; showBanner('🧊 얼어붙었어요!', '이번 차례는 이동할 수 없어요 · 조준과 발사는 가능해요'); } else if (!frzMe) frzShown = false;
   $('info').textContent = t; setWind(st.wind); renderOL();
 }
 
@@ -1007,6 +1026,7 @@ $('fire').onclick = () => {
     st.ofired[me] = true; ui(); return;
   }
   if (!canAct()) return;
+  if (st.players[me].tank === 'rail' && !(st.players[me].charge > 0)) return;   // 충전 전에는 발사 불가
   sendMsg({ type: 'fire', angle: my.angle, power: my.power });
   $('fire').disabled = true;
 };
@@ -1213,6 +1233,8 @@ const TK = {   // acc/acc2: 종류별 포인트 색
   rail:       { acc: '#4d7bff', acc2: '#ffe14a' },   // 레일건: 길고 곧은 이중 레일 + 코일 + 등 뒤 축전기
   gravity:    { acc: '#b84dff', acc2: '#1a1030' },
   electro:    { acc: '#d4ff3a', acc2: '#4dd2ff' },   // 일렉트로: 등 위 테슬라 코일 + 두 갈래로 갈라진 포구
+  vampire:    { acc: '#ff3b5c', acc2: '#2a0a18' },   // 흡혈: 박쥐 날개 + 송곳니 포구 + 피 문양
+  frost:      { acc: '#b4e6ff', acc2: '#3f7dff' },   // 냉각: 등 위 얼음 결정 + 눈꽃 문양 + 고드름 포구
   grinder:    { acc: '#c4cfdf', acc2: '#ff7a2a' },   // 그라인더: 경고 줄무늬 + 포구에 달린 회전 톱니바퀴   // 중력탄: 나팔 포구 + 머리 위에 떠 있는 작은 블랙홀
   bumper:     { acc: '#7dff6a', acc2: '#ff8ad8' },   // 범퍼: 등에 스프링 + 통통 튀는 탱탱볼   // 융단 폭격: 등에 진 미사일 3발 + 짧은 신호탄 박격포
 };
@@ -1231,6 +1253,8 @@ const TPK = {
   rail: { hull: poly([[-22, -7], [-22, -11], [-15, -14], [15, -14], [23, -10], [23, -7]]), turret: poly([[-12, -14], [-9, -19.5], [8, -19.5], [13, -14]]) },
   electro: { hull: poly([[-22, -7], [-22, -11.5], [-16, -14.5], [14, -14.5], [22, -10.5], [22, -7]]), turret: poly([[-10, -14.5], [-8, -19.5], [4, -19.5], [9, -14.5]]) },
   grinder: { hull: poly([[-22, -7], [-22, -12.5], [-17, -15], [16, -15], [23, -9.5], [23, -7]]), turret: poly([[-12, -15], [-10, -20.5], [2, -20.5], [8, -15]]) },
+  vampire: { hull: poly([[-22, -7], [-22, -12], [-17, -15], [15, -15], [23, -10], [23, -7]]), turret: poly([[-11, -15], [-9, -20.5], [3, -20.5], [10, -15]]) },
+  frost: { hull: poly([[-22, -7], [-22, -12], [-17, -15], [15, -15], [22, -10.5], [22, -7]]), turret: poly([[-11, -15], [-9, -20.5], [3, -20.5], [9, -15]]) },
   gravity: { hull: poly([[-21, -7], [-21, -12], [-16, -15.5], [14, -15.5], [22, -11], [22, -7]]), turret: new Path2D('M-10 -15.5C-10 -26 -2 -27 3 -27C10 -27 13 -22 13 -15.5Z') },
 };
 const HF = [.35, 0, -.5], TF = [.65, .2, -.25];   // 차체/포탑 명암
@@ -1400,6 +1424,29 @@ const BARREL = {
     sawP(C, 23, 0, 5.4, 11, ph, 2.6); C.fillStyle = lg(-8, 8, [[0, '#dfe6f4'], [.5, '#8b97b3'], [1, '#444d68']]); C.fill(); C.lineWidth = .9; C.strokeStyle = '#1d2236'; C.stroke();
     C.beginPath(); C.arc(23, 0, 3, 0, 7); C.strokeStyle = k.acc2; C.lineWidth = 1; C.stroke();
     C.fillStyle = '#12151f'; C.beginPath(); C.arc(23, 0, 1.4, 0, 7); C.fill();
+  },
+  frost(o) {   // 서리 낀 포신 + 끝에 고드름 세 개
+    const k = o.k, pu = .6 + .4 * Math.sin(o.now / 260 + o.i);
+    C.fillStyle = lg(-3.2, 3.2, [[0, '#f2fbff'], [.5, '#9fd0ea'], [1, '#4a6f94']]); C.fillRect(-2, -3.2, 20, 6.4);
+    C.fillStyle = k.acc2; C.fillRect(6, -3.8, 1.8, 7.6); C.fillRect(11, -3.8, 1.8, 7.6);
+    C.fillStyle = '#2f4a6e'; C.fillRect(17, -4.4, 3, 8.8); C.fillStyle = k.acc; C.fillRect(19.2, -4.4, 1, 8.8);
+    glow(27, 0, 8, k.acc, .22 * pu);
+    [[-3.5, -2.2, 28], [-1.2, 0, 31], [1.2, 2.2, 28]].forEach(([a, b, tip]) => {   // 고드름
+      C.beginPath(); C.moveTo(20, a); C.lineTo(tip, b); C.lineTo(20, a + 2.4); C.closePath();
+      C.fillStyle = lg(-4, 4, [[0, '#ffffff'], [1, '#8fd4ff']]); C.fill(); C.lineWidth = .8; C.strokeStyle = '#e8fbff'; C.stroke();
+    });
+  },
+  vampire(o) {   // 송곳니 두 개가 달린 포구 + 핏빛 링
+    const k = o.k, pu = .6 + .4 * Math.sin(o.now / 340 + o.i);
+    C.fillStyle = lg(-3.4, 3.4, [[0, '#f4dfe4'], [.5, '#a07a88'], [1, '#4a2634']]); C.fillRect(-2, -3.4, 21, 6.8);
+    C.fillStyle = k.acc; C.fillRect(7, -4, 1.8, 8); C.fillRect(12, -4, 1.8, 8);
+    C.fillStyle = '#3a0f1e'; C.fillRect(18, -4.6, 4, 9.2); C.fillStyle = k.acc; C.fillRect(21, -4.6, 1, 9.2);
+    glow(24, 0, 8, k.acc, .22 * pu);
+    [-1, 1].forEach(s => {   // 위·아래 송곳니
+      C.beginPath(); C.moveTo(22, s * 4.4); C.lineTo(30, s * 1.2); C.lineTo(22, s * 1.2); C.closePath();
+      C.fillStyle = '#fff6f0'; C.fill(); C.lineWidth = .8; C.strokeStyle = '#7a2a3a'; C.stroke();
+    });
+    C.fillStyle = rgba(k.acc, .9); C.beginPath(); C.arc(23.5, 0, 1.3, 0, 7); C.fill();   // 핏방울
   },
 };
 
@@ -1627,6 +1674,49 @@ const BODY = {
     sawP(C, -7, -25, 4.8, 10, ph, 2.1); C.fillStyle = lg(-31, -19, [[0, '#e3e9f6'], [.5, '#8b97b3'], [1, '#444d68']]); C.fill(); C.lineWidth = .8; C.strokeStyle = '#1d2236'; C.stroke();   // 등 위에서 천천히 도는 톱니바퀴
     C.fillStyle = k.acc2; C.beginPath(); C.arc(-7, -25, 1.8, 0, 7); C.fill();
   },
+  frost(o) {
+    const k = o.k, pu = .5 + .5 * Math.sin(o.now / 300 + o.i);
+    tracks(o, -23, 46, 8.5, 4.2, [-17, -8.5, 0, 8.5, 17]);
+    [[-20.5, 5, 11], [-15.5, 5.6, 15.5], [-23, 3.4, 7]].forEach(([x, w, h]) => {   // 등 위 얼음 결정 (차체 뒤에 먼저)
+      C.beginPath(); C.moveTo(x - w / 2, -14.5); C.lineTo(x - w * .15, -14.5 - h); C.lineTo(x + w / 2, -14.5); C.closePath();
+      C.fillStyle = lg(-14.5 - h, -14.5, [[0, '#ffffff'], [.6, '#a8e0ff'], [1, '#4f8fd0']]); C.fill(); C.lineWidth = .9; C.strokeStyle = '#eaffff'; C.stroke();
+    });
+    paint(o, o.tp.hull, -15, -7, HF);
+    C.save(); C.clip(o.tp.hull);   // 차체 윗선에 서리 + 눈꽃 문양
+    C.fillStyle = 'rgba(236,251,255,.9)'; for (let x = -24; x < 22; x += 6) { C.beginPath(); C.moveTo(x, -15.5); C.lineTo(x + 6, -15.5); C.lineTo(x + 3, -15.5 + 2.6 + ((x * 7) & 3)); C.closePath(); C.fill(); }
+    C.strokeStyle = k.acc; C.lineWidth = 1; C.lineCap = 'round'; C.beginPath();
+    for (let a = 0; a < 3; a++) { const r = a * Math.PI / 3; C.moveTo(6 + Math.cos(r) * 4.2, -10.6 + Math.sin(r) * 4.2); C.lineTo(6 - Math.cos(r) * 4.2, -10.6 - Math.sin(r) * 4.2); }
+    C.stroke(); C.restore();
+    lamp(20, -11.5, '#cfeeff');
+    paint(o, o.tp.turret, -20.5, -15, TF);
+    glow(-1, -18, 7, k.acc, .2 + .12 * pu);
+    C.save(); C.globalCompositeOperation = 'lighter';   // 결정에서 흘러내리는 냉기
+    for (let n = 0; n < 4; n++) { const u = (o.now / 1200 + n / 4) % 1; C.fillStyle = rgba(k.acc, (1 - u) * .55); C.beginPath(); C.arc(-17 + Math.sin(u * 6 + n * 2) * 4, -18 + u * 12, 1.5 * (1 - u) + .4, 0, 7); C.fill(); }
+    C.restore();
+  },
+  vampire(o) {
+    const k = o.k, pu = .5 + .5 * Math.sin(o.now / 420 + o.i);
+    tracks(o, -23, 46, 8.5, 4.2, [-17, -8.5, 0, 8.5, 17]);
+    const fl = Math.sin(o.now / 500 + o.i) * 1.8;   // 등 뒤로 펼쳐진 박쥐 날개 두 장 (뒤쪽은 작고 어둡게, 살짝 펄럭여요)
+    [[.62, 4, 1, '#8a1535'], [.9, 0, 0, '#e0244c']].forEach(([sc, dx, dy, c0]) => {
+      C.save(); C.translate(-9 + dx, -15.5 + dy); C.scale(sc, sc);
+      C.beginPath(); C.moveTo(0, 0); C.lineTo(-6, -22 + fl); C.quadraticCurveTo(-12, -14 + fl * .7, -20, -18 + fl * .8); C.quadraticCurveTo(-16, -11 + fl * .4, -24, -8 + fl * .3); C.quadraticCurveTo(-15, -6, -8, -1); C.closePath();
+      C.fillStyle = lg(-22, 0, [[0, c0], [1, '#4a0c22']]); C.fill(); C.lineWidth = 1.2; C.strokeStyle = '#ffc0cc'; C.stroke();
+      C.lineWidth = .9; C.beginPath(); C.moveTo(0, 0); C.lineTo(-20, -18 + fl * .8); C.moveTo(0, 0); C.lineTo(-24, -8 + fl * .3); C.stroke();   // 날개 뼈대
+      C.restore();
+    });
+    paint(o, o.tp.hull, -15, -7, HF);
+    C.save(); C.clip(o.tp.hull);   // 차체에 핏빛 띠 + 핏방울
+    C.fillStyle = k.acc2; C.fillRect(-23, -12.4, 46, 2.8);
+    C.fillStyle = k.acc; for (let x = -20; x < 22; x += 8) { C.beginPath(); C.moveTo(x - 2, -12.4); C.lineTo(x + 2, -12.4); C.lineTo(x, -8 - ((x * 5) & 3)); C.closePath(); C.fill(); }
+    C.restore();
+    lamp(20, -11.5, '#ff8aa0');
+    paint(o, o.tp.turret, -20.5, -15, TF);
+    C.fillStyle = '#3a0f1e'; C.beginPath(); C.arc(-1, -17.8, 3.2, 0, 7); C.fill(); C.lineWidth = 1; C.strokeStyle = k.acc; C.stroke();   // 포탑의 붉은 눈
+    glow(-1, -17.8, 8, k.acc, .25 + .2 * pu);
+    C.fillStyle = '#fff6f0'; C.beginPath(); C.moveTo(-2.4, -16.6); C.lineTo(-1.6, -14.6); C.lineTo(-.8, -16.6); C.fill();
+    C.beginPath(); C.moveTo(.8, -16.6); C.lineTo(1.6, -14.6); C.lineTo(2.4, -16.6); C.fill();
+  },
 };
 
 // o: { col, lite, edge, dir(±1), a(조준 라디안), tilt, now, i }
@@ -1655,6 +1745,7 @@ function drawTank(p, i, deg, active) {
   if (active) { ctx.strokeStyle = rgba(col, .9); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 32 + 5 * Math.sin(now / 240), 0, 7); ctx.stroke(); }   // 내 차례 링
   ctx.restore();
   paintTank(kind, { col, lite: shade(col, .6), edge: shade(col, .35), dir, a, tilt, now, i, charge: p.charge || 0 });
+  if (isFrozen(p, i)) drawFrozenBlock(p, tilt, now, i);   // 얼어붙은 탱크: 얼음덩이
   ctx.restore();
 
   if (p.hp <= 35) {   // 다치면 연기, 많이 다치면 불꽃
@@ -1929,7 +2020,7 @@ function drawShell(an) {   // an: { path, i, by, kind, small, big }
   if (an.kind === 'laser') { drawLaser(an); return; }
   if (an.kind === 'rail') { drawRail(an); return; }
   const idx = Math.min(an.i, an.path.length - 1), pt = ptAt(an.path, idx), L = an.small ? 18 : 34;
-  let col = pc(an.by) || '#ffffff', red = 0;
+  let col = an.kind === 'frost' ? '#a8e6ff' : an.kind === 'vampire' ? '#ff3b5c' : (pc(an.by) || '#ffffff'), red = 0;
   if (an.dud) {   // 불발: 날아가는 도중 점점 붉게 달아올라 깜빡여요
     red = Math.max(0, Math.min(1, (idx / Math.max(1, an.path.length - 1) - .12) / .5));
     col = mixHex(col, '#ff1f1f', red);
@@ -1958,6 +2049,21 @@ function drawShell(an) {   // an: { path, i, by, kind, small, big }
   if (an.kind === 'pierce' && idx > 0) {   // 관통탄: 빙글빙글 도는 드릴 촉
     const q = ptAt(an.path, idx - 1.5), ang = Math.atan2(pt[1] - q[1], pt[0] - q[0]);
     drawDrill(pt[0], pt[1], ang, col, an.grind ? 2.4 : an.under ? 1.6 : 1, an.grind ? 1.6 : an.under ? .8 : 0);
+  }
+  if (an.kind === 'vampire' && idx > 0) {   // 흡혈탄: 날아가는 방향을 향한 핏방울
+    const q = ptAt(an.path, idx - 1.5), ang = Math.atan2(pt[1] - q[1], pt[0] - q[0]);
+    ctx.save(); ctx.translate(pt[0], pt[1]); ctx.rotate(ang); ctx.scale(Z, Z);
+    ctx.beginPath(); ctx.moveTo(10, 0); ctx.quadraticCurveTo(2, -6.5, -6, -4.6); ctx.arc(-6, 0, 4.6, -Math.PI / 2, Math.PI / 2, true); ctx.quadraticCurveTo(2, 6.5, 10, 0); ctx.closePath();
+    ctx.fillStyle = '#c4143a'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = '#ff8aa0'; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,220,230,.8)'; ctx.beginPath(); ctx.ellipse(-3, -1.8, 2.2, 1.1, -.3, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  if (an.kind === 'frost') {   // 냉각탄: 빙글빙글 도는 눈꽃 결정
+    ctx.save(); ctx.translate(pt[0], pt[1]); ctx.rotate(performance.now() / 260); ctx.lineCap = 'round';
+    ctx.strokeStyle = '#eaffff'; ctx.lineWidth = 1.5 * Z;
+    for (let k = 0; k < 6; k++) { ctx.rotate(Math.PI / 3); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(9 * Z, 0); ctx.moveTo(5.5 * Z, 0); ctx.lineTo(8 * Z, 2.4 * Z); ctx.moveTo(5.5 * Z, 0); ctx.lineTo(8 * Z, -2.4 * Z); ctx.stroke(); }
+    ctx.fillStyle = '#dff7ff'; ctx.beginPath(); ctx.arc(0, 0, 3.6 * Z, 0, 7); ctx.fill(); ctx.strokeStyle = '#7cc8ff'; ctx.lineWidth = 1 * Z; ctx.stroke();
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -2106,7 +2212,12 @@ function fxFromDiff(prev, next) {   // 포탄 결과로 체력이 깎인 탱크:
   if (!prev || !prev.players || !next || !next.players) return;
   next.players.forEach((q, i) => {
     const o = prev.players[i]; if (!o || !o.on) return;
-    const d = o.hp - q.hp; if (d <= 0) return;
+    const d = o.hp - q.hp;
+    if (d < 0 && q.hp > 0) {   // 흡혈: 쏜 사람의 체력이 늘었어요 → 맞은 탱크에서 핏빛 구슬이 날아와요
+      FX.floats.push({ x: o.x, y: o.y - 120, t: 0, txt: '+' + Math.round(-d), big: false, heal: true });
+      next.players.forEach((v, j) => { const ov = prev.players[j]; if (j !== i && ov && ov.on && ov.hp > v.hp) for (let n = 0; n < 7; n++) (FX.drain = FX.drain || []).push({ x0: ov.x, y0: ov.y - 30, i, t: -n * 4, l: 38 }); });
+    }
+    if (d <= 0) return;
     FX.floats.push({ x: o.x, y: o.y - 120, t: 0, txt: '-' + Math.round(d), big: q.hp <= 0 });
     if (q.hp <= 0) killTank(i, next);
   });
@@ -2214,7 +2325,7 @@ function drawFx() {
     const u = f.t / 70, al = Math.min(1, (1 - u) * 2.2);
     ctx.font = `bold ${(f.big ? 24 : 18) * TGS}px sans-serif`; ctx.lineWidth = 4 * TGS; ctx.strokeStyle = `rgba(20,0,10,${.8 * al})`;
     const y = f.y - 26 * TGS * (1 - (1 - u) * (1 - u)); ctx.strokeText(f.txt, f.x, y);
-    ctx.fillStyle = f.big ? `rgba(255,90,90,${al})` : `rgba(255,236,150,${al})`; ctx.fillText(f.txt, f.x, y); f.t += FS;
+    ctx.fillStyle = f.heal ? `rgba(130,255,170,${al})` : f.big ? `rgba(255,90,90,${al})` : `rgba(255,236,150,${al})`; ctx.fillText(f.txt, f.x, y); f.t += FS;
   });
   FX.floats = FX.floats.filter(f => f.t < 70);
 }
@@ -2533,6 +2644,90 @@ function setWind(w) {
 }
 
 // ----- 소이탄 불길: 땅 위에서 타오르는 불꽃 (남은 수명이 줄면 약해져요) -----
+// ----- 냉각탄: 얼음 바닥 / 얼음 파편 / 얼어붙은 탱크 -----
+const iceSeen = new Map();   // 얼음 id → 처음 보인 시각 (처음 나타날 때만 번져 나가는 연출)
+FX.frost = [];
+function frostBurst(x, y) {   // 착탄: 얼음 파편이 튀고 서리 고리가 퍼져요
+  const R = Math.random;
+  for (let k = 0; k < 30; k++) FX.frost.push({ x, y: y - 4, vx: (R() - .5) * 11, vy: -(2 + R() * 7), t: 0, l: 34 + R() * 28, s: 3 + R() * 5, r: R() * 6, w: (R() - .5) * .4 });
+  FX.frost.push({ ring: true, x, y, t: 0, l: 30 });
+  FX.shake = Math.max(FX.shake, 5);
+}
+function drawDrainFx() {   // 흡혈: 맞은 탱크에서 쏜 탱크로 날아가는 핏빛 구슬
+  if (!FX.drain || !FX.drain.length || !st || !st.players) return;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  FX.drain = FX.drain.filter(f => {
+    f.t += FS; if (f.t >= f.l) return false; if (f.t < 0) return true;
+    const u = f.t / f.l, e = u * u * (3 - 2 * u), tp = st.players[f.i]; if (!tp) return false;
+    const x = f.x0 + (tp.x - f.x0) * e, y = f.y0 + (tp.y - 30 - f.y0) * e - Math.sin(u * Math.PI) * 50, r = 7 * (1 - u * .4);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.4); g.addColorStop(0, 'rgba(255,230,235,.95)'); g.addColorStop(.35, 'rgba(255,59,92,.8)'); g.addColorStop(1, 'rgba(255,59,92,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.4, 0, 7); ctx.fill();
+    return true;
+  });
+  ctx.restore();
+}
+function drawFrostFx() {
+  if (!FX.frost.length) return;
+  ctx.save(); ctx.lineJoin = 'round';
+  FX.frost = FX.frost.filter(f => {
+    f.t += FS; if (f.t >= f.l) return false;
+    const u = f.t / f.l;
+    if (f.ring) { ctx.strokeStyle = `rgba(200,240,255,${.8 * (1 - u)})`; ctx.lineWidth = 5 * (1 - u) + 1; ctx.beginPath(); ctx.ellipse(f.x, f.y - 3, 20 + u * 130, 6 + u * 34, 0, 0, 7); ctx.stroke(); return true; }
+    f.x += f.vx * FS; f.y += f.vy * FS; f.vy += .35 * FS; f.r += f.w * FS;
+    ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.r); ctx.globalAlpha = Math.min(1, (1 - u) * 1.6);
+    ctx.beginPath(); ctx.moveTo(0, -f.s * 1.5); ctx.lineTo(f.s * .7, 0); ctx.lineTo(0, f.s * 1.5); ctx.lineTo(-f.s * .7, 0); ctx.closePath();
+    ctx.fillStyle = '#d8f6ff'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#7cc8ff'; ctx.stroke(); ctx.restore();
+    return true;
+  });
+  ctx.restore();
+}
+function drawIce() {   // 얼어붙은 바닥: 땅을 따라 번지는 얼음 + 솟은 결정 + 반짝임
+  if (!st || !st.ice || !st.ice.length) return;
+  const now = performance.now(), gy = x => st.terrain[Math.max(0, Math.min(W - 1, Math.round(x)))];
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  st.ice.forEach((f, fi) => {
+    if (f.x + f.r * 1.2 < VX0 || f.x - f.r * 1.2 > VX1) return;
+    if (!iceSeen.has(f.id)) iceSeen.set(f.id, now);
+    const g0 = Math.min(1, (now - iceSeen.get(f.id)) / 450), ease = 1 - Math.pow(1 - g0, 3), R = f.r * ease, fade = f.left <= 1 ? .5 : 1, y0 = gy(f.x);
+    const gl = ctx.createRadialGradient(f.x, y0, 0, f.x, y0, Math.max(1, R));
+    gl.addColorStop(0, `rgba(205,244,255,${.5 * fade})`); gl.addColorStop(.65, `rgba(130,205,255,${.25 * fade})`); gl.addColorStop(1, 'rgba(120,200,255,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(f.x, y0, Math.max(1, R), Math.max(1, R * .5), 0, 0, 7); ctx.fill();
+    const xa = Math.max(0, f.x - R), xb = Math.min(W - 1, f.x + R);
+    ctx.beginPath(); for (let x = xa; x <= xb; x += 10) { const y = gy(x) - 2; x === xa ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }   // 땅을 덮은 얼음막
+    ctx.strokeStyle = `rgba(150,220,255,${.4 * fade})`; ctx.lineWidth = 14; ctx.stroke();
+    ctx.strokeStyle = `rgba(240,252,255,${.92 * fade})`; ctx.lineWidth = 4; ctx.stroke();
+    ctx.setLineDash([16, 14]); ctx.lineDashOffset = now / 60; ctx.strokeStyle = `rgba(190,235,255,${.5 * fade})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(f.x, y0 - 4, Math.max(1, R), Math.max(1, R * .5), 0, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    for (let k = 0; k < 11; k++) {   // 땅에서 솟은 얼음 가시
+      const hx = f.x + (((k * 47 + fi * 29) % 100) / 100 - .5) * 1.8 * R, h = (16 + (k % 4) * 9) * ease, w = 6 + (k % 3) * 2, by = gy(hx) + 2;
+      if (Math.abs(hx - f.x) > R) continue;
+      ctx.beginPath(); ctx.moveTo(hx - w, by); ctx.lineTo(hx - w * .1, by - h); ctx.lineTo(hx + w, by); ctx.closePath();
+      ctx.fillStyle = `rgba(205,240,255,${.85 * fade})`; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = `rgba(255,255,255,${.9 * fade})`; ctx.stroke();
+    }
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < 12; k++) {   // 반짝이는 별빛
+      const hx = f.x + (((k * 61 + fi * 13) % 100) / 100 - .5) * 1.9 * R, tw = Math.max(0, Math.sin(now / 320 + k * 1.9)), y = gy(hx) - 6 - (k % 4) * 6, r = (3 + 4 * tw) * ease;
+      if (Math.abs(hx - f.x) > R || tw < .05) continue;
+      ctx.strokeStyle = `rgba(230,250,255,${.9 * tw * fade})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(hx - r, y); ctx.lineTo(hx + r, y); ctx.moveTo(hx, y - r); ctx.lineTo(hx, y + r); ctx.stroke();
+    }
+    ctx.restore();
+  });
+  ctx.restore();
+}
+const isFrozen = (p, i) => !!p && p.hp > 0 && (p.frz > 0 || (!!st && st.frozen && st.turn === i && st.phase !== 'order'));
+function drawFrozenBlock(p, tilt, now, i) {   // 탱크를 감싼 얼음덩이 (drawTank 의 탱크 좌표계 안에서 호출)
+  ctx.save(); ctx.rotate(tilt);
+  const pts = [[-27, -5], [-29, -22], [-20, -36], [0, -41], [20, -35], [29, -20], [27, -5]];
+  ctx.beginPath(); pts.forEach(([x, y], n) => n ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+  ctx.fillStyle = lg(-41, -5, [[0, 'rgba(235,252,255,.55)'], [.5, 'rgba(150,215,255,.38)'], [1, 'rgba(90,170,240,.45)']]); ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(240,253,255,.95)'; ctx.stroke();
+  ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(255,255,255,.6)';   // 얼음 면의 빛줄기
+  ctx.beginPath(); ctx.moveTo(-20, -34); ctx.lineTo(-8, -8); ctx.moveTo(-6, -38); ctx.lineTo(4, -14); ctx.moveTo(14, -33); ctx.lineTo(22, -12); ctx.stroke();
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 4; k++) { const tw = Math.max(0, Math.sin(now / 280 + k * 2 + i)); if (tw < .1) continue; const x = -18 + k * 12, y = -34 + (k % 2) * 14, r = 2 + 4 * tw; ctx.strokeStyle = `rgba(240,252,255,${tw})`; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(x - r, y); ctx.lineTo(x + r, y); ctx.moveTo(x, y - r); ctx.lineTo(x, y + r); ctx.stroke(); }
+  ctx.restore(); ctx.restore();
+}
+
 function drawFires() {
   if (!st.fires || !st.fires.length) return;
   const now = performance.now(), gy = x => st.terrain[Math.max(0, Math.min(W - 1, Math.round(x)))];
@@ -2630,6 +2825,7 @@ function draw() {
   ctx.restore();
 
   drawFires();
+  drawIce();
   drawRings(now);
   if (st.target && (st.phase === 'order' || performance.now() < rankUntil)) drawTarget();
   const alive = st.players.map((p, i) => p.on && p.hp > 0 && !dying.has(i));
@@ -2669,6 +2865,7 @@ function draw() {
       if (A.kind === 'gravity') { if (A.grav) { A.gt = 0; FX.shake = Math.max(FX.shake, 6); } }   // 중력탄: 착탄하면 블랙홀 시작 (폭발은 붕괴 때)
       else if (A.zone && s.impact) { A.zt = 0; spawnBoom(s.impact[0], s.impact[1], A.zone.kind === 'electro' ? .55 : .4); FX.shake = Math.max(FX.shake, 5); }   // 일렉트로·그라인더: 착탄하면 장판 시작 (땅은 안 파여요)
       else if (s.impact && A.order) spawnBoom(s.impact[0], s.impact[1], .9);   // 순서 정하기: 지형은 안 파여요
+      else if (s.impact && A.kind === 'frost') { frostBurst(s.impact[0], s.impact[1]); spawnBoom(s.impact[0], s.impact[1], .55); }   // 냉각탄: 얼음 파편이 사방으로 튀어요
       else if (s.impact && A.kind === 'pierce') spawnBoom(s.impact[0], s.impact[1], (s.hit == null ? 1 : .8) * (s.small ? .6 : 1));
       else if (s.impact) spawnBoom(s.impact[0], s.impact[1], A.kind === 'bumper' ? [1.6, 1.25, .95][s.gen || 0] : { cluster: .55, incendiary: 1.2, homing: 1.3, heavy: 3.4, pierce: 1, laser: .5, sniper: .75 }[A.kind] || 1.5);
       else if (A.dud) { spawnBoom(e[0], e[1], 1.1, true); FX.floats.push({ x: e[0], y: e[1] - 30, t: 0, txt: '불발!', big: false }); }
@@ -2700,6 +2897,8 @@ function draw() {
     if (A.i >= maxLen && !(A.grav && !(A.gt >= A.grav.frames)) && !(A.zone && !(A.zt >= A.zone.ms + 350))) { const next = A.pending; if (A.kind === 'pierce') A.shells.forEach(s => (FX.tunnels = FX.tunnels || []).push({ path: s.path, t: 0 })); fxFromDiff(st, next); anim = null; apply(next); if (A.order) showRank(A.ranks); else if (A.by === me) sendMsg({ type: 'landed' }); }
   }
   drawFx();
+  drawFrostFx();
+  drawDrainFx();
   if (FX.flash > .01) { ctx.fillStyle = `rgba(255,255,255,${FX.flash})`; ctx.fillRect(-20, -20, W + 40, H + 40); FX.flash *= Math.pow(.78, FS); }
   drawOffscreen();
 }
