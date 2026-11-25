@@ -27,17 +27,20 @@
       Math.round(Math.min(540 * K, Math.max(120 * K, m.gen(x / K, p, q) * K))));
   }
 
-  // ----- 튕김 링: 허공에 떠 있는 얇은 하얀 네온 링. 어떤 탄이든 링의 선에 닿으면 반사돼요 -----
-  // 탱크(xs)에서 멀고, 땅·다른 링(keep 포함)과 겹치지 않는 자리에 want개를 랜덤으로 세워요. (want 생략 시 2~3개)
+  // ----- 튕김 링: 하얀 네온 링. 어떤 탄이든 링의 선에 닿으면 반사돼요 -----
+  // 탱크(xs)에서 멀고, 다른 링(keep 포함)과 겹치지 않는 자리에 want개를 랜덤으로 세워요. (want 생략 시 2~3개)
+  // 링은 땅에 반쯤 박혀도 되지만, 위쪽 절반 이상은 항상 땅 위로 드러나 있어야 해요 (다 묻혀서 아무 영향도 못 주면 안 되니까요).
+  // 탱크를 가두는 자리는 피해요: 탱크가 링 안쪽에 들어가거나 링에 너무 가까우면 다시 뽑아요.
   function makeRings(T, xs, want, keep) {
     if (want === undefined) want = 2 + Math.floor(Math.random() * 2);
     const rings = [], all = keep || [];
-    for (let tries = 0; tries < 400 && rings.length < want; tries++) {
-      const r = 70 + Math.random() * 50, x = Math.round(W * (.1 + Math.random() * .8));
-      let top = Infinity; for (let i = Math.max(0, x - r - 20); i <= Math.min(W - 1, x + r + 20); i += 5) top = Math.min(top, T[i]);
-      const y = Math.round(T[x] - (280 + Math.random() * 520));
-      if (y - r < 90 || y + r + 90 > top) continue;                                 // 하늘 끝·땅에 너무 붙지 않게
-      if (xs.some(tx => Math.abs(tx - x) < r + 220)) continue;                      // 탱크 바로 위는 피해요
+    for (let tries = 0; tries < 600 && rings.length < want; tries++) {
+      const r = Math.round(70 + Math.random() * 50), x = Math.round(W * (.1 + Math.random() * .8));   // r 은 정수 (아래에서 T[i] 인덱스로 쓰여요)
+      let top = Infinity; for (let i = Math.max(0, x - r - 20); i <= Math.min(W - 1, x + r + 20); i += 5) top = Math.min(top, T[i]);   // top = 링 폭 안에서 가장 높은 땅(값이 작을수록 높아요)
+      const y = Math.round(Math.random() < .45 ? top + r * (.1 - Math.random() * .9) : T[x] - (150 + Math.random() * 650));   // 45%는 땅에 박힌 링(중심이 땅 근처), 나머지는 하늘에 떠 있는 링
+      if (y - r < 90) continue;                                                      // 하늘 끝에 너무 붙지 않게
+      if (y > top + r * .1) continue;                                                // 중심이 가장 높은 땅보다 낮게 내려가면(절반 넘게 묻히면) 안 돼요
+      if (xs.some((tx, k) => Math.abs(tx - x) < r + 220 || Math.hypot(tx - x, T[Math.round(tx)] - y) < r + 260)) continue;   // 탱크 바로 위·옆은 피해요 (가두는 링 방지)
       if (rings.concat(all).some(o => Math.hypot(o.x - x, o.y - y) < o.r + r + 160)) continue;  // 링끼리 겹치지 않게
       rings.push({ x, y, r: Math.round(r) });
     }

@@ -12,7 +12,7 @@
 //          missiles 융단폭격 미사일 +N발   drills  관통탄 작은 드릴 2발 추가(각 50%)
 //          split   범퍼탄이 튈 때 나오는 탄 수(기본 2)   jumbo  범퍼탄 점보(큰 탄 하나가 3번 튕김, 분열 없음)
 //          grav    스나이퍼탄이 받는 중력 ×N   hitr  스나이퍼탄 피격 범위 ×N   scope  조준 점선(스나이퍼) 길이 ×N
-//          heal    고르는 즉시 체력 +N 회복   rad  폭발 범위 ×N   dud  유도탄 불발 확률 ×N   fireMs  소이탄 불길 지속 ×N   spread  융단폭격 미사일 간격 ×N
+//          heal    고르는 즉시 체력 +N 회복   rad  폭발 범위 ×N   dud  유도탄 불발 확률 ×N   fireMs  소이탄 불길·일렉트로 전기장·그라인더 톱니바퀴 지속 시간 ×N   spread  융단폭격 미사일 간격 ×N
 //   (아래 목록은 틀이 잘 도는지 확인하려고 넣은 샘플이에요. 마음대로 바꾸고 늘리세요)
 (function (root) {
   const POOL = [
@@ -63,6 +63,10 @@
     { id: 'hollow',    tank: 'sniper', icon: '🔻', name: '고관통 탄심', desc: '저격탄 피해 ×1.2 (50 → 60)',          mods: { kindDmg: { sniper: 1.2 } } },
     { id: 'zeroing',   tank: 'sniper', icon: '🎯', name: '영점 조절',   desc: '저격탄 피격 범위 ×1.5',                mods: { hitr: 1.5 } },
     { id: 'scope',     tank: 'sniper', icon: '🔭', name: '고배율 조준경', desc: '조준 점선이 2배 길어져요',             mods: { scope: 2 } },
+    { id: 'highvolt', tank: 'electro', icon: '⚡', name: '고전압',        desc: '전기장 피해 ×1.5 (3 → 5)',                    mods: { kindDmg: { electro: 1.5 } } },
+    { id: 'longarc',  tank: 'electro', icon: '🔌', name: '장시간 방전',   desc: '전기장이 나아가는 시간 ×1.5 (3초 → 4.5초)',     mods: { fireMs: 1.5 } },
+    { id: 'carbide',  tank: 'grinder', icon: '🔩', name: '초경 톱날',     desc: '톱니바퀴 피해 ×1.4 (10 → 14)',                 mods: { kindDmg: { grinder: 1.4 } } },
+    { id: 'longroll', tank: 'grinder', icon: '🛞', name: '장거리 구동',   desc: '톱니바퀴가 굴러가는 시간 ×1.5 (3초 → 4.5초)',   mods: { fireMs: 1.5 } },
     { id: 'rubber',    tank: 'bumper', icon: '🟢', name: '고무 탄성',   desc: '범퍼탄 피해 ×1.3',                 mods: { kindDmg: { bumper: 1.3 } } },
     { id: 'heavyball', tank: 'bumper', icon: '🎱', name: '묵직한 공',   desc: '범퍼탄 폭발 범위 ×1.25',           mods: { rad: 1.25 } },
   ];

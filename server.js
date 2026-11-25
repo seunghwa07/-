@@ -17,7 +17,7 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder'];
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
@@ -25,8 +25,36 @@ const SHELL = {
   pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함 · 맞은 탱크는 드릴로 2×3 추가 피해) / 레이저(직격만, 기본탄 17보다 센 22)
   sniper: { dmg: 50, rad: 16 },   // 스나이퍼: 작고 가벼운 탄 · 직격 50 = 체력 100의 절반 · 폭발은 아주 작아요
   heavy: { dmg: 68, rad: Math.round(CRATER * Math.sqrt(6)) },   // 광폭탄: 피해 4배(기본탄 17의 4배), 폭발 면적 6배(반지름 √6배)
+  gravity: { dmg: 45, rad: 95 },   // 중력탄: 블랙홀에 끌려온 탱크가 받는 붕괴 폭발 피해 / 붕괴 크레이터 (아래 GRAV_* 와 같은 값)
+  rail: { dmg: 0, rad: 0 },        // 레일건: 단계별 값은 RAIL_LV 에 있어요
+  electro: { dmg: 3, rad: 0 },     // 일렉트로: 전깃줄에 닿은 탱크가 틱마다 받는 피해 (아래 ELEC_* 와 같은 값) · 땅은 안 파여요
+  grinder: { dmg: 10, rad: 0 },    // 그라인더: 톱니바퀴에 닿은 탱크가 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
 };
-const SPEED = { heavy: Math.sqrt(0.7) };   // 광폭탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
+const SPEED = { heavy: Math.sqrt(0.7), gravity: Math.sqrt(0.7) };   // 광폭탄·중력탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
+const SLOW_ANIM = { heavy: .6, gravity: .6 };   // 화면에서 날아가는 속도 배율 (클라이언트와 같아야 해요)
+
+// ----- 레일건: 충전(턴 소모) → 직선 관통 빔. 충전 단계(0~3)가 클수록 사거리·굵기(범위)·피해가 커져요. 쏘면 충전은 0으로 초기화 -----
+const RAIL_MAX = 3;
+const RAIL_LV = [   // 단계별: dmg 피해 / len 사거리(px) / wid 빔 반폭=피격 범위(px)
+  { dmg: 15, len: 1500, wid: HIT_R * 1.0 },
+  { dmg: 28, len: 2300, wid: HIT_R * 1.5 },
+  { dmg: 45, len: 3200, wid: HIT_R * 2.1 },
+  { dmg: 70, len: 4600, wid: HIT_R * 3.0 },
+];
+const RAIL_AIM_MIN = -45;       // 레일건은 수평보다 아래(-45°~225°)로도 조준할 수 있어요: 낮은 골짜기의 적도 곧은 빔으로 맞춰야 하니까요
+const RAIL_CHARGE_MS = 1300;   // 충전 연출 시간 (이 뒤에 턴이 넘어가요)
+
+// ----- 중력탄: 광폭탄과 같은 사거리. 떨어진 곳에 블랙홀이 생겨 범위 안의 탱크를 중심으로 끌어당긴 뒤 붕괴 폭발 -----
+const GRAV_R = 420, GRAV_DMG = 45, GRAV_CRATER = 95, GRAV_GAP = 46;   // 끌어당기는 반경 / 폭파 피해 / 붕괴 크레이터 / 끌려온 탱크끼리 간격
+const GRAV_FRAMES = 150;           // 블랙홀 연출 길이 (화면 프레임) — 클라이언트와 같아야 해요
+const GRAV_MS = GRAV_FRAMES * 1000 / 60 + 200;
+// ----- 일렉트로 · 그라인더: 땅에 닿으면 장판이 생겨 3초 동안 '앞으로(포탄이 날아오던 방향)' 나아가요 -----
+// 일렉트로: 포탄이 상·하 반쪽으로 갈라지고 그 사이에 전깃줄이 생겨요. 줄에 닿은 탱크는 ELEC_TICK 마다 ELEC_DMG 피해
+// 그라인더: 톱니바퀴가 땅을 타고 굴러가요. 닿은 탱크는 (탱크마다 한 번) GRIND_DMG 피해, 너무 가파른 벽을 만나면 그 자리에서 멈춰요
+// 이동 경로와 피해는 발사 순간 서버가 한 번에 계산해서 보내요. (탱크는 움직이지 않고, 지형도 안 변하니까 결과가 같아요) 아래 값은 클라이언트(index.html)에도 필요한 것만 같이 보내요
+const ZONE_STEP = 50;                                                    // 장판 위치를 기록하는 간격(ms)
+const ELEC_MS = 3000, ELEC_SPEED = 170, ELEC_H = 150, ELEC_W = 55, ELEC_TICK = 200, ELEC_DMG = 3;   // 지속 / 이동 속도(px/s) / 전깃줄 길이(px) / 닿는 폭(px) / 피해 간격(ms) / 틱당 피해
+const GRIND_MS = 3000, GRIND_SPEED = 220, GRIND_R = 34, GRIND_HIT = GRIND_R + 16, GRIND_DMG = 10, GRIND_CLIMB = 1.7;   // 지속 / 이동 속도 / 톱니바퀴 반지름 / 피격 거리 / 피해 / 오를 수 있는 최대 기울기(높이÷거리)
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
 const SNIPER_G = .3, SNIPER_HIT = HIT_R * .55, SNIPER_ANIM = 1.8;   // 스나이퍼탄: 중력 30% / 피격 범위 55%(작아서 맞추기 어려워요) / 화면에서 날아가는 속도 배율(빨라요)
 const segDist = (px, py, x, y, cx, cy) => {   // 점 (cx,cy)와 선분 (px,py)-(x,y) 사이의 거리 (빠른 탄이 작은 판정을 건너뛰지 않게)
@@ -97,14 +125,31 @@ function nextTurn(g, from) {   // 순서 정하기로 정해진 차례(g.order)�
   return from;
 }
 
-// 시작 위치: 맵 양 끝에 나눠 배치해요. 팀전은 A팀=왼쪽, B팀=오른쪽, 개인전은 번갈아 양쪽에.
-const EDGE = [300, 800, 1300];   // 맵 끝에서 안쪽으로 떨어진 거리 (같은 쪽에 여럿이면 차례로)
+// 시작 위치: 2명이면 맵 양 끝에 마주 보게, 3~4명이면 맵 전체에 같은 간격으로 흩어 놓아요 (한쪽 끝에 둘씩 몰려서 싸움이 짧아지지 않게).
+// 개인전은 자리를 랜덤으로 섞고, 팀전은 팀이 번갈아 서도록(A B A B) 배치한 뒤 좌우를 랜덤으로 뒤집어요.
+const EDGE = [300, 800, 1300];   // 맵 끝에서 안쪽으로 떨어진 거리 (EDGE[0] = 가장자리 여백)
 function spawnXs(r) {
-  const xs = [], used = [0, 0];
-  r.slots.map((s, i) => (s ? i : -1)).filter(i => i >= 0).forEach((i, n) => {
-    const side = r.mode === 'team' ? r.slots[i].team : n % 2, k = used[side]++;
-    xs[i] = side === 0 ? EDGE[k] : W - EDGE[k];
-  });
+  const xs = [], ids = r.slots.map((s, i) => (s ? i : -1)).filter(i => i >= 0), n = ids.length;
+  if (n <= 2) {
+    const used = [0, 0];
+    ids.forEach((i, k) => {
+      const side = r.mode === 'team' ? r.slots[i].team : k % 2, c = used[side]++;
+      xs[i] = side === 0 ? EDGE[c] : W - EDGE[c];
+    });
+    return xs;
+  }
+  const pos = Array.from({ length: n }, (_, k) => Math.round(EDGE[0] + k * (W - 2 * EDGE[0]) / (n - 1)));
+  let seq;
+  if (r.mode === 'team') {
+    const a = ids.filter(i => r.slots[i].team === 0), b = ids.filter(i => r.slots[i].team === 1), [big, small] = a.length >= b.length ? [a, b] : [b, a];
+    seq = [];
+    while (big.length || small.length) { if (big.length) seq.push(big.shift()); if (small.length) seq.push(small.shift()); }   // 많은 팀부터 번갈아
+  } else {
+    seq = ids.slice();
+    for (let k = seq.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [seq[k], seq[j]] = [seq[j], seq[k]]; }
+  }
+  if (Math.random() < .5) seq.reverse();
+  seq.forEach((i, k) => { xs[i] = pos[k]; });
   return xs;
 }
 
@@ -113,7 +158,7 @@ function newGame(r) {
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [],
-    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
   g.rings = []; g.ringSeq = 0; tickRings(g, true);   // 튕김 링 (2~3개)
@@ -134,7 +179,7 @@ function snapshot(r) {
     orderGo: Math.max(0, g.orderGoAt - Date.now()), orderLeft: Math.max(0, g.orderEnd - Date.now()),
     teams: g.players.map(p => p.team),
     fires: fireList(g),
-    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, maxHp: p.maxHp, aug: p.aug, on: p.on, name: p.name, icon: p.icon })),
+    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, maxHp: p.maxHp, aug: p.aug, on: p.on, name: p.name, icon: p.icon, charge: p.charge || 0 })),
   };
 }
 
@@ -472,10 +517,85 @@ function fireCarpet(r, shooter, angle, power) {
     carpet: { path, landIdx, missiles, glow: CARPET_GLOW, gap: CARPET_GAP, fall: CARPET_FALL, total }, state: snapshot(r) };
 }
 
+// 레일건 발사: 포물선 없이 직선. 벽(지형)을 관통하고, 빔 위의 모든 적에게 피해를 줘요. 충전 단계가 클수록 사거리·굵기·피해가 커지고, 쏘면 충전은 0으로 돌아가요.
+const RAIL_STEP = 80;   // 화면 연출용 경로 점 간격(px)
+function fireRail(r, shooter, angle) {
+  const g = r.game, p = g.players[shooter], lv = Math.max(0, Math.min(RAIL_MAX, p.charge || 0)), L = RAIL_LV[lv];
+  const a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), x0 = p.x, y0 = g.terrain[p.x] - 20 * TS;
+  let len = L.len;   // 맵 경계(좌·우·위)에서 끝나요
+  if (dx > 1e-6) len = Math.min(len, (W - 1 - x0) / dx); else if (dx < -1e-6) len = Math.min(len, -x0 / dx);
+  if (dy < -1e-6) len = Math.min(len, -y0 / dy); else if (dy > 1e-6) len = Math.min(len, (H - 1 - y0) / dy);   // 아래로 쏘면 맵 바닥에서 끝나요
+  len = Math.max(20, len);
+  const n = Math.max(2, Math.ceil(len / RAIL_STEP) + 1), step = len / (n - 1);
+  const path = Array.from({ length: n }, (_, k) => [x0 + dx * step * k, y0 + dy * step * k]);
+  const hits = [];
+  g.players.forEach((q, i) => {
+    if (i === shooter || q.hp <= 0 || isAlly(g, shooter, i)) return;
+    const qy = tankY(g, q), t = Math.max(0, Math.min(len, (q.x - x0) * dx + (qy - y0) * dy));
+    if (Math.hypot(x0 + dx * t - q.x, y0 + dy * t - qy) >= L.wid) return;   // 빔 반폭 안에 들어온 탱크만
+    const hp0 = q.hp;
+    q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, i, L.dmg, 'rail'));
+    hits.push({ i, idx: t / step, x: q.x, y: Math.round(qy), d: hp0 - q.hp });
+  });
+  p.charge = 0;   // 쏘면 충전 초기화
+  const ms = n * 1000 / 60 / FMAP.SHOT_SPEED + 800 + 2000;
+  if (!checkEnd(r, ms - 2000)) { g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), ms); }
+  return { type: 'shot', by: shooter, angle, kind: 'rail', dud: false, shells: [{ path, impact: null }], rail: { lv, wid: Math.round(L.wid), hits }, state: snapshot(r) };
+}
+
+// 중력탄: 떨어진 자리(cx, cy)에 블랙홀 → 반경 안의 탱크는 중심으로 끌려오고(서로 간격을 두고 늘어서요), 붕괴 폭발 피해를 받아요. 팀전에서 아군은 끌려오기만 하고 피해는 없어요.
+function gravityWell(g, shooter, impact) {
+  const mods = g.players[shooter].mods, R = GRAV_R * mods.rad;
+  const cx = Math.max(40, Math.min(W - 40, Math.round(impact[0]))), cy = impact[1];
+  const pulled = g.players.map((_, i) => i)
+    .filter(i => { const q = g.players[i]; return q.hp > 0 && Math.hypot(q.x - cx, tankY(g, q) - cy) <= R; })
+    .sort((a, b) => g.players[a].x - g.players[b].x), moves = [];
+  pulled.forEach((i, j) => {
+    const q = g.players[i], x0 = q.x, x1 = Math.max(40, Math.min(W - 40, Math.round(cx + (j - (pulled.length - 1) / 2) * GRAV_GAP)));
+    q.x = x1; moves.push({ i, x0, x1 });
+  });
+  crater(g, cx, cy, GRAV_CRATER * mods.rad);
+  pulled.forEach(i => { if (!isAlly(g, shooter, i)) g.players[i].hp = Math.max(0, g.players[i].hp - scaleDmg(g, shooter, i, GRAV_DMG, 'gravity')); });
+  return { cx, cy: Math.round(cy), r: Math.round(R), moves, frames: GRAV_FRAMES };
+}
+
+// 일렉트로 · 그라인더 장판의 3초 이동과 피해를 미리 계산해요. 증강(fireMs)으로 지속 시간이 늘어나요.
+function zoneRun(g, shooter, impact, vx, kind) {
+  const el = kind === 'electro', ms = Math.round((el ? ELEC_MS : GRIND_MS) * g.players[shooter].mods.fireMs), n = Math.max(1, Math.floor(ms / ZONE_STEP));
+  const dir = vx >= 0 ? 1 : -1, sp = (el ? ELEC_SPEED : GRIND_SPEED) * ZONE_STEP / 1000;
+  const ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.round(x)))];
+  let x = Math.max(20, Math.min(W - 20, impact[0]));
+  const path = [], hits = [], next = g.players.map(() => 0);
+  for (let k = 0; k <= n; k++) {
+    const t = k * ZONE_STEP;
+    let y = ty(x);
+    if (!el) y -= 2;   // 톱날은 중심이 땅 높이에 오도록 반쯤 박혀서 굴러가요
+    path.push([Math.round(x), Math.round(y)]);
+    g.players.forEach((q, i) => {
+      if (q.hp <= 0 || isAlly(g, shooter, i) || t < next[i]) return;
+      const qy = tankY(g, q);
+      if (!(el ? segDist(x, y - ELEC_H, x, y, q.x, qy) < ELEC_W : Math.hypot(x - q.x, y - qy) < GRIND_HIT)) return;
+      const hp0 = q.hp;
+      q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, i, el ? ELEC_DMG : GRIND_DMG, kind));
+      next[i] = el ? t + ELEC_TICK : Infinity;   // 전기는 계속 지지고, 톱날은 탱크마다 한 번만 갈아요
+      hits.push({ i, t, x: q.x, y: Math.round(qy), d: hp0 - q.hp });
+    });
+    if (k < n) {
+      const nx = x + dir * sp;
+      if (nx < 20 || nx > W - 20) continue;                                      // 맵 끝에서 멈춰요
+      if (!el && ty(x) - ty(nx) > GRIND_CLIMB * Math.abs(nx - x)) continue;      // 톱니바퀴는 너무 가파른 벽을 못 올라가요
+      x = nx;
+    }
+  }
+  const lastOf = {}; hits.forEach((h, j) => { lastOf[h.i] = j; }); hits.forEach((h, j) => { h.last = lastOf[h.i] === j; });   // 탱크별 마지막 타격 (쓰러지는 연출용)
+  return { kind, dir, ms: n * ZONE_STEP, step: ZONE_STEP, h: ELEC_H, r: GRIND_R, path, hits };
+}
+
 function fire(r, shooter, angle, power) {
   const g = r.game, kind = g.players[shooter].tank;
   if (kind === 'carpet') return fireCarpet(r, shooter, angle, power);
-  let shells, dud = false;
+  if (kind === 'rail') return fireRail(r, shooter, angle);
+  let shells, dud = false, grav = null, zone = null;
   if (kind === 'cluster') {
     shells = Array.from({ length: Math.round(CLUSTER_N * g.players[shooter].mods.shells) }, () =>
       flight(g, shooter, Math.min(180, Math.max(0, angle + (Math.random() - .5) * 14)), Math.min(100, power * (.9 + Math.random() * .2)), kind));
@@ -502,15 +622,15 @@ function fire(r, shooter, angle, power) {
 
   if (shells.length === 1 && shells[0].fizzled) dud = true;   // 맴돌다 사라진 포탄도 불발로 처리
   // 클라이언트 애니메이션(약 60프레임/초)이 끝나 폭발이 보일 때쯤 불길이 시작되도록 맞춰요
-  shells.forEach(s => { if (kind === 'pierce') { if (s.impact) drill(g, shooter, s, Math.round(s.path.length * 1000 / 60 / FMAP.SHOT_SPEED) + 300, s.mul || 1); } else if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - scaleDmg(g, shooter, s.hit, SHELL.laser.dmg, 'laser')); } else if (s.impact) explode(g, shooter, s.impact, kind === 'bumper' ? 'bumper' + s.gen : kind, Math.round(s.path.length * 1000 / 60 / ((kind === 'heavy' ? .6 : 1) * FMAP.SHOT_SPEED)) + 300, s.mul || 1); });
+  shells.forEach(s => { if (kind === 'pierce') { if (s.impact) drill(g, shooter, s, Math.round(s.path.length * 1000 / 60 / FMAP.SHOT_SPEED) + 300, s.mul || 1); } else if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - scaleDmg(g, shooter, s.hit, SHELL.laser.dmg, 'laser')); } else if (kind === 'gravity') { if (s.impact && !grav) grav = gravityWell(g, shooter, s.impact); } else if (kind === 'electro' || kind === 'grinder') { if (s.impact && !zone) zone = zoneRun(g, shooter, s.impact, s.vx, kind); } else if (s.impact) explode(g, shooter, s.impact, kind === 'bumper' ? 'bumper' + s.gen : kind, Math.round(s.path.length * 1000 / 60 / ((SLOW_ANIM[kind] || 1) * FMAP.SHOT_SPEED)) + 300, s.mul || 1); });
   if (g.fires.length) startBurn(r);
 
-  const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((kind === 'heavy' ? .6 : kind === 'sniper' ? SNIPER_ANIM : 1) * FMAP.SHOT_SPEED) + 2000 + (kind === 'pierce' ? DRILL_MS : 0);
+  const ms = Math.max(...shells.map(s => s.path.length)) * 1000 / 60 / ((SLOW_ANIM[kind] || (kind === 'sniper' ? SNIPER_ANIM : 1)) * FMAP.SHOT_SPEED) + 2000 + (kind === 'pierce' ? DRILL_MS : 0) + (grav ? GRAV_MS : 0) + (zone ? zone.ms + 300 : 0);
   if (!checkEnd(r, ms - 2000)) {   // 턴은 바로 넘기지 않고, 포탄이 끝날 때까지 기다려요
     g.busy = true;
     g.busyTimer = setTimeout(() => resolveShot(r, g), ms);
   }
-  return { type: 'shot', by: shooter, angle, kind, dud, beam: kind === 'laser' ? g.players[shooter].mods.beam : 1, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd, small: !!s.small, jumbo: !!s.jumbo })), state: snapshot(r) };
+  return { type: 'shot', by: shooter, angle, kind, dud, grav, zone, beam: kind === 'laser' ? g.players[shooter].mods.beam : 1, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd, small: !!s.small, jumbo: !!s.jumbo })), state: snapshot(r) };
 }
 
 function join(ws, r, name, icon) {
@@ -609,11 +729,19 @@ wss.on('connection', ws => {
       if (!g || g.phase !== 'augment' || !g.offers || g.picks[ws.slot] || !(g.offers[ws.slot] || []).includes(m.id)) return;
       g.picks[ws.slot] = m.id; toRoom(r, { type: 'augpicked', i: ws.slot });
       if (allPicked(g)) finishAugment(r, g);
+    } else if (r && m.type === 'charge') {   // 레일건: 충전하면 이번 턴이 끝나요 (최대 3번)
+      const g = r.game, p = g && g.players[ws.slot];
+      if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || p.hp <= 0 || p.tank !== 'rail' || (p.charge || 0) >= RAIL_MAX) return;
+      p.charge = (p.charge || 0) + 1;
+      g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), RAIL_CHARGE_MS);   // 포탄이 없으니 서버 타이머로 차례를 넘겨요
+      toRoom(r, { type: 'charged', by: ws.slot, charge: p.charge });
+      toRoom(r, snapshot(r));
     } else if (r && m.type === 'fire') {
       const g = r.game;
       if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.players[ws.slot].hp <= 0) return;
+      const railAim = g.players[ws.slot].tank === 'rail';   // 레일건만 수평 아래로도 조준 가능
       toRoom(r, fire(r, ws.slot,
-        Math.min(180, Math.max(0, +m.angle || 0)),
+        Math.min(railAim ? 180 - RAIL_AIM_MIN : 180, Math.max(railAim ? RAIL_AIM_MIN : 0, +m.angle || 0)),
         Math.min(100, Math.max(10, +m.power || 10))));
     }
   });
