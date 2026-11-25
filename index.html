@@ -280,7 +280,10 @@
   .acard .at{font-size:clamp(10px,2vh,13px);font-weight:700;padding:2px 9px;border-radius:99px;background:rgba(255,255,255,.14);color:#fff}
   .acard.sp{border-color:#4dd2ff;background:linear-gradient(160deg,rgba(14,52,84,.9),rgba(10,16,42,.92));box-shadow:0 0 6px #4dd2ff,0 0 22px rgba(77,210,255,.65),inset 0 0 16px rgba(77,210,255,.18)}
   .acard.sp .at{background:rgba(77,210,255,.2);color:#8fe3ff}
-  .acard .ad{font-size:clamp(11px,2.5vh,16px);color:#d6defa;line-height:1.35}
+  .acard{white-space:normal;overflow:hidden;box-sizing:border-box;overflow-wrap:anywhere;word-break:keep-all}
+  .acard>*{max-width:100%;min-width:0;overflow-wrap:anywhere}
+  .acard .an{word-break:keep-all}
+  .acard .ad{font-size:clamp(10px,2.2vh,15px);color:#d6defa;line-height:1.35;overflow-wrap:anywhere;word-break:keep-all}
   .acard.sel{transform:scale(1.05);filter:brightness(1.3) saturate(1.2)}
   .acard.off{opacity:.35;transform:scale(.96)}
   #await{min-height:1.3em;font-size:clamp(12px,2.6vh,16px);color:#9fb0e0}
@@ -799,7 +802,7 @@ function apply(m) {
   show('game');
   if (m.phase === 'order') { const n = performance.now(); m.goAt = n + m.orderGo; m.endAt = n + m.orderLeft; }
   if (fresh) {
-    fresh = false; cam.snap = true; startIntro(); hideRank(); orderMarks = []; resetDeathFx();
+    fresh = false; cam.snap = true; zm.on = m.phase === 'order' && me >= 0 && !!m.target; zm.t0 = performance.now(); zm.z = zm.on ? .5 : 1; startIntro(); hideRank(); orderMarks = []; resetDeathFx();
     m.players.forEach((p, i) => { aims[i] = p.x < W / 2 ? 45 : 135; });
     my.angle = aims[me]; placeAim(); setPower(50); showFsPrompt();
   }
@@ -1045,6 +1048,16 @@ let sceneKey = null, bgKey = null, edgePath = null, twink = [], TC = null;
 const FX = { booms: [], floats: [], muzzle: null, shake: 0, flash: 0, later: [], chunks: [], wrecks: [] };
 const dying = new Set();   // 방금 파괴돼서 화면에서 이미 사라진 탱크 (폭발 연출 중)
 const cam = { x: 0, y: 0, snap: true };
+// 순서 정하기 시작 연출: 목표물과 내 탱크가 함께 보이게 축소 → 내 탱크로 부드럽게 확대
+const ZM_HOLD = 3700, ZM_EASE = 1300;   // 축소 유지(ms, 로딩 화면 포함) / 확대에 걸리는 시간(ms)
+const zm = { on: false, t0: 0, z: 1, e: 1 };
+let VX0 = 0, VX1 = VW, VY0 = 0, VY1 = VH;   // 이번 프레임에 실제로 보이는 월드 범위 (축소하면 VW×VH보다 넓어요)
+const easeIO = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+function zoomMin() {   // 내 탱크와 목표물이 모두 들어오는 배율
+  const p = st.players[me], tx = st.target.x, ty = st.terrain[tx];
+  const zx = VW / (Math.abs(tx - p.x) + 700), zy = VH / (Math.abs(ty - p.y) + 800);
+  return clamp(Math.min(zx, zy, .6), .3, .6);
+}
 let FS = 1;   // 이번 프레임이 60fps 프레임의 몇 배인지 (주사율이 달라도 같은 속도로 움직이게)
 const vis = [], aimVis = [], pv = { a: 45, p: 50 };   // 탱크 화면 표시 위치 (서버 좌표를 부드럽게 따라가요)
 const ptAt = (P, v) => { const n = P.length - 1; v = v < 0 ? 0 : v > n ? n : v; const i = v | 0, f = v - i, a = P[i], b = P[i < n ? i + 1 : i]; return f ? [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f] : a; };   // 카메라 왼쪽 위 (월드 좌표)
@@ -1733,7 +1746,8 @@ function resetDeathFx() { endShown = false; hideVictory(); dying.clear(); FX.lat
 function openAug(m) {
   if (anim) return setTimeout(() => openAug(m), 200);   // 순서 정하기 연출이 끝난 뒤에 띄워요
   hideRank();
-  augState = { offers: m.offers, picked: null, end: performance.now() + m.left, total: m.left };
+  augState = { offers: m.offers, picked: null, end: performance.now() + m.left, total: m.left, n: m.n || 0, who: m.who || [], why: m.why };
+  $('aug').querySelector('.ah span').textContent = m.why === 'hit' ? '피해 보상 · 증강 선택' : '증강 선택';
   $('aug').hidden = false; renderAug();
   clearInterval(augTick); augTick = setInterval(tickAug, 100); tickAug();
 }
@@ -1750,8 +1764,9 @@ function renderAug() {
 }
 function updAug() {
   if (!augState) return;
-  const total = st && st.players ? st.players.filter(p => p.on && p.hp > 0).length : 0;
-  $('await').textContent = !augState.offers.length ? '다른 플레이어가 고르는 중…' : augState.picked ? `다른 플레이어를 기다리는 중 (${augGot.size}/${total})` : '증강 하나를 골라주세요';
+  const total = augState.n || (st && st.players ? st.players.filter(p => p.on && p.hp > 0).length : 0);
+  const wn = (augState.who || []).map(i => st && st.players && st.players[i] ? st.players[i].name : '').filter(Boolean).join(', ');
+  $('await').textContent = !augState.offers.length ? (wn ? `${wn}님이 증강을 고르는 중…` : '다른 플레이어가 고르는 중…') : augState.picked ? `다른 플레이어를 기다리는 중 (${augGot.size}/${total})` : '증강 하나를 골라주세요';
 }
 function tickAug() {
   if (!augState) return;
@@ -1918,7 +1933,7 @@ function startIntro() {
   el.hidden = false; el.className = ''; void el.offsetWidth; el.className = 'load';   // 로딩 바 애니메이션을 처음부터 다시
   $('itip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
   [['지형을 만드는 중…', 0], ['탱크를 배치하는 중…', 650], ['포탄을 장전하는 중…', 1300]].forEach(([t, d]) => introT.push(setTimeout(() => { $('isub').textContent = t; }, d)));
-  introT.push(setTimeout(() => { $('isub').textContent = '전투 개시!'; el.className = 'open'; cv.classList.remove('zoomin'); void cv.offsetWidth; cv.classList.add('zoomin'); }, 2000));
+  introT.push(setTimeout(() => { $('isub').textContent = '전투 개시!'; el.className = 'open'; }, 2000));
   introT.push(setTimeout(() => { el.hidden = true; cv.classList.remove('zoomin'); showBanner('🎯 순서 정하기', '목표물에 가장 가깝게 쏜 순서대로 차례가 정해져요 · 모두 동시에 발사!'); }, 2950));
 }
 function showBanner(t, sub) {
@@ -1939,7 +1954,7 @@ function hideRank() { clearTimeout(rankT); $('rank').hidden = true; rankUntil = 
 // 목표물: 땅에 꽂힌 깃발 + 과녁 링 + 하늘로 뻗는 빛기둥
 function drawTarget() {
   const tx = st.target.x, ty = st.terrain[tx], now = performance.now();
-  if (tx < cam.x - 250 || tx > cam.x + VW + 250) return;
+  if (tx < VX0 - 250 || tx > VX1 + 250) return;
   const pul = (now / 1100) % 1, R = 170;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   const bg = ctx.createLinearGradient(0, ty - 800, 0, ty); bg.addColorStop(0, 'rgba(255,233,74,0)'); bg.addColorStop(1, 'rgba(255,233,74,.32)');
@@ -1951,7 +1966,9 @@ function drawTarget() {
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx, ty - 150); ctx.stroke();
   const wv = Math.sin(now / 260) * 8;
   ctx.fillStyle = '#ff3b5c'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(tx, ty - 150); ctx.lineTo(tx + 70, ty - 128 + wv); ctx.lineTo(tx, ty - 104); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.font = 'bold 34px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(4,6,16,.9)'; ctx.strokeText('🎯 목표물', tx, ty - 172); ctx.fillStyle = '#ffe94a'; ctx.fillText('🎯 목표물', tx, ty - 172);
+  const lk = Math.min(1 / zm.z, 2.4);   // 축소 중엔 글씨도 같이 키워서 잘 보이게
+  ctx.save(); ctx.translate(tx, ty - 172); ctx.scale(lk, lk);
+  ctx.font = 'bold 34px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(4,6,16,.9)'; ctx.strokeText('🎯 목표물', 0, 0); ctx.fillStyle = '#ffe94a'; ctx.fillText('🎯 목표물', 0, 0); ctx.restore();
   if (now < rankUntil) orderMarks.forEach(o => {   // 각자 포탄이 떨어진 자리
     const col = pc(o.by), p = st.players[o.by];
     ctx.fillStyle = rgba(col, .95); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(o.x, o.y - 6, 12, 0, 7); ctx.fill(); ctx.stroke();
@@ -2048,13 +2065,30 @@ function updateCam() {
     look.x = clamp(look.x, -tx, W - VW - tx); look.y = clamp(look.y, -ty, H - VH - ty);
     tx += look.x; ty += look.y; if (look.drag) k = .45;
   } else { look.x = look.y = 0; look.drag = null; }
+  if (zm.on && (!st.target || st.phase !== 'order' || me < 0 || anim)) zm.on = false;
+  if (zm.on) {   // 축소: 내 탱크~목표물 중간을 중심으로 → 확대하면서 중심이 내 탱크 쪽으로 이동
+    const el = performance.now() - zm.t0, u = clamp((el - ZM_HOLD) / ZM_EASE, 0, 1), e = easeIO(u), zmin = zoomMin();
+    const pme = vis[me] || st.players[me], ttx = st.target.x, tty = st.terrain[ttx];
+    const f0x = (pme.x + ttx) / 2, f0y = (pme.y + tty) / 2 - 20 * TS;
+    const fx2 = f0x + (fx - f0x) * e;
+    zm.z = zmin + (1 - zmin) * e; zm.e = e;
+    const hw = VW / (2 * zm.z), hh = VH / (2 * zm.z);
+    const cx = W > 2 * hw ? clamp(fx2, hw, W - hw) : W / 2;
+    // 세로: 축소 중엔 월드 전체 높이 중앙 쪽, 확대 후엔 원래 카메라 높이(ty)에 맞춰요
+    const cy0 = clamp(f0y, Math.min(hh, H / 2), Math.max(H - hh, H / 2)), cy1 = ty + VH / 2;
+    const cy = cy0 + (cy1 - cy0) * e;
+    cam.x = cx - VW / 2; cam.y = cy - VH / 2; cam.snap = false;
+    if (u >= 1) { zm.on = false; zm.z = 1; cam.x = tx; cam.y = ty; }
+    return;
+  }
+  zm.z = 1;
   if (cam.snap) { cam.x = tx; cam.y = ty; cam.snap = false; }
   else { const kk = 1 - Math.pow(1 - k, FS); cam.x += (tx - cam.x) * kk; cam.y += (ty - cam.y) * kk; }
 }
 
 // ----- 화면 밖 상대: 가장자리에 방향 화살표 + 내 탱크로부터의 거리(m) -----
 function drawOffscreen() {
-  if (!st || st.type !== 'state' || st.winner !== -1) return;
+  if (!st || st.type !== 'state' || st.winner !== -1 || zm.on) return;
   const mine = me >= 0 && st.players[me].on && st.players[me].hp > 0;
   const ref = mine ? st.players[me] : { x: cam.x + VW / 2, y: cam.y + VH / 2 };
   const L = 110, R = VW - 110, T = 170, B = VH - 560, cx = VW / 2, cy = VH / 2;   // 컨트롤(파워/조준)·상단 표시줄을 피하는 안쪽 사각형
@@ -2107,7 +2141,7 @@ function drawFires() {
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   st.fires.forEach((f, fi) => {
     ctx.globalAlpha = 1;
-    if (f.x + f.r * 1.2 < cam.x || f.x - f.r * 1.2 > cam.x + VW) return;
+    if (f.x + f.r * 1.2 < VX0 || f.x - f.r * 1.2 > VX1) return;
     const rem = f.life - (now - (f.at || now)); if (rem <= 0) return;
     const fade = Math.min(1, rem / 1000), y0 = gy(f.x);
     const gl = ctx.createRadialGradient(f.x, y0, 0, f.x, y0, f.r);
@@ -2185,12 +2219,16 @@ function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
   updateCam();
   ctx.setTransform(SV, 0, 0, SV, (Math.random() - .5) * 2 * shk * SV, (Math.random() - .5) * 2 * shk * SV);
+  const zz = zm.z;
+  if (zz !== 1) { ctx.translate(VW / 2, VH / 2); ctx.scale(zz, zz); ctx.translate(-VW / 2, -VH / 2); }   // 화면 중앙 기준 축소
   ctx.translate(-cam.x, -cam.y);
+  VX0 = cam.x + VW / 2 - VW / (2 * zz); VX1 = cam.x + VW / 2 + VW / (2 * zz); VY0 = cam.y + VH / 2 - VH / (2 * zz); VY1 = cam.y + VH / 2 + VH / (2 * zz);
   ctx.imageSmoothingQuality = 'low';
-  ctx.drawImage(sceneCv, cam.x * S, cam.y * S, VW * S, VH * S, cam.x, cam.y, VW, VH);
+  { const sx0 = Math.max(0, VX0), sx1 = Math.min(W, VX1), sy0 = Math.max(0, VY0), sy1 = Math.min(H, VY1);   // 월드 밖은 그리지 않아요
+    if (sx1 > sx0 && sy1 > sy0) ctx.drawImage(sceneCv, sx0 * S, sy0 * S, (sx1 - sx0) * S, (sy1 - sy0) * S, sx0, sy0, sx1 - sx0, sy1 - sy0); }
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  twink.forEach(s => { const sx = s.x * K; if (sx < cam.x - 20 || sx > cam.x + VW + 20) return; ctx.fillStyle = `rgba(255,255,255,${.12 + .55 * Math.abs(Math.sin(now / 1000 * s.sp + s.ph))})`; ctx.beginPath(); ctx.arc(s.x * K, s.y * K, s.r * K, 0, 7); ctx.fill(); });
-  if (TC && edgePath) { ctx.globalAlpha = .08 + .07 * Math.sin(now / 450); ctx.strokeStyle = TC.glow(1); ctx.lineWidth = 14; ctx.save(); ctx.scale(K, K); const vx0 = cam.x / K - 20, vx1 = (cam.x + VW) / K + 20; edgePath.forEach(e => { if (e.x1 >= vx0 && e.x0 <= vx1) ctx.stroke(e.p); }); ctx.restore(); }   // 숨쉬는 지형 빛
+  twink.forEach(s => { const sx = s.x * K; if (sx < VX0 - 20 || sx > VX1 + 20) return; ctx.fillStyle = `rgba(255,255,255,${.12 + .55 * Math.abs(Math.sin(now / 1000 * s.sp + s.ph))})`; ctx.beginPath(); ctx.arc(s.x * K, s.y * K, s.r * K, 0, 7); ctx.fill(); });
+  if (TC && edgePath) { ctx.globalAlpha = .08 + .07 * Math.sin(now / 450); ctx.strokeStyle = TC.glow(1); ctx.lineWidth = 14; ctx.save(); ctx.scale(K, K); const vx0 = VX0 / K - 20, vx1 = VX1 / K + 20; edgePath.forEach(e => { if (e.x1 >= vx0 && e.x0 <= vx1) ctx.stroke(e.p); }); ctx.restore(); }   // 숨쉬는 지형 빛
   ctx.restore();
 
   drawFires();
@@ -2199,6 +2237,12 @@ function draw() {
   const rp = st.players.map((p, i) => vis[i] ? { ...p, x: vis[i].x, y: vis[i].y } : p);
   rp.forEach((p, i) => { if (alive[i]) drawTank(p, i, aimVis[i] ?? aims[i], isTurn(i)); });
   rp.forEach((p, i) => { if (alive[i]) drawTag(p, i, isTurn(i)); });
+  if (zm.on && me >= 0 && alive[me]) {   // 축소 중: 내 탱크 위에 '나' 표시
+    const p = rp[me], lk = Math.min(1 / zm.z, 2.4), bob = Math.sin(now / 180) * 8 * lk;
+    ctx.save(); ctx.translate(p.x, p.y - 150 * lk + bob); ctx.scale(lk, lk); ctx.textAlign = 'center';
+    ctx.font = 'bold 34px sans-serif'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(4,6,16,.9)'; ctx.fillStyle = '#5dffb0';
+    ctx.strokeText('▼ 나', 0, 0); ctx.fillText('▼ 나', 0, 0); ctx.restore();
+  }
   const ordering = st.phase === 'order';
   if (!anim && st.winner === -1 && me >= 0 && alive[me] && (ordering ? canOrderFire() : st.turn === me)) drawPreview(ordering ? { ...rp[me], tank: 'basic' } : rp[me], pc(me));   // 순서 정하기는 모두 기본탄 물리
 
