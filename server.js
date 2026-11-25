@@ -17,7 +17,7 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive'];
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
@@ -28,13 +28,15 @@ const SHELL = {
   gravity: { dmg: 32, rad: 95 },   // 중력탄: 블랙홀에 끌려온 탱크가 받는 붕괴 폭발 피해 / 붕괴 크레이터 (아래 GRAV_* 와 같은 값)
   rail: { dmg: 0, rad: 0 },        // 레일건: 단계별 값은 RAIL_LV 에 있어요
   electro: { dmg: 3, rad: 0 },     // 일렉트로: 전깃줄에 닿은 탱크가 틱마다 받는 피해 (아래 ELEC_* 와 같은 값) · 땅은 안 파여요
-  water: { dmg: 17, rad: CRATER },   // 물폭탄: 기본탄과 같은 피해·폭발 + 착탄 주변에 물 범위가 생겨요 (아래 WATER_* 참고)
+  water: { dmg: 26, rad: CRATER },   // 물폭탄: 기본탄(17)보다 센 피해 26 + 착탄 주변에 물 범위가 생겨요 (아래 WATER_* 참고)
   vampire: { dmg: 17, rad: CRATER },   // 흡혈탄: 기본탄과 같은 피해·폭발 · 실제로 입힌 피해의 절반만큼 쏜 사람이 회복 (VAMP_RATE)
   frost: { dmg: 14, rad: 40 },      // 냉각탄: 약한 피해 + 착탄 주변 바닥이 얼어요 (아래 FROST_* 참고)
+  explosive: { dmg: 34, rad: 70 },   // 고폭탄: 기본탄(17)의 2배 피해 + 조금 더 큰 폭발(반지름 70) · 대신 이동 불가 (fuelOf 참고) · 사거리는 SPEED 참고
   grinder: { dmg: 10, rad: 0 },    // 그라인더: 톱니바퀴에 닿은 탱크가 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
 };
-const SPEED = { heavy: Math.sqrt(0.7), gravity: Math.sqrt(0.7) };   // 광폭탄·중력탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
-const SLOW_ANIM = { heavy: .6, gravity: .6 };   // 화면에서 날아가는 속도 배율 (클라이언트와 같아야 해요)
+const EXPL_SPEED = 1.35;   // 고폭탄 탄속 배율: 최대 사거리 ≈ 5800px 로 월드 폭(5000px)보다 길어서 맵 어디든 닿아요 (한 걸음 22.5px < 피격 반경 23.4px 라 탱크를 건너뛰지도 않아요) — 클라이언트(index.html)와 같아야 해요
+const SPEED = { heavy: Math.sqrt(0.7), gravity: Math.sqrt(0.7), explosive: EXPL_SPEED };   // 광폭탄·중력탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
+const SLOW_ANIM = { heavy: .6, gravity: .6, explosive: EXPL_SPEED };   // 고폭탄은 탄속이 빠른 만큼 화면에서도 빨리 날아가요 (비행 시간은 기본탄과 비슷)   // 화면에서 날아가는 속도 배율 (클라이언트와 같아야 해요)
 
 // ----- 레일건: 충전(턴 소모) → 직선 관통 빔. 충전 단계(0~3)가 클수록 사거리·굵기(범위)·피해가 커져요. 쏘면 충전은 0으로 초기화 -----
 const RAIL_MAX = 3;
@@ -56,7 +58,7 @@ const GRAV_MS = GRAV_FRAMES * 1000 / 60 + 200;
 // 그라인더: 톱니바퀴가 땅을 타고 굴러가요. 닿은 탱크는 (탱크마다 한 번) GRIND_DMG 피해, 너무 가파른 벽을 만나면 그 자리에서 멈춰요
 // 이동 경로와 피해는 발사 순간 서버가 한 번에 계산해서 보내요. (탱크는 움직이지 않고, 지형도 안 변하니까 결과가 같아요) 아래 값은 클라이언트(index.html)에도 필요한 것만 같이 보내요
 const ZONE_STEP = 50;                                                    // 장판 위치를 기록하는 간격(ms)
-const ELEC_MS = 3000, ELEC_SPEED = 170, ELEC_H = 150, ELEC_W = 55, ELEC_TICK = 200, ELEC_DMG = 3;   // 지속 / 이동 속도(px/s) / 전깃줄 길이(px) / 닿는 폭(px) / 피해 간격(ms) / 틱당 피해
+const ELEC_MS = 3000, ELEC_SPEED = 280, ELEC_H = 240, ELEC_W = 55, ELEC_TICK = 200, ELEC_DMG = 3;   // 지속 / 이동 속도(px/s) / 전깃줄 길이(px) / 닿는 폭(px) / 피해 간격(ms) / 틱당 피해
 const GRIND_MS = 3000, GRIND_SPEED = 220, GRIND_R = 34, GRIND_HIT = GRIND_R + 16, GRIND_DMG = 10, GRIND_CLIMB = 1.7;   // 지속 / 이동 속도 / 톱니바퀴 반지름 / 피격 거리 / 피해 / 오를 수 있는 최대 기울기(높이÷거리)
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
 const SNIPER_G = .3, SNIPER_HIT = HIT_R * .55, SNIPER_ANIM = 1.8;   // 스나이퍼탄: 중력 30% / 피격 범위 55%(작아서 맞추기 어려워요) / 화면에서 날아가는 속도 배율(빨라요)
@@ -73,7 +75,7 @@ const FROST_R = 150, FROST_TURNS = 3;   // 냉각탄: 얼음 바닥 반경(px) /
 const ICE_GAP = 70, ICE_FUEL = 2;   // 얼음 바닥 위: 이동 간격 70ms(기본 30~40ms 대비 절반 속도) / 한 걸음당 연료 2배
 const onIce = (g, q) => (g.ice || []).some(f => Math.hypot(q.x - f.x, tankY(g, q) - f.y) < f.r);
 // 물폭탄: 착탄 주변에 물 범위가 WATER_TURNS 차례 동안 남아요. 그 범위 안의 (적) 탱크가 쏘는 포탄은 WATER_DUD 확률로 불발(날아가다 사라짐)
-const WATER_R = 150, WATER_TURNS = 3, WATER_DUD = .5;   // 물 범위 반경(px) / 남아 있는 차례 수 / 범위 안에서 쏜 포탄이 불발될 확률
+const WATER_R = 240, WATER_TURNS = 3, WATER_DUD = .5;   // 물 범위 반경(px) / 남아 있는 차례 수 / 범위 안에서 쏜 포탄이 불발될 확률
 const inWater = (g, i) => { const q = g.players[i]; return (g.water || []).some(z => !isAlly(g, z.by, i) && Math.hypot(q.x - z.x, tankY(g, q) - z.y) < z.r); };
 const VAMP_RATE = .5;                // 흡혈탄: 입힌 피해 대비 회복 비율
 const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
@@ -108,7 +110,7 @@ function newCode() {
 }
 
 // ----- 증강 헬퍼: 능력치는 p.mods (augments.js 의 calc 결과) 에 모여 있어요 -----
-const fuelOf = (g, i) => Math.round(FUEL * g.players[i].mods.fuel);
+const fuelOf = (g, i) => g.players[i].tank === 'explosive' ? 0 : Math.round(FUEL * g.players[i].mods.fuel);   // 고폭탄 포대는 바퀴가 없어서 연료 0 = 이동 불가
 const iceList = g => (g.ice || []).map(q => ({ id: q.id, x: q.x, y: q.y, r: q.r, left: q.left }));
 const waterList = g => (g.water || []).map(q => ({ id: q.id, x: q.x, y: q.y, r: q.r, left: q.left, by: q.by }));
 const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn), rings: g.rings, frozen: !!g.frozen, frz: g.players.map(p => p.frz || 0), ice: iceList(g), water: waterList(g) });
