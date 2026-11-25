@@ -32,7 +32,76 @@
   button:disabled{opacity:.45}
   button.sel{background:var(--pri);color:#fff;font-weight:bold;outline:2px solid var(--pri2)}
   #conn{margin:6px 2px;font-size:13px;color:var(--sub)}
-  #msg{color:#fc6;min-height:20px;margin-top:6px}
+  /* ---------- 메인 로비: 1280×720 무대 · 대기실과 같은 디자인 언어 (화면 크기에 맞춰 키워요) ---------- */
+  #menu{position:fixed;inset:0;background:#060a1e;overflow:hidden}
+  #menu[hidden]{display:none}
+  #home{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;box-sizing:border-box;padding:28px;display:flex;flex-direction:column;gap:20px;
+    background:radial-gradient(900px 500px at 15% -10%,#16205a 0%,rgba(22,32,90,0) 70%),radial-gradient(700px 500px at 100% 100%,#2a1050 0%,rgba(42,16,80,0) 70%),#060a1e;
+    color:#eaf0ff;font-family:'Noto Sans KR',system-ui,sans-serif;font-size:14px;overflow:hidden}
+  :where(#home) button{font:inherit;padding:0;border:0;border-radius:0;background:none;color:inherit;white-space:normal;cursor:pointer}
+  :where(#home) button:disabled{cursor:not-allowed}
+  :where(#home) input{width:100%;min-width:0;font:inherit;border:2px solid #2a3556;background:#080d28;color:#eaf0ff;user-select:text;box-sizing:border-box}
+  :where(#home) input:focus{outline:0;border-color:#4dd2ff}
+  #home .cp{font-family:'Chakra Petch','Noto Sans KR',sans-serif}
+  #home .bar{width:4px;height:18px;border-radius:2px;flex:none}
+  #home .sec{font-size:20px;font-weight:900}
+  #home .box{position:relative;overflow:hidden;box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;padding:14px 16px}
+  #home .hd{display:flex;align-items:baseline;gap:14px}
+  /* 상단 바: 서버 / 타이틀 / 방 코드 참가 */
+  #top{height:56px;flex-shrink:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+  #srv{justify-self:start;height:48px;display:flex;align-items:center;gap:10px;padding:0 6px 0 14px;border-radius:14px;border:1px solid #2f5f7f;background:rgba(77,210,255,.08);color:#9fe6ff;font-size:15px;font-weight:700}
+  #url{width:280px;height:36px;padding:0 12px;border-radius:10px;font-size:14px}
+  #ttl{font:700 44px/1 'Chakra Petch','Noto Sans KR',sans-serif;letter-spacing:.2em;color:#fff;text-shadow:0 0 18px rgba(77,210,255,.55);padding-left:.2em}
+  #jbox{justify-self:end;display:flex;align-items:center;gap:8px;padding:4px 4px 4px 16px;border-radius:16px;background:#0d1433;border:1px solid #2a3556}
+  #jbox span{font-size:15px;font-weight:700;color:#a9b8de}
+  #code{width:130px;height:42px;border-radius:12px;text-align:center;font:700 22px 'Chakra Petch',monospace;letter-spacing:.3em;text-transform:uppercase;padding:0 0 0 .3em}
+  #join{flex:none;height:42px;padding:0 22px;border-radius:12px;background:linear-gradient(180deg,#5dffb0,#2fd48b);color:#04210f;font-size:16px;font-weight:900}
+  /* 열린 방: 참가자 카드와 같은 큰 카드 */
+  #rooms{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:calc(50% - 8px);gap:16px}
+  .rc{position:relative;overflow:hidden;box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid var(--c);padding:14px 20px;display:flex;flex-direction:column;text-align:left;color:#eaf0ff}
+  .rc:hover:not(:disabled){border-color:var(--c);box-shadow:0 0 24px rgba(77,210,255,.18)}
+  .rc:disabled{opacity:.55}
+  .rc .blob{position:absolute;right:-50px;top:-70px;width:240px;height:240px;border-radius:50%;background:var(--c);opacity:.2;filter:blur(46px)}
+  .rc .rt{position:relative;display:flex;align-items:center;justify-content:space-between}
+  .rc .pp{font-weight:700;font-size:14px;color:var(--c);padding:3px 10px;border-radius:8px;border:1px solid var(--c)}
+  .rc .st{font-size:14px;font-weight:900;color:#04061a;background:var(--c);padding:3px 12px;border-radius:999px}
+  .rc .rcode{position:relative;flex:1;display:flex;align-items:center;justify-content:center;font:700 54px 'Chakra Petch',monospace;letter-spacing:.22em;padding-left:.22em;color:#fff;text-shadow:0 0 18px rgba(77,210,255,.5)}
+  .rc .rb{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .rc .rh{font-size:24px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chp{display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid #3a4770;font-size:15px;font-weight:700;white-space:nowrap}
+  .chp i{width:10px;height:10px;border-radius:50%;background:#fff6b0;box-shadow:0 0 8px #fff6b0}
+  .rempty{grid-column:1/-1;grid-row:1/3;box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;padding:18px 20px;display:flex}
+  .rempty div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:14px;border:2px dashed #34406a;color:#a9b8de}
+  /* 내 프로필 카드 */
+  .pc{position:relative;overflow:hidden;box-sizing:border-box;height:160px;flex:none;border-radius:20px;background:#0d1433;border:1px solid #2a3556}
+  #pvBanner{position:absolute;left:0;top:0;right:0;height:76px;background:#123;transition:background .3s}
+  #pvBanner::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.08) 0 2px,transparent 2px 16px)}
+  #pvBanner::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(180deg,transparent,rgba(13,20,51,.9))}
+  .pc .ptag{position:absolute;left:14px;right:14px;top:10px;display:flex;align-items:center;gap:8px}
+  .pc .pp{font-weight:700;font-size:13px;color:#fff;padding:2px 9px;border-radius:8px;border:1px solid #fff;background:rgba(6,10,30,.45)}
+  .pc .me{margin-left:auto;font-size:13px;font-weight:900;color:#04061a;background:#5dffb0;padding:2px 11px;border-radius:999px}
+  .pc .blob{position:absolute;right:-30px;bottom:-60px;width:200px;height:200px;border-radius:50%;background:#3d8bff;opacity:.2;filter:blur(40px)}
+  .pc canvas{position:absolute;right:6px;bottom:4px}
+  .pvrow{position:absolute;left:16px;bottom:14px;display:flex;align-items:center;gap:12px}
+  #pvIcon{flex:none;width:62px;height:62px;border-radius:20px;border:3px solid #0d1433;background:#101a40;font-size:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px #5dffb0}
+  #pvName{display:block;font-size:24px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+  #pvBn{font-size:12px;color:#a9b8de}
+  /* 꾸미기: 대기실의 '내 탱크' · '맵' 패널처럼 눌러서 고르는 버튼 */
+  #home .nick{display:flex;gap:8px}
+  #home .nick input{height:46px;padding:0 14px;font-size:17px;border-radius:12px}
+  #home .nick button{flex:none;width:46px;height:46px;border-radius:12px;border:2px solid #2a3556;background:#0d1433;font-size:22px}
+  #home .pick{display:grid;gap:8px}
+  #avs{grid-template-columns:repeat(6,minmax(0,1fr))}
+  #avs button{height:46px;border-radius:12px;border:2px solid #2a3556;background:#0d1433;font-size:24px;display:flex;align-items:center;justify-content:center}
+  #avs button.on{border-color:#5dffb0;background:rgba(93,255,176,.12);box-shadow:0 0 12px rgba(93,255,176,.3)}
+  #bns{grid-template-columns:repeat(4,minmax(0,1fr))}
+  #bns button{height:36px;border-radius:10px;border:2px solid transparent;font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+  #bns button.on{border-color:#ffe94a;box-shadow:0 0 12px rgba(255,233,74,.4)}
+  /* 하단 바: 상태 + 방 만들기(대기실 '게임 시작' 버튼 모양) */
+  #create{height:64px;padding:0 56px 0 44px;display:flex;align-items:center;gap:14px;border-radius:20px;background:linear-gradient(180deg,#7dffc4,#2fd48b);color:#04210f;font-size:24px;font-weight:900;letter-spacing:.06em;box-shadow:0 8px 30px rgba(93,255,176,.35),inset 0 1px 0 rgba(255,255,255,.7)}
+  #create:active,#join:active{transform:scale(.98)}
+  #home #conn{margin:0;font-size:17px;color:#cfd9f5}
+  #home #msg{color:#ffcc66;font-size:16px;font-weight:700}
   /* ---------- 대기실: 1280×720 무대를 화면 크기에 맞춰 키워요 ---------- */
   #room{position:fixed;inset:0;background:#060a1e;overflow:hidden}
   #room[hidden]{display:none}
@@ -251,27 +320,50 @@
 </head>
 <body>
 
-<div id="menu" class="card">
-  <button id="theme" class="chip">☀️ 라이트</button>
-  <div class="logo">💥</div>
-  <h1>Apex Fortress</h1>
-  <p class="sub">지형을 부수고 마지막까지 살아남으세요!</p>
-
-  <h3>내 닉네임 및 탱크 모양</h3>
-  <div class="row"><input id="name" maxlength="8" placeholder="닉네임"><select id="icon"></select></div>
-
-  <h3>Render 서버 URL 주소</h3>
-  <input id="url" class="mono" placeholder="https://내서버.onrender.com" autocapitalize="off" autocorrect="off" spellcheck="false">
-  <div id="conn"></div>
-
-  <div class="row" style="margin-top:10px">
-    <button id="create" class="pri" style="flex:1.2">🏠 방 만들기</button>
-    <input id="code" maxlength="4" placeholder="방 코드" style="flex:1;text-transform:uppercase">
-    <button id="join">참가</button>
+<div id="menu">
+<div id="home">
+  <!-- 상단: 서버 / 타이틀 / 방 코드로 참가 -->
+  <div id="top">
+    <div id="srv"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"></rect><rect x="3" y="13" width="18" height="7" rx="2"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg>서버<input id="url" class="mono" placeholder="https://내서버.onrender.com" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <div id="ttl">APEX FORTRESS</div>
+    <button id="theme" class="chip" hidden>☀️ 라이트</button>
+    <div id="jbox"><span>방 코드</span><input id="code" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off"><button id="join">참가</button></div>
   </div>
-  <div id="msg"></div>
-  <h3>열린 방</h3>
-  <div id="rooms"></div>
+
+  <!-- 본문 -->
+  <div style="flex:1;min-height:0;display:flex;gap:24px">
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+      <div class="hd"><span class="bar" style="background:#5dffb0;align-self:center"></span><span class="sec">열린 방</span><span id="rcnt" class="cp" style="font-size:20px;font-weight:700;color:#5dffb0"></span><span style="font-size:14px;color:#a9b8de">카드를 눌러 참가하거나, 오른쪽 위에 방 코드를 입력하세요</span></div>
+      <div id="rooms"></div>
+    </div>
+
+    <div style="width:420px;flex:none;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#4dd2ff"></span><span class="sec">내 프로필</span></div>
+      <div class="pc">
+        <div id="pvBanner"></div>
+        <div class="ptag"><span class="cp pp">P1</span><span class="me">나</span></div>
+        <div class="blob"></div>
+        <canvas class="tkc" data-k="basic" data-c="#3d8bff" width="304" height="208" style="width:150px;height:103px"></canvas>
+        <div class="pvrow"><div id="pvIcon"></div><div><b id="pvName"></b><span id="pvBn"></span></div></div>
+      </div>
+      <div class="box" style="flex:1;min-height:0;display:flex;flex-direction:column;gap:10px">
+        <div class="nick"><input id="name" maxlength="8" placeholder="닉네임 (최대 8자)"><button id="dice" aria-label="랜덤 닉네임">🎲</button></div>
+        <div id="avs" class="pick"></div>
+        <select id="icon" hidden></select>
+        <div id="bns" class="pick"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단: 상태 + 방 만들기 -->
+  <div style="height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0 0 0 4px">
+    <div style="display:flex;align-items:center;gap:12px;min-width:0">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffb15c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 7.5v5.5M12 16.5v.01"></path></svg>
+      <span id="conn"></span><span id="msg"></span>
+    </div>
+    <button id="create"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>방 만들기</button>
+  </div>
+</div>
 </div>
 
 <div id="room" hidden>
@@ -403,6 +495,32 @@ ICONS.forEach(([e, n]) => { const o = el('option', `${e} ${n}`, $('icon')); o.va
 $('name').value = ls.get('nick') || '여행자';
 $('icon').value = ls.get('icon') || ICONS[0][0];
 $('url').value = ls.get('url') || (location.protocol.startsWith('http') ? location.origin : '');
+// ---------- 프로필 카드: 닉네임 · 탱크 아이콘 · 배너 (이 기기에 저장돼요) ----------
+const BANNERS = [
+  ['aurora', '오로라', 'linear-gradient(120deg,#0f3b6e,#1fd1a5 55%,#7dff6a)'],
+  ['sunset', '노을', 'linear-gradient(120deg,#5b1a6b,#ff3b5c 55%,#ffb41f)'],
+  ['ocean', '심해', 'linear-gradient(120deg,#04101e,#0a5a9c 55%,#2ef2ff)'],
+  ['neon', '네온', 'linear-gradient(120deg,#12041f,#ff3df2 55%,#4dd2ff)'],
+  ['forest', '숲', 'linear-gradient(120deg,#062014,#1d8a4a 55%,#c6ff6a)'],
+  ['ember', '불꽃', 'linear-gradient(120deg,#2a0a06,#d2491a 55%,#ffe14a)'],
+  ['steel', '강철', 'linear-gradient(120deg,#10131f,#4b556e 55%,#cfd9f5)'],
+  ['galaxy', '은하', 'linear-gradient(120deg,#050a1f,#3a2a9c 55%,#b06bff)'],
+];
+const NICKS = ['번개', '불꽃', '포격수', '철갑', '돌격대', '저격수', '폭풍', '탱커', '여행자'];
+let bannerId = ls.get('banner') || BANNERS[0][0];
+if (!BANNERS.some(b => b[0] === bannerId)) bannerId = BANNERS[0][0];
+function paintProfile() {
+  const name = $('name').value.trim() || '여행자', b = BANNERS.find(x => x[0] === bannerId);
+  $('pvName').textContent = name; $('pvIcon').textContent = $('icon').value;
+  $('pvBanner').style.background = b[2]; $('pvBn').textContent = b[1] + ' 배너';
+  [...$('avs').children].forEach(x => x.classList.toggle('on', x.textContent === $('icon').value));
+  [...$('bns').children].forEach(x => x.classList.toggle('on', x.dataset.id === bannerId));
+}
+ICONS.forEach(([e, n]) => { const b = el('button', e, $('avs')); b.title = n; b.onclick = () => { $('icon').value = e; ls.set('icon', e); paintProfile(); }; });
+BANNERS.forEach(([id, n, css]) => { const b = el('button', n, $('bns'), `background:${css}`); b.dataset.id = id; b.onclick = () => { bannerId = id; ls.set('banner', id); paintProfile(); }; });
+$('name').oninput = () => { ls.set('nick', $('name').value.trim()); paintProfile(); };
+$('dice').onclick = () => { $('name').value = (NICKS[Math.random() * NICKS.length | 0] + (Math.random() * 90 + 10 | 0)).slice(0, 8); ls.set('nick', $('name').value); paintProfile(); };
+paintProfile();
 const profile = () => {
   const name = $('name').value.trim() || '여행자';
   ls.set('nick', name); ls.set('icon', $('icon').value);
@@ -503,11 +621,12 @@ $('join').onclick = () => joinRoom($('code').value);
 function joinRoom(code) { $('msg').textContent = ''; act({ type: 'join', code, ...profile() }); }
 
 function renderRooms() {
-  const box = $('rooms'); box.textContent = '';
-  if (!rooms.length) el('div', '열린 방이 없어요. 방을 만들어 보세요.', box, 'color:var(--sub)');
+  const box = $('rooms'); box.textContent = ''; $('rcnt').textContent = rooms.length ? rooms.length + '개' : '';
+  if (!rooms.length) (box.innerHTML = '<div class="rempty"><div><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#5a6aa0" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M8 12h8"></path></svg><span style="font-size:22px;font-weight:700;color:#cfd9f5">열린 방이 없어요</span><span style="font-size:15px">오른쪽 아래 방 만들기로 첫 방을 열어 보세요</span></div></div>');
   rooms.forEach(r => {
-    const label = `${r.code} · ${r.host}의 방 · ${r.count}/4 · ${r.mode === 'team' ? '팀전' : '개인전'} · ${r.map === RANDOM ? '랜덤' : MAPS[r.map].name}${r.playing ? ' (게임 중)' : ''}`;
-    const b = el('button', label, box, 'display:block;margin:6px 0;width:100%;text-align:left');
+    const b = el('button', null, box), full = r.count >= 4, dead = r.playing || full, col = dead ? '#ff8a6a' : r.mode === 'team' ? '#4dd2ff' : '#5dffb0';
+    b.className = 'rc'; b.style.setProperty('--c', col);
+    b.innerHTML = `<span class="blob"></span><span class="rt"><span class="cp pp">${r.mode === 'team' ? '팀전' : '개인전'}</span><span class="st">${r.playing ? '게임 중' : full ? '가득 참' : r.count + ' / 4'}</span></span><span class="rcode">${esc(r.code)}</span><span class="rb"><span class="rh">${esc(r.host)}의 방</span><span class="chp"><i></i>${r.map === RANDOM ? '랜덤 맵' : esc(MAPS[r.map].name)}</span></span>`;
     b.disabled = r.playing || r.count >= 4;
     b.onclick = () => joinRoom(r.code);
   });
@@ -547,7 +666,14 @@ const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', hom
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
 const CROWN = w => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="currentColor" aria-label="방장" role="img"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"></path></svg>`;
+function fitHome() {   // 메인 로비 무대도 같은 방식으로 화면에 맞춰요
+  const r = $('menu'); if (r.hidden) return;
+  const w = innerWidth, h = innerHeight, rot = h > w, sc = rot ? Math.min(h / 1280, w / 720) : Math.min(w / 1280, h / 720);
+  const ox = (w - (rot ? 720 : 1280) * sc) / 2, oy = (h - (rot ? 1280 : 720) * sc) / 2;
+  $('home').style.transform = rot ? `translate(${ox + 720 * sc}px,${oy}px) rotate(90deg) scale(${sc})` : `translate(${ox}px,${oy}px) scale(${sc})`;
+}
 function fitLobby() {   // 무대를 화면에 맞춰 키워요 (세로로 들고 있으면 가로로 눕혀요)
+  fitHome();
   const r = $('room'); if (r.hidden) return;
   const w = innerWidth, h = innerHeight, rot = h > w, sc = rot ? Math.min(h / 1280, w / 720) : Math.min(w / 1280, h / 720);
   const ox = (w - (rot ? 720 : 1280) * sc) / 2, oy = (h - (rot ? 1280 : 720) * sc) / 2;
@@ -2101,6 +2227,7 @@ let lastT = 0, slow = 0, qLock = 0;
   requestAnimationFrame(loop);
 })(0);
 
+drawTanks($('home'));
 show('menu');
 layout();
 if ($('url').value.trim()) connect(); else setConn(0, '서버 URL을 입력해 주세요');
