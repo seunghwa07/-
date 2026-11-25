@@ -99,7 +99,27 @@
   #bns button.on{border-color:#ffe94a;box-shadow:0 0 12px rgba(255,233,74,.4)}
   /* 하단 바: 상태 + 방 만들기(대기실 '게임 시작' 버튼 모양) */
   #create{height:64px;padding:0 56px 0 44px;display:flex;align-items:center;gap:14px;border-radius:20px;background:linear-gradient(180deg,#7dffc4,#2fd48b);color:#04210f;font-size:24px;font-weight:900;letter-spacing:.06em;box-shadow:0 8px 30px rgba(93,255,176,.35),inset 0 1px 0 rgba(255,255,255,.7)}
-  #create:active,#join:active{transform:scale(.98)}
+  #create:active,#join:active,#solo:active{transform:scale(.98)}
+  /* 솔로 모드: 하단 '솔로 플레이' 버튼 + 난이도 선택 창 */
+  #solo{height:64px;padding:0 48px 0 36px;display:flex;align-items:center;gap:14px;border-radius:20px;background:linear-gradient(180deg,#8fdcff,#3d8bff);color:#04122b;font-size:24px;font-weight:900;letter-spacing:.06em;box-shadow:0 8px 30px rgba(77,160,255,.35),inset 0 1px 0 rgba(255,255,255,.7)}
+  #sdlg{position:absolute;inset:0;z-index:30;background:rgba(3,6,20,.8);display:flex;align-items:center;justify-content:center}
+  #sdlg[hidden]{display:none}
+  #sdlg .pn{width:820px;box-sizing:border-box;padding:28px 32px 26px;border-radius:24px;background:#0d1433;border:1px solid #3a4770;box-shadow:0 20px 80px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:18px}
+  #sdlg .row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  #sdlg .opt{box-sizing:border-box;padding:16px 18px;border-radius:18px;border:2px solid #2a3556;background:#080d28;text-align:left;display:flex;flex-direction:column;gap:6px;color:#eaf0ff}
+  #sdlg .opt b{font-size:26px;font-weight:900}
+  #sdlg .opt span{font-size:14px;line-height:1.45;color:#a9b8de}
+  #sdlg .opt.on{border-color:var(--c);background:rgba(255,255,255,.06);box-shadow:0 0 22px rgba(255,255,255,.1)}
+  #sdlg .cnt{display:flex;gap:10px;flex:1}
+  #sdlg .cnt button{flex:1;height:52px;border-radius:14px;border:2px solid #2a3556;background:#080d28;font-size:20px;font-weight:900;white-space:nowrap}
+  #sdlg .cnt button.on{border-color:#4dd2ff;background:rgba(77,210,255,.14);color:#9fe6ff}
+  #sgo{height:60px;flex:1;border-radius:18px;background:linear-gradient(180deg,#8fdcff,#3d8bff);color:#04122b;font-size:22px;font-weight:900;letter-spacing:.06em}
+  #sx{height:60px;padding:0 28px;border-radius:18px;border:1px solid #3a4770;background:#101a40;font-size:18px;font-weight:700}
+  /* 대기실의 AI 카드 */
+  #lobby .bt{height:34px;padding:0 12px;display:flex;align-items:center;gap:6px;border-radius:10px;border:1px solid #3a4770;background:rgba(255,255,255,.07);font-size:13px;font-weight:700;color:#eaf0ff;white-space:nowrap}
+  #lobby .bt.x{padding:0 10px;color:#ffb3c0;border-color:#5a3050}
+  #lobby .addai{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:14px;border:2px dashed #34406a;color:#a9b8de;background:none;width:100%}
+  #lobby .addai:hover{border-color:#4dd2ff;color:#9fe6ff}
   #home #conn{margin:0;font-size:17px;color:#cfd9f5}
   #home #msg{color:#ffcc66;font-size:16px;font-weight:700}
   /* ---------- 대기실: 1280×720 무대를 화면 크기에 맞춰 키워요 ---------- */
@@ -389,7 +409,18 @@
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffb15c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 7.5v5.5M12 16.5v.01"></path></svg>
       <span id="conn"></span><span id="msg"></span>
     </div>
-    <button id="create"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>방 만들기</button>
+    <div style="display:flex;align-items:center;gap:16px">
+      <button id="solo"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3"></rect><path d="M12 8V4.5M9 13.5h.01M15 13.5h.01M9.5 16.5h5"></path></svg>솔로 플레이</button>
+      <button id="create"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>방 만들기</button>
+    </div>
+  </div>
+  <div id="sdlg" hidden>
+    <div class="pn">
+      <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#4dd2ff"></span><span class="sec" style="font-size:26px">솔로 플레이</span><span style="font-size:15px;color:#a9b8de">AI와 개인전으로 싸워요 · 대기실에서 AI마다 난이도와 탱크를 바꿀 수 있어요</span></div>
+      <div class="row3" id="sdiff"></div>
+      <div style="display:flex;align-items:center;gap:16px"><span style="font-size:17px;font-weight:700;color:#cfd9f5;flex:none">상대 AI 수</span><div class="cnt" id="scnt"></div></div>
+      <div style="display:flex;gap:12px"><button id="sx">닫기</button><button id="sgo">대기실로 이동</button></div>
+    </div>
   </div>
 </div>
 </div>
@@ -651,6 +682,18 @@ function onMsg(m) {
 
 // ---------- 메뉴 ----------
 $('create').onclick = () => act({ type: 'create', ...profile() });
+// ---------- 솔로 모드 ----------
+const LV = { easy: ['쉬움', '#5dffb0', '조준이 거칠고 바람을 잘 못 읽어요 · 처음 해보거나 연습할 때'], normal: ['보통', '#ffd23a', '꽤 정확하게 쏘고 위치도 잡아요 · 바람을 대체로 읽어요'], hard: ['어려움', '#ff5a6a', '거의 정확한 조준 · 바람까지 계산하고 좋은 자리를 찾아 약한 적부터 노려요'] };
+let soloLv = LV[ls.get('soloLv')] ? ls.get('soloLv') : 'normal', soloN = Math.min(3, Math.max(1, +ls.get('soloN') || 1));
+function paintSolo() {
+  $('sdiff').innerHTML = ''; $('scnt').innerHTML = '';
+  Object.entries(LV).forEach(([k, [n, c, d]]) => { const b = el('button', null, $('sdiff')); b.className = 'opt' + (k === soloLv ? ' on' : ''); b.style.setProperty('--c', c); b.innerHTML = `<b style="color:${c}">${n}</b><span>${d}</span>`; b.onclick = () => { soloLv = k; ls.set('soloLv', k); paintSolo(); }; });
+  [1, 2, 3].forEach(n => { const b = el('button', n + '명', $('scnt')); b.className = n === soloN ? 'on' : ''; b.onclick = () => { soloN = n; ls.set('soloN', String(n)); paintSolo(); }; });
+}
+$('solo').onclick = () => { paintSolo(); $('sdlg').hidden = false; };
+$('sx').onclick = () => { $('sdlg').hidden = true; };
+$('sdlg').onclick = e => { if (e.target === $('sdlg')) $('sdlg').hidden = true; };
+$('sgo').onclick = () => { $('sdlg').hidden = true; act({ type: 'solo', level: soloLv, bots: soloN, ...profile() }); };
 $('join').onclick = () => joinRoom($('code').value);
 function joinRoom(code) { $('msg').textContent = ''; act({ type: 'join', code, ...profile() }); }
 
@@ -744,18 +787,21 @@ $('copy').onclick = () => {
 
 function slotCard(i, col, team) {   // 개인전(큰 카드) / 팀전(가로 카드) 참가자 한 칸
   const n = st.names[i], k = st.tanks[i] || 'basic', acc = TANKC[k] || '#fff6b0', tn = TN[k] || '기본탄', ico = esc(st.icons[i] || ''), host = i === st.host, mine = i === me;
+  const bl = st.bots && st.bots[i], ctl = bl && me === st.host;   // bl: AI 의 난이도 (사람이면 null) / ctl: 방장은 AI 설정을 바꿀 수 있어요
   const nm = `${ico ? ico + ' ' : ''}${esc(n)}`;
   if (!team) return `<div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid ${col};padding:16px 20px;display:flex;flex-direction:column">
     <div style="position:absolute;right:-50px;top:-70px;width:260px;height:260px;border-radius:50%;background:${col};opacity:.2;filter:blur(46px)"></div>
     <div style="position:relative;display:flex;align-items:center;gap:8px">
       <span class="cp" style="font-weight:700;font-size:15px;color:${col};padding:3px 10px;border-radius:8px;border:1px solid ${col}">P${i + 1}</span>
       ${host ? `<span style="display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:#ffd23a">${CROWN(16)}방장</span>` : ''}
+      ${bl ? `<span style="font-size:14px;font-weight:900;color:#04061a;background:${LV[bl][1]};padding:3px 12px;border-radius:999px">🤖 AI · ${LV[bl][0]}</span>` : ''}
       ${mine ? `<span style="margin-left:auto;font-size:14px;font-weight:900;color:#04061a;background:${col};padding:3px 12px;border-radius:999px">나</span>` : ''}
+      ${ctl ? `<span style="margin-left:auto;display:flex;gap:6px"><button class="bt" data-bl="${i}" title="난이도 바꾸기">난이도 ▸ ${LV[({ easy: 'normal', normal: 'hard', hard: 'easy' })[bl]][0]}</button><button class="bt x" data-bd="${i}" title="AI 내보내기" aria-label="AI 내보내기">✕</button></span>` : ''}
     </div>
     <div style="position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">${tankSvg(170, 116, col, k)}</div>
     <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px">
       <span style="font-size:26px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</span>
-      ${tankChip(tn, acc, 'padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid #3a4770;font-size:15px;font-weight:700;white-space:nowrap')}
+      ${ctl ? `<button data-bt="${i}" title="눌러서 탱크 바꾸기" style="cursor:pointer">${tankChip(tn + ' ▸', acc, 'padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid #3a4770;font-size:15px;font-weight:700;white-space:nowrap')}</button>` : tankChip(tn, acc, 'padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid #3a4770;font-size:15px;font-weight:700;white-space:nowrap')}
     </div></div>`;
   const t = st.teams[i], can = mine || me === st.host, dense = team === 2;
   return `<div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:18px;background:#0d1433;border:1px solid #2a3556;border-left:6px solid ${col};padding:${dense ? '8px 14px' : '14px 16px'};display:flex;align-items:center;gap:14px">
@@ -774,14 +820,17 @@ function slotCard(i, col, team) {   // 개인전(큰 카드) / 팀전(가로 카
 }
 function emptyCard(team, dense) {
   return team ? `<div style="box-sizing:border-box;border-radius:18px;background:#0d1433;border:1px solid #2a3556;padding:${dense ? '8px' : '14px'} 16px;display:flex"><div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:12px;border:2px dashed #34406a;color:#a9b8de"><span style="font-size:18px;font-weight:700;color:#cfd9f5">자리 비어 있음</span><span style="font-size:13px">방 코드 <b class="cp" style="letter-spacing:.14em;color:#9fe6ff">${esc(st.code)}</b></span></div></div>`
+    : st.solo ? `<div style="box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid #2a3556;padding:16px 20px;display:flex;flex-direction:column"><button class="addai" data-badd="1"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M8 12h8"></path></svg><span style="font-size:20px;font-weight:700">AI 추가</span><span style="font-size:14px">눌러서 상대를 한 명 더 불러요</span></button></div>`
     : `<div style="box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid #2a3556;padding:16px 20px;display:flex;flex-direction:column"><div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:14px;border:2px dashed #34406a;color:#a9b8de">
       <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#5a6aa0" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M8 12h8"></path></svg>
       <span style="font-size:20px;font-weight:700;color:#cfd9f5">대기 중…</span><span style="font-size:14px">친구에게 방 코드 <b class="cp" style="letter-spacing:.14em;color:#9fe6ff">${esc(st.code)}</b> 를 알려주세요</span></div></div>`;
 }
 
 function renderRoom() {
-  $('rc').textContent = st.code;
-  const team = st.mode === 'team', isHost = me === st.host, filled = st.names.map((n, i) => n ? i : -1).filter(i => i >= 0), cnt = filled.length;
+  const solo = !!st.solo;
+  $('rc').textContent = solo ? 'SOLO' : st.code;
+  $('copy').style.display = solo ? 'none' : 'flex'; $('mffa').parentElement.style.display = solo ? 'none' : 'flex';   // 솔로는 방 코드 · 팀전이 없어요
+  const team = !solo && st.mode === 'team', isHost = me === st.host, filled = st.names.map((n, i) => n ? i : -1).filter(i => i >= 0), cnt = filled.length;
   // 모드 전환
   const on = 'background:linear-gradient(180deg,#5dffb0,#2fd48b);color:#04210f;font-weight:900', off = 'background:transparent;color:#a9b8de;font-weight:700';
   $('mffa').style.cssText += ';' + (team ? off : on); $('mteam').style.cssText += ';' + (team ? on : off);
@@ -789,7 +838,7 @@ function renderRoom() {
   // 참가자 / 팀 구성
   $('ptitle').textContent = team ? '팀 구성' : '참가자';
   $('pcount').textContent = `${cnt} / 4`;
-  $('psub').textContent = team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
+  $('psub').textContent = team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
   $('vs').hidden = !team;
   const box = $('cards'), tc = [0, 1].map(k => filled.filter(i => st.teams[i] === k));
   if (!team) {
@@ -806,6 +855,10 @@ function renderRoom() {
     box.querySelectorAll('[data-sw]').forEach(b => { const i = +b.dataset.sw; b.onclick = () => sendMsg({ type: 'team', slot: i, team: 1 - st.teams[i] }); });
   }
   drawTanks(box);
+  box.querySelectorAll('[data-bl]').forEach(b => { const i = +b.dataset.bl; b.onclick = () => sendMsg({ type: 'bot', op: 'level', slot: i, level: ({ easy: 'normal', normal: 'hard', hard: 'easy' })[st.bots[i]] }); });
+  box.querySelectorAll('[data-bd]').forEach(b => { b.onclick = () => sendMsg({ type: 'bot', op: 'del', slot: +b.dataset.bd }); });
+  box.querySelectorAll('[data-bt]').forEach(b => { const i = +b.dataset.bt; b.onclick = () => { const ks = TANKS.map(t => t[0]), n = ks[(ks.indexOf(st.tanks[i]) + 1) % ks.length]; sendMsg({ type: 'bot', op: 'tank', slot: i, kind: n }); }; });
+  box.querySelectorAll('[data-badd]').forEach(b => { b.onclick = () => sendMsg({ type: 'bot', op: 'add', level: soloLv }); });
   // 내 탱크
   const mk = st.tanks[me] || 'basic', macc = TANKC[mk];
   tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const sel = TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
@@ -820,7 +873,7 @@ function renderRoom() {
   // 하단 상태 + 시작
   const bad = team && (!tc[0].length || !tc[1].length), ok = cnt >= 2 && !bad;
   $('start').hidden = !isHost; $('start').disabled = !ok;
-  $('rmsg').textContent = cnt < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : bad ? '팀전은 A팀과 B팀에 최소 1명씩 있어야 시작할 수 있어요.'
+  $('rmsg').textContent = solo ? (cnt < 2 ? 'AI를 한 명 이상 추가하면 시작할 수 있어요.' : `AI ${cnt - 1}명과 대결해요. 지금 바로 시작할 수 있어요!`) : cnt < 2 ? '2명 이상 모이면 시작할 수 있어요. 방 코드를 친구에게 알려주세요.' : bad ? '팀전은 A팀과 B팀에 최소 1명씩 있어야 시작할 수 있어요.'
     : isHost ? (team ? 'A팀과 B팀에 모두 참가자가 있어요. 시작할 수 있어요!' : `${cnt}명이 모였어요. 지금 바로 시작할 수 있어요!`) : '방장이 게임을 시작하길 기다리고 있어요.';
   $('ricon').innerHTML = ok ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5dffb0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M8 12.5l2.8 2.8L16 9.5"></path></svg>'
     : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffb15c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 7.5v5.5M12 16.5v.01"></path></svg>';
@@ -2268,7 +2321,7 @@ function killTank(i, next) {
       w2: (6 + R() * 12) * TS, h2: (3 + R() * 6) * TS, c: n % 3 === 0 ? shade(col, .5) : n % 3 === 1 ? col : shade(col, -.45), t: 0, l: 150 + R() * 60, fire: R() < .5 });
   }
   FX.wrecks.push({ x, y: gy, t: 0, l: 260, col });         // 타오르는 잔해
-  if (i === me) showDefeat(next && next.winner === -1 ? '탱크가 파괴됐어요 · 팀원을 응원하세요' : '내 탱크가 파괴되었습니다');
+  if (i === me) showDefeat(next && next.winner === -1 ? (next.solo ? '탱크가 파괴됐어요' : '탱크가 파괴됐어요 · 팀원을 응원하세요') : '내 탱크가 파괴되었습니다');
 }
 function fireFx(by, deg) {
   const p = st && st.players && st.players[by]; if (!p) return;
@@ -3043,7 +3096,7 @@ function draw() {
         if (A.pending && A.pending.players) A.pending.players.forEach((q, i) => { if (q.on && q.hp <= 0 && st.players[i] && st.players[i].hp > 0) killTank(i, A.pending); });
       }
     }
-    if (A.i >= maxLen && !(A.grav && !(A.gt >= A.grav.frames)) && !(A.zone && !(A.zt >= A.zone.ms + 350))) { const next = A.pending; if (A.kind === 'pierce') A.shells.forEach(s => (FX.tunnels = FX.tunnels || []).push({ path: s.path, t: 0 })); fxFromDiff(st, next); anim = null; apply(next); if (A.order) showRank(A.ranks); else if (A.by === me) sendMsg({ type: 'landed' }); }
+    if (A.i >= maxLen && !(A.grav && !(A.gt >= A.grav.frames)) && !(A.zone && !(A.zt >= A.zone.ms + 350))) { const next = A.pending; if (A.kind === 'pierce') A.shells.forEach(s => (FX.tunnels = FX.tunnels || []).push({ path: s.path, t: 0 })); fxFromDiff(st, next); anim = null; apply(next); if (A.order) showRank(A.ranks); else if (A.by === me || (next && next.solo)) sendMsg({ type: 'landed' }); }
   }
   drawFx();
   drawFrostFx();

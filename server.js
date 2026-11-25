@@ -87,16 +87,16 @@ const BUMPER_BOUNCES = 2, BUMPER_HIT = Math.min(HIT_R * 1.4, DIRECT - 1);   // �
 const BUMPER_SPREAD = .2;          // 범퍼탄이 튀는 횟수 (튈 때마다 좌우로 2개씩 쪼개져요)
 const DUD = 0.3, HOMING_TURN = 2.2; // 유도탄 불발 확률 / 초당 최대 회전각(rad)
 
-const send = (ws, m) => ws.readyState === 1 && ws.send(JSON.stringify(m));
+const send = (ws, m) => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));   // 봇 슬롯은 ws 가 없어서 조용히 건너뛰어요
 // FUEL, STEP 은 maps.js 에서 가져와요
 const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
 const toRoom = (r, m) => r.slots.forEach(s => s && send(s.ws, m));
-const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && s.tank), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
+const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, solo: !!r.solo, bots: r.slots.map(s => (s && s.bot ? s.level : null)), teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && s.tank), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
 const listMsg = () => ({
   type: 'rooms',
-  rooms: [...rooms.values()].map(r => ({
+  rooms: [...rooms.values()].filter(r => !r.solo).map(r => ({
     code: r.code, count: count(r), map: r.mapId, mode: r.mode, host: r.slots[host(r)].name, playing: !!r.game,
   })),
 });
@@ -183,12 +183,14 @@ function newGame(r) {
   g.target = { x: Math.round(W * (.4 + Math.random() * .2)) };
   g.orderGoAt = Date.now() + ORDER_GO; g.orderEnd = g.orderGoAt + ORDER_MS;
   g.orderTimer = setTimeout(() => resolveOrder(r, g), ORDER_GO + ORDER_MS + 1500);   // 시간이 지나면 못 쏜 사람은 꼴찌 처리
+  g.bt = new Set();   // AI(bot.js)가 예약한 타이머들
+  BOT.order(r, g);    // 솔로 모드: AI 도 순서 정하기에서 한 발씩 쏴요
 }
 
 function snapshot(r) {
   const g = r.game;
   return {
-    type: 'state', map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam, busy: !!g.busy, fuelMax: fuelOf(g, g.turn),
+    type: 'state', solo: !!r.solo, map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam, busy: !!g.busy, fuelMax: fuelOf(g, g.turn),
     phase: g.phase, target: g.target, rings: g.rings, order: g.order, ofired: g.players.map((_, i) => !!g.oshots[i]),
     orderGo: Math.max(0, g.orderGoAt - Date.now()), orderLeft: Math.max(0, g.orderEnd - Date.now()),
     teams: g.players.map(p => p.team),
@@ -199,13 +201,14 @@ function snapshot(r) {
 
 function checkEnd(r, animMs = 0) {   // animMs: 이번 포탄 화면 연출 길이 (끝난 뒤에도 5초 보여줘요)
   const g = r.game, a = alive(g);
-  if (g.mode === 'team') {   // 팀전: 살아있는 팀이 하나 이하면 종료
+  if (r.solo && !a.some(i => !isBot(r, i))) { /* 솔로: 내가 쓰러지면 AI 끼리 계속 싸우지 않고 바로 끝나요 */ }
+  else if (g.mode === 'team') {   // 팀전: 살아있는 팀이 하나 이하면 종료
     const ts = new Set(a.map(i => g.players[i].team));
     if (ts.size > 1) return false;
     g.winTeam = ts.size ? [...ts][0] : -1;
   } else if (a.length > 1) return false;
-  g.winner = a.length ? a[0] : -2; // -2: 무승부
-  clearTimeout(g.orderTimer); clearTimeout(g.augTimer);
+  g.winner = a.length ? (r.solo ? a.slice().sort((x, y) => g.players[y].hp - g.players[x].hp)[0] : a[0]) : -2; // -2: 무승부 (솔로에서 내가 쓰러졌을 땐 체력이 가장 많은 AI 가 승자)
+  clearTimeout(g.orderTimer); clearTimeout(g.augTimer); BOT.clearBots(g);
   setTimeout(() => {
     if (r.game === g) { r.game = null; toRoom(r, roomMsg(r)); pushList(); }
   }, 5000 + animMs);
@@ -399,7 +402,7 @@ function burnTick(r, g) {
   if (g.fires.length !== n) changed = true;
   if (died) {   // 화상으로 누군가 쓰러졌어요: 승패/차례를 다시 계산해서 전체 상태를 보내요
     if (!checkEnd(r) && !g.busy && g.players[g.turn].hp <= 0) advance(r, g.turn);
-    toRoom(r, snapshot(r));
+    toRoom(r, snapshot(r)); BOT.turn(r, g);
   } else if (changed) toRoom(r, { type: 'burn', hp: g.players.map(p => p.hp), fires: fireList(g) });
 }
 
@@ -412,7 +415,7 @@ function resolveShot(r, g) {
   if (g.winner !== -1) return;
   advance(r, g.turn);
   if (startMid(r, g)) return;   // 체력바 한 칸이 깎인 플레이어가 있으면 증강을 먼저 고르고, 끝나면 다음 차례를 알려요
-  toRoom(r, turnMsg(g));
+  toRoom(r, turnMsg(g)); BOT.turn(r, g);   // 다음이 AI 차례면 생각을 시작해요
 }
 
 const allFired = g => g.players.every((p, i) => !p.on || p.hp <= 0 || g.oshots[i]);
@@ -461,6 +464,7 @@ function startAugment(r, g, who, why = 'start') {
   if (!g.pickers.length) return finishAugment(r, g);
   g.augTimer = setTimeout(() => finishAugment(r, g), FAUG.PICK_MS + 800);   // 시간이 지나면 못 고른 사람은 랜덤
   r.slots.forEach((sl, i) => sl && send(sl.ws, { type: 'augment', offers: g.offers[i], left: FAUG.PICK_MS, why, n: g.pickers.length, who: g.pickers }));
+  BOT.augment(r, g);   // AI 는 알아서 골라요
 }
 // 체력바 한 칸(최대 체력의 25%)이 깎일 때마다 그 플레이어에게 증강 선택권이 생겨요 (한 번에 여러 번 깎였으면 차례로 여러 번)
 const HP_SEGS = 4;   // 체력바 칸 수 (클라이언트 drawTag 의 seg 와 같아야 해요)
@@ -500,7 +504,7 @@ function finishAugment(r, g) {
   toRoom(r, { type: 'augdone', picks: g.picks });
   toRoom(r, snapshot(r));
   if (mid && startMid(r, g)) return;   // 아직 못 받은 선택권이 남았으면 이어서 한 번 더
-  toRoom(r, turnMsg(g));
+  toRoom(r, turnMsg(g)); BOT.turn(r, g);
 }
 
 function advance(r, from) {   // 다음 차례로 넘겨요
@@ -684,7 +688,7 @@ function leave(ws) {
   if (!r) return;
   const i = ws.slot, g = r.game;
   r.slots[i] = null; ws.room = null;
-  if (!count(r)) rooms.delete(r.code);
+  if (!humans(r)) { destroyRoom(r); }   // 사람이 한 명도 없으면 (AI 만 남은 솔로 방 포함) 방을 닫아요
   else if (g) {
     if (g.players[i].on && g.winner === -1) {
       g.players[i].hp = 0;
@@ -694,9 +698,80 @@ function leave(ws) {
         else if (g.turn === i) { endBusy(g); advance(r, i); }
       }
     }
-    toRoom(r, snapshot(r));
+    toRoom(r, snapshot(r)); BOT.turn(r, g);
   } else toRoom(r, roomMsg(r));
   pushList();
+}
+
+
+// ===== 사람과 AI 가 똑같이 쓰는 행동 함수 (규칙 검사는 모두 여기서 해요) =====
+const humans = r => r.slots.filter(s => s && !s.bot).length;
+const isBot = (r, i) => !!(r.slots[i] && r.slots[i].bot);
+
+function destroyRoom(r) {   // 방을 닫고 남은 타이머를 모두 정리해요
+  r.dead = true; clearInterval(r.hb);
+  const g = r.game;
+  if (g) { clearTimeout(g.orderTimer); clearTimeout(g.augTimer); clearTimeout(g.busyTimer); clearInterval(g.burnTimer); BOT.clearBots(g); }
+  rooms.delete(r.code);
+}
+
+function doMove(r, i, dir) {   // 한 걸음 이동 (성공하면 true)
+  const g = r.game;
+  if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== i || g.fuel <= 0 || !dir) return false;
+  const p = g.players[i], icy = onIce(g, p), nx = p.x + dir * STEP;
+  if (nx < 40 || nx > W - 40) return false;
+  if (g.terrain[nx] < g.terrain[p.x] - MAX_CLIMB) return false;   // 한 걸음(STEP)에 오를 수 있는 최대 높이
+  if (g.players.some((q, k) => k !== i && q.hp > 0 && Math.abs(q.x - nx) < 40)) return false;
+  p.x = nx; g.fuel = Math.max(0, g.fuel - STEP * (icy ? ICE_FUEL : 1));
+  toRoom(r, { type: 'moved', i, x: nx, y: g.terrain[nx], fuel: g.fuel });
+  return true;
+}
+function doCharge(r, i) {   // 레일건 충전: 이번 턴이 끝나요
+  const g = r.game, p = g && g.players[i];
+  if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== i || p.hp <= 0 || p.tank !== 'rail' || (p.charge || 0) >= RAIL_MAX) return false;
+  p.charge = (p.charge || 0) + 1;
+  g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), RAIL_CHARGE_MS);   // 포탄이 없으니 서버 타이머로 차례를 넘겨요
+  toRoom(r, { type: 'charged', by: i, charge: p.charge });
+  toRoom(r, snapshot(r));
+  return true;
+}
+function doFire(r, i, angle, power) {
+  const g = r.game;
+  if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== i || g.players[i].hp <= 0) return false;
+  if (g.players[i].tank === 'rail' && (g.players[i].charge || 0) < 1) return false;   // 레일건은 최소 1번 충전해야 발사할 수 있어요
+  const railAim = g.players[i].tank === 'rail';   // 레일건만 수평 아래로도 조준 가능
+  toRoom(r, fire(r, i,
+    Math.min(railAim ? 180 - RAIL_AIM_MIN : 180, Math.max(railAim ? RAIL_AIM_MIN : 0, +angle || 0)),
+    Math.min(100, Math.max(10, +power || 10))));
+  return true;
+}
+function orderFire(r, i, angle, power) {   // 순서 정하기 조준 확정
+  const g = r.game;
+  if (!g || g.phase !== 'order' || g.winner !== -1 || !g.players[i].on || g.players[i].hp <= 0 || g.oshots[i] || Date.now() < g.orderGoAt - 400) return false;
+  g.oshots[i] = { angle: Math.min(180, Math.max(0, +angle || 0)), power: Math.min(100, Math.max(10, +power || 10)) };
+  toRoom(r, { type: 'ofired', i });
+  if (allFired(g)) resolveOrder(r, g);
+  return true;
+}
+function pickAug(r, i, id) {   // 증강 선택
+  const g = r.game;
+  if (!g || g.phase !== 'augment' || !g.offers || g.picks[i] || !(g.offers[i] || []).includes(id)) return false;
+  g.picks[i] = id; toRoom(r, { type: 'augpicked', i });
+  if (allPicked(g)) finishAugment(r, g);
+  return true;
+}
+
+// ===== 솔로 모드 AI: bot.js (쉬움 · 보통 · 어려움) =====
+const BOT = require('./bot.js')({ FMAP, FAUG, SHELL, flight, laserFlight, bumperFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
+  W, STEP, MAX_CLIMB, HIT_R, DIRECT, GRAV_R, GRAV_DMG, SNIPER_HIT, PIERCE_HIT, FIRE_R, FROST_R, WATER_R, CARPET_SPREAD, CARPET_GRAZE, ICE_FUEL, ICE_GAP,
+  doMove, doCharge, doFire, orderFire, pickAug, isBot });
+const LEVELS = BOT.LEVELS;
+const botName = (slot, level) => `AI${slot + 1} ${LEVELS[level].label}`;   // 이름은 최대 8자
+function addBot(r, level) {   // 빈 자리에 AI 를 앉혀요 (난이도를 모르면 보통)
+  const i = r.slots.indexOf(null); if (i < 0) return;
+  const lv = LEVELS[level] ? level : 'normal', used = r.slots.filter(Boolean).map(s => s.icon), pool = ICONS.filter(c => !used.includes(c));
+  const t0 = r.slots.filter(s => s && s.team === 0).length, t1 = r.slots.filter(s => s && s.team === 1).length;
+  r.slots[i] = { ws: null, bot: true, level: lv, name: botName(i, lv), icon: (pool.length ? pool : ICONS)[Math.floor(Math.random() * (pool.length || ICONS.length))], team: t0 <= t1 ? 0 : 1, tank: 'random' };
 }
 
 wss.on('connection', ws => {
@@ -714,9 +789,20 @@ wss.on('connection', ws => {
       const nr = { code, slots: Array(MAX).fill(null), mapId: 0, mode: 'ffa', game: null };
       rooms.set(code, nr);
       join(ws, nr, name, icon);
+    } else if (m.type === 'solo' && !r) {   // 솔로 모드: 나 + AI 1~3명 (개인전)
+      const code = newCode();
+      const nr = { code, slots: Array(MAX).fill(null), mapId: 0, mode: 'ffa', game: null, solo: true };
+      rooms.set(code, nr);
+      nr.hb = setInterval(() => { if (nr.game) BOT.turn(nr, nr.game); }, 800);   // 안전장치: 훅을 놓쳐도 AI 차례가 멈추지 않게
+      ws.room = nr;
+      join(ws, nr, name, icon);
+      const n = Math.max(1, Math.min(MAX - 1, (+m.bots | 0) || 1));
+      for (let k = 0; k < n; k++) addBot(nr, m.level);
+      toRoom(nr, roomMsg(nr));
     } else if (m.type === 'join' && !r) {
       const t = rooms.get(String(m.code || '').toUpperCase());
       if (!t) return send(ws, { type: 'error', msg: '방을 찾을 수 없어요' });
+      if (t.solo) return send(ws, { type: 'error', msg: '솔로 방에는 참가할 수 없어요' });
       if (t.game) return send(ws, { type: 'error', msg: '이미 게임이 진행 중이에요' });
       if (!t.slots.includes(null)) return send(ws, { type: 'error', msg: '방이 가득 찼어요' });
       join(ws, t, name, icon);
@@ -725,10 +811,18 @@ wss.on('connection', ws => {
     } else if (r && m.type === 'map' && !r.game && ws.slot === host(r)) {
       r.mapId = Math.max(0, Math.min(RANDOM_MAP, (+m.id) | 0));
       toRoom(r, roomMsg(r)); pushList();
-    } else if (r && m.type === 'mode' && !r.game && ws.slot === host(r)) {
+    } else if (r && m.type === 'mode' && !r.game && !r.solo && ws.slot === host(r)) {
       r.mode = m.mode === 'team' ? 'team' : 'ffa';
       toRoom(r, roomMsg(r)); pushList();
-    } else if (r && m.type === 'team' && !r.game) {
+    } else if (r && m.type === 'bot' && r.solo && !r.game && ws.slot === host(r)) {   // AI 추가 / 제거 / 난이도 / 탱크
+      const sl = r.slots[m.slot | 0];
+      if (m.op === 'add') { if (r.slots.includes(null)) addBot(r, m.level); }
+      else if (sl && sl.bot && m.op === 'del') r.slots[m.slot | 0] = null;
+      else if (sl && sl.bot && m.op === 'level' && LEVELS[m.level]) { sl.level = m.level; sl.name = botName(m.slot | 0, m.level); }
+      else if (sl && sl.bot && m.op === 'tank' && (KINDS.includes(m.kind) || m.kind === 'random')) sl.tank = m.kind;
+      else return;
+      toRoom(r, roomMsg(r));
+    } else if (r && m.type === 'team' && !r.game && !r.solo) {
       // 본인 팀은 누구나, 다른 사람의 팀은 방장만 바꿀 수 있어요
       const target = Number.isInteger(m.slot) && ws.slot === host(r) ? m.slot : ws.slot;
       if (r.mode === 'team' && r.slots[target]) { r.slots[target].team = m.team === 1 ? 1 : 0; toRoom(r, roomMsg(r)); }
@@ -742,46 +836,22 @@ wss.on('connection', ws => {
       newGame(r); toRoom(r, snapshot(r)); pushList();
     } else if (r && m.type === 'landed') {
       const g = r.game;
-      if (g && g.busy && !g.orderBusy && g.phase !== 'order' && g.phase !== 'augment' && g.turn === ws.slot) resolveShot(r, g);
+      if (g && g.busy && !g.orderBusy && g.phase !== 'order' && g.phase !== 'augment' && (g.turn === ws.slot || (r.solo && isBot(r, g.turn)))) resolveShot(r, g);
     } else if (r && m.type === 'move') {
       const g = r.game, now = Date.now();
       if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.fuel <= 0) return;
-      const p = g.players[ws.slot], icy = onIce(g, p);   // 얼음 위에서는 이동이 느려지고 연료를 더 써요
+      const icy = onIce(g, g.players[ws.slot]);   // 얼음 위에서는 이동이 느려지고 연료를 더 써요
       if (now - (ws.lastMove || 0) < (icy ? ICE_GAP : 30)) return;
       ws.lastMove = now;
-      const dir = m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0;
-      const nx = p.x + dir * STEP;
-      if (!dir || nx < 40 || nx > W - 40) return;
-      if (g.terrain[nx] < g.terrain[p.x] - MAX_CLIMB) return; // 한 걸음(STEP)에 오를 수 있는 최대 높이
-      if (g.players.some((q, i) => i !== ws.slot && q.hp > 0 && Math.abs(q.x - nx) < 40)) return;
-      p.x = nx; g.fuel = Math.max(0, g.fuel - STEP * (icy ? ICE_FUEL : 1));
-      toRoom(r, { type: 'moved', i: ws.slot, x: nx, y: g.terrain[nx], fuel: g.fuel });
+      doMove(r, ws.slot, m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0);
     } else if (r && m.type === 'ofire') {   // 순서 정하기: 각자 동시에 조준을 확정해요 (모두 확정하거나 시간이 끝나면 한꺼번에 발사)
-      const g = r.game;
-      if (!g || g.phase !== 'order' || g.winner !== -1 || !g.players[ws.slot].on || g.players[ws.slot].hp <= 0 || g.oshots[ws.slot] || Date.now() < g.orderGoAt - 400) return;
-      g.oshots[ws.slot] = { angle: Math.min(180, Math.max(0, +m.angle || 0)), power: Math.min(100, Math.max(10, +m.power || 10)) };
-      toRoom(r, { type: 'ofired', i: ws.slot });
-      if (allFired(g)) resolveOrder(r, g);
+      orderFire(r, ws.slot, m.angle, m.power);
     } else if (r && m.type === 'aug') {   // 증강 선택
-      const g = r.game;
-      if (!g || g.phase !== 'augment' || !g.offers || g.picks[ws.slot] || !(g.offers[ws.slot] || []).includes(m.id)) return;
-      g.picks[ws.slot] = m.id; toRoom(r, { type: 'augpicked', i: ws.slot });
-      if (allPicked(g)) finishAugment(r, g);
+      pickAug(r, ws.slot, m.id);
     } else if (r && m.type === 'charge') {   // 레일건: 충전하면 이번 턴이 끝나요 (최대 3번)
-      const g = r.game, p = g && g.players[ws.slot];
-      if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || p.hp <= 0 || p.tank !== 'rail' || (p.charge || 0) >= RAIL_MAX) return;
-      p.charge = (p.charge || 0) + 1;
-      g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), RAIL_CHARGE_MS);   // 포탄이 없으니 서버 타이머로 차례를 넘겨요
-      toRoom(r, { type: 'charged', by: ws.slot, charge: p.charge });
-      toRoom(r, snapshot(r));
+      doCharge(r, ws.slot);
     } else if (r && m.type === 'fire') {
-      const g = r.game;
-      if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== ws.slot || g.players[ws.slot].hp <= 0) return;
-      if (g.players[ws.slot].tank === 'rail' && (g.players[ws.slot].charge || 0) < 1) return;   // 레일건은 최소 1번 충전해야 발사할 수 있어요
-      const railAim = g.players[ws.slot].tank === 'rail';   // 레일건만 수평 아래로도 조준 가능
-      toRoom(r, fire(r, ws.slot,
-        Math.min(railAim ? 180 - RAIL_AIM_MIN : 180, Math.max(railAim ? RAIL_AIM_MIN : 0, +m.angle || 0)),
-        Math.min(100, Math.max(10, +m.power || 10))));
+      doFire(r, ws.slot, m.angle, m.power);
     }
   });
 
