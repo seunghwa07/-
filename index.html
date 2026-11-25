@@ -869,6 +869,17 @@ function onFsChange() { layout(); if (!$('game').hidden) showFsPrompt(); }
 document.addEventListener('fullscreenchange', onFsChange);
 document.addEventListener('webkitfullscreenchange', onFsChange);
 
+// 접속하자마자 전체화면: 브라우저는 사용자 입력 없이는 전체화면을 허용하지 않아서,
+// 화면을 처음 터치/클릭하거나 키를 누르는 순간 한 번만 전환해요. (Esc로 나가도 다시 강제하지 않아요)
+(function () {
+  const evs = ['pointerup', 'keydown'];
+  const go = () => {
+    evs.forEach(e => removeEventListener(e, go, true));
+    if (fsOK && !inFS()) enterFS();
+  };
+  evs.forEach(e => addEventListener(e, go, true));
+})();
+
 // 지형·배경 캐시의 최대 배율: 큰 화면에서 흐려 보이지 않도록 기기에 맞춰 올려요 (캐시 = 월드 5000×1500 × 배율²)
 //  - 터치 기기: 1 (모바일 브라우저는 캔버스 면적 제한이 작아요)  - 데스크톱: 1.5  - 메모리 8GB 이상 데스크톱: 2
 function sceneCap() {
