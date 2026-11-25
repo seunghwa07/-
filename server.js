@@ -30,7 +30,7 @@ const SHELL = {
   electro: { dmg: 3, rad: 0 },     // 일렉트로: 전깃줄에 닿은 탱크가 틱마다 받는 피해 (아래 ELEC_* 와 같은 값) · 땅은 안 파여요
   water: { dmg: 17, rad: CRATER },   // 물폭탄: 기본탄과 같은 피해·폭발 + 착탄 주변에 물 범위가 생겨요 (아래 WATER_* 참고)
   vampire: { dmg: 17, rad: CRATER },   // 흡혈탄: 기본탄과 같은 피해·폭발 · 실제로 입힌 피해의 절반만큼 쏜 사람이 회복 (VAMP_RATE)
-  frost: { dmg: 8, rad: 40 },      // 냉각탄: 약한 피해 + 착탄 주변 바닥이 얼어요 (아래 FROST_* 참고)
+  frost: { dmg: 14, rad: 40 },      // 냉각탄: 약한 피해 + 착탄 주변 바닥이 얼어요 (아래 FROST_* 참고)
   grinder: { dmg: 10, rad: 0 },    // 그라인더: 톱니바퀴에 닿은 탱크가 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
 };
 const SPEED = { heavy: Math.sqrt(0.7), gravity: Math.sqrt(0.7) };   // 광폭탄·중력탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
@@ -48,7 +48,7 @@ const RAIL_AIM_MIN = -45;       // 레일건은 수평보다 아래(-45°~225°)
 const RAIL_CHARGE_MS = 1300;   // 충전 연출 시간 (이 뒤에 턴이 넘어가요)
 
 // ----- 중력탄: 광폭탄과 같은 사거리. 떨어진 곳에 블랙홀이 생겨 범위 안의 탱크를 중심으로 끌어당긴 뒤 붕괴 폭발 -----
-const GRAV_R = 420, GRAV_DMG = 32, GRAV_CRATER = 95, GRAV_GAP = 46;   // 끌어당기는 반경 / 폭파 피해 / 붕괴 크레이터 / 끌려온 탱크끼리 간격
+const GRAV_R = 280, GRAV_DMG = 32, GRAV_CRATER = 95, GRAV_GAP = 46;   // 끌어당기는 반경 / 폭파 피해 / 붕괴 크레이터 / 끌려온 탱크끼리 간격
 const GRAV_FRAMES = 150;           // 블랙홀 연출 길이 (화면 프레임) — 클라이언트와 같아야 해요
 const GRAV_MS = GRAV_FRAMES * 1000 / 60 + 200;
 // ----- 일렉트로 · 그라인더: 땅에 닿으면 장판이 생겨 3초 동안 '앞으로(포탄이 날아오던 방향)' 나아가요 -----
