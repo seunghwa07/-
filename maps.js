@@ -1,5 +1,6 @@
 (function (root) {
   const bell = (x, c, w) => Math.exp(-(((x - c) / w) ** 2));
+  const step = (x, c) => .5 * (1 + Math.tanh((x - c) / 22));   // 부드러운 계단 (c 를 기준으로 0 → 1)
 
   // 월드 크기: 지형/배경은 2000×600 "설계 좌표"에서 만들고 K배 확대해요 (월드 = 5000×1500).
   // 화면(카메라)은 이 월드의 일부(2000×1200)만 비춰요.
@@ -19,6 +20,22 @@
       gen: (x, p, q) => 320 + 170 * bell(x, DW / 2, 380) + Math.sin(x / 60 + p) * 10 + Math.sin(x / 260 + q) * 25 },
     { name: '중앙 산', neon: '#ffae2e', sky: ['#090613', '#2d1238'],
       gen: (x, p, q) => 480 - 230 * bell(x, DW / 2, 230) + Math.sin(x / 50 + p) * 8 + Math.sin(x / 300 + q) * 25 },
+    { name: '쌍봉', neon: '#ff5a5a', sky: ['#14050a', '#431224'],
+      gen: (x, p, q) => 500 - 200 * bell(x, 560, 190) - 200 * bell(x, 1440, 190) + Math.sin(x / 55 + p) * 8 + Math.sin(x / 280 + q) * 18 },
+    { name: '분화구', neon: '#c8ff3d', sky: ['#0a1005', '#26380f'],
+      gen: (x, p, q) => 470 - 130 * bell(x, DW / 2, 360) + 200 * bell(x, DW / 2, 120) + Math.sin(x / 70 + p) * 8 + Math.sin(x / 250 + q) * 14 },
+    { name: '피라미드', neon: '#ffd23d', sky: ['#0d0a05', '#3a2a0f'],
+      gen: (x, p, q) => 520 - 55 * step(x, 480) - 55 * step(x, 780) + 55 * step(x, 1220) + 55 * step(x, 1520) + Math.sin(x / 90 + p) * 5 + Math.sin(x / 320 + q) * 10 },
+    { name: '파도', neon: '#4d9bff', sky: ['#040a1f', '#0b2a63'],
+      gen: (x, p, q) => 430 + Math.sin(x / 70 + p) * 45 + Math.sin(x / 190 + q) * 35 },
+    { name: '절벽', neon: '#b36bff', sky: ['#0b0618', '#2a1458'],
+      gen: (x, p, q) => 340 + 190 * step(p > 3 ? DW - x : x, 1000) + Math.sin(x / 60 + p) * 8 + Math.sin(x / 260 + q) * 16 },
+    { name: '섬들', neon: '#2effc4', sky: ['#03121a', '#0a3d4a'],
+      gen: (x, p, q) => 545 - 215 * (bell(x, 360, 170) + bell(x, 1000, 200) + bell(x, 1640, 170)) + Math.sin(x / 55 + p) * 6 },
+    { name: '톱니 능선', neon: '#ff4d9a', sky: ['#14040f', '#4a1034'],
+      gen: (x, p, q) => 480 - 95 * Math.abs(Math.sin(x / 130 + p)) + Math.sin(x / 400 + q) * 30 },
+    { name: '롤러코스터', neon: '#ff8a3d', sky: ['#120805', '#40200c'],
+      gen: (x, p, q) => 410 + Math.sin(x / 160 + p) * 85 + Math.sin(x / 70 + q) * 22 },
   ];
 
   function terrain(id) {

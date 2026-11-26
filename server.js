@@ -10,7 +10,7 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const { K, W, H, TS, FUEL, STEP } = FMAP;
-const G = 500 * K, CRATER = 60, HIT_R = 18 * TS, MAX = 4, RANDOM_MAP = 4;
+const G = 500 * K, CRATER = 60, HIT_R = 18 * TS, MAX = 4, RANDOM_MAP = FMAP.MAPS.length;
 const SPAWN = [100, 366, 633, 900].map(x => Math.round(x * W / 1000));   // 월드 폭에 비례해서 흩어 놓아요
 const ICONS = ['🪖', '🐸', '🚀', '🐱', '🤖', '🦖'];
 const rooms = new Map();

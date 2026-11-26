@@ -323,12 +323,20 @@
   .acard .ai{font-size:clamp(28px,8vh,52px);line-height:1}
   .acard .an{font:900 clamp(14px,3.2vh,22px)/1.2 'Chakra Petch','Noto Sans KR',sans-serif}
   .acard .at{font-size:clamp(10px,2vh,13px);font-weight:700;padding:2px 9px;border-radius:99px;background:rgba(255,255,255,.14);color:#fff}
-  .acard.sp{border-color:#4dd2ff;background:linear-gradient(160deg,rgba(14,52,84,.9),rgba(10,16,42,.92));box-shadow:0 0 6px #4dd2ff,0 0 22px rgba(77,210,255,.65),inset 0 0 16px rgba(77,210,255,.18)}
-  .acard.sp .at{background:rgba(77,210,255,.2);color:#8fe3ff}
+    .acard.sp .at{background:rgba(77,210,255,.2);color:#8fe3ff}
   .acard{white-space:normal;overflow:hidden;box-sizing:border-box;overflow-wrap:anywhere;word-break:keep-all}
   .acard>*{max-width:100%;min-width:0;overflow-wrap:anywhere}
   .acard .an{word-break:keep-all}
   .acard .ad{font-size:clamp(10px,2.2vh,15px);color:#d6defa;line-height:1.35;overflow-wrap:anywhere;word-break:keep-all}
+  /* 증강 등급: 일반(흰) · 레어(파랑) · 에픽(보라) · 전설(금, 반짝임) */
+  .acard{position:relative;--rc:#c9d3f2;--rg:201,211,242;border-color:var(--rc);box-shadow:0 0 6px var(--rc),0 0 18px rgba(var(--rg),.5),inset 0 0 14px rgba(var(--rg),.12)}
+  .acard.r1{--rc:#4dd2ff;--rg:77,210,255;background:linear-gradient(160deg,rgba(14,52,84,.9),rgba(10,16,42,.92))}
+  .acard.r2{--rc:#c06bff;--rg:192,107,255;background:linear-gradient(160deg,rgba(62,26,100,.92),rgba(18,10,46,.94))}
+  .acard.r3{--rc:#ffb62e;--rg:255,182,46;background:linear-gradient(160deg,rgba(104,64,10,.94),rgba(40,20,8,.95))}
+  .acard .ar{font:900 clamp(10px,2vh,13px)/1 'Chakra Petch','Noto Sans KR',sans-serif;letter-spacing:.12em;padding:3px 10px;border-radius:99px;color:#0b0f26;background:var(--rc)}
+  .acard.r3::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 35%,rgba(255,240,190,.38) 50%,transparent 65%);transform:translateX(-120%);animation:ashine 2.4s ease-in-out infinite}
+  .acard.r2::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 40%,rgba(230,190,255,.22) 50%,transparent 60%);transform:translateX(-120%);animation:ashine 3.4s ease-in-out infinite}
+  @keyframes ashine{0%,55%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
   .acard.sel{transform:scale(1.05);filter:brightness(1.3) saturate(1.2)}
   .acard.off{opacity:.35;transform:scale(.96)}
   #await{min-height:1.3em;font-size:clamp(12px,2.6vh,16px);color:#9fb0e0}
@@ -469,7 +477,7 @@
       </div>
       <div style="flex:none;display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;align-items:center;gap:12px"><span class="bar" style="background:#ff3df2"></span><span class="sec">맵</span><span id="mapnote" style="font-size:13px;color:#a9b8de"></span></div>
-        <div id="maps" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px"></div>
+        <div id="maps" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;max-height:156px;overflow-y:auto;padding-right:2px"></div>
       </div>
     </div>
     <div id="vs" class="cp" hidden style="position:absolute;left:358px;top:228px;width:64px;height:64px;border-radius:50%;background:#060a1e;border:2px solid #4a5a8f;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;color:#fff;box-shadow:0 0 24px rgba(255,255,255,.12);z-index:2;pointer-events:none">VS</div>
@@ -659,7 +667,7 @@ function onMsg(m) {
   else if (m.type === 'augdone') {   // 모두 골랐어요: 선택 화면을 닫고 각 탱크 위에 고른 증강을 잠깐 띄워요
     closeAug();
     const t = anim ? anim.pending : st;
-    if (t && t.players) Object.entries(m.picks).forEach(([i, id]) => { const p = t.players[i], a = FAUG.byId[id]; if (p && a) FX.floats.push({ x: p.x, y: p.y - 150, t: 0, txt: a.icon + ' ' + a.name, big: false }); });
+    if (t && t.players) Object.entries(m.picks).forEach(([i, id]) => { const p = t.players[i], a = FAUG.byId[id]; if (p && a) FX.floats.push({ x: p.x, y: p.y - 150, t: 0, txt: a.icon + ' ' + a.name, big: a.rarity === 'legendary' }); });
   }
   else if (m.type === 'ofired') {   // 누군가 조준을 확정했어요
     const t = anim ? anim.pending : st;
@@ -2281,8 +2289,9 @@ function renderAug() {
   const tk = st && st.players && me >= 0 ? st.players[me].tank : null;
   $('acards').innerHTML = augState.offers.map(id => {
     const a = FAUG.byId[id] || { icon: '❔', name: id, desc: '', tank: null }, sp = a.tank !== null;
-    const cls = 'acard' + (sp ? ' sp' : '') + (augState.picked === id ? ' sel' : augState.picked ? ' off' : '');
-    return `<button class="${cls}" data-id="${id}"><span class="ai">${a.icon}</span><span class="an">${esc(a.name)}</span><span class="at">${sp ? esc((TN[a.tank] || a.tank) + ' 전용') : '공통'}</span><span class="ad">${esc(a.desc)}</span></button>`;
+    const ri = Math.max(0, FAUG.RARITY.findIndex(r => r.id === (a.rarity || 'common'))), rn = FAUG.RARITY[ri].name;
+    const cls = 'acard r' + ri + (sp ? ' sp' : '') + (augState.picked === id ? ' sel' : augState.picked ? ' off' : '');
+    return `<button class="${cls}" data-id="${id}"><span class="ar">${rn}</span><span class="ai">${a.icon}</span><span class="an">${esc(a.name)}</span><span class="at">${sp ? esc((TN[a.tank] || a.tank) + ' 전용') : '공통'}</span><span class="ad">${esc(a.desc)}</span></button>`;
   }).join('');
   $('acards').querySelectorAll('.acard').forEach(b => { b.onclick = () => pickAug(b.dataset.id); });
   updAug();
