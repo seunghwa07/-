@@ -555,9 +555,10 @@
         <span id="copyt">복사</span>
       </button>
     </div>
-    <div style="display:flex;padding:4px;border-radius:16px;background:#0d1433;border:1px solid #2a3556;gap:4px">
-      <button id="mffa" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">개인전</button>
-      <button id="mteam" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">팀전</button>
+    <div id="mtabs" role="tablist" aria-label="게임 모드" style="display:flex;padding:4px;border-radius:16px;background:#0d1433;border:1px solid #2a3556;gap:4px">
+      <button id="mffa" role="tab" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">개인전</button>
+      <button id="mteam" role="tab" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">팀전</button>
+      <button id="mesc" role="tab" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">🎲 에스컬레이션</button>
     </div>
   </div>
 
@@ -635,8 +636,10 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최소 1번 충전해야 발사 가능 · 최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 15/28/45/70'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 24'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크에 0.2초마다 3 피해'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿은 탱크에 10 피해 · 너무 가파른 벽에서는 멈춰요'], ['frost', '냉각탄', '얼음 포탄 · 맞은 자리 주변 바닥이 3턴간 얼어요 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동할 수 없어요(조준·발사는 가능) · 얼음 바닥 위에서는 이동이 느려지고 연료를 2배로 써요 · 피해 14'], ['vampire', '흡혈탄', '기본탄과 같은 피해(17) · 적에게 입힌 피해의 절반만큼 내 체력을 회복해요 · 맞히지 못하면 회복도 없어요'], ['water', '물폭탄', '맞은 자리에 물폭탄이 터져 주변에 커다란 반원형 물 범위가 3턴간 남아요 · 물 범위 안의 탱크가 포탄을 쏘면 50% 확률로 불발 · 피해 26'], ['explosive', '고폭탄', '바퀴가 없어 이동 불가(연료 0) · 대신 사거리가 맵 전체를 덮어요 · 피해 34(기본탄의 2배) · 폭발도 더 커요'], ['intercept', '요격탄', '탄은 기본탄과 같아요 · 내 차례가 올 때마다 요격 티켓이 설치돼요 · 티켓이 있으면 범위 안으로 날아온 적 포탄 한 발을 50% 확률로 요격 (성공·실패와 관계없이 티켓은 소모)'], ['plasma', '플라즈마', '조준한 방향으로 15° 부채꼴 광역 플라즈마를 뿜어요 · 파워 무관 · 사거리가 아주 길지만 멀리서 맞을수록 피해가 줄어요 (가까이 34 → 최대 사거리 약 3) · 범위 안의 적을 모두 맞혀요 · 지형에 가려진 적은 맞지 않아요'], ['escalation', '에스컬레이션', '쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 어떤 탄이 나갈지는 발사하는 순간 정해져요 · 레일건·요격탄을 뺀 모든 탄이 나올 수 있어요 · 조준 점선은 없어요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최소 1번 충전해야 발사 가능 · 최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 15/28/45/70'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 24'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크에 0.2초마다 3 피해'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿은 탱크에 10 피해 · 너무 가파른 벽에서는 멈춰요'], ['frost', '냉각탄', '얼음 포탄 · 맞은 자리 주변 바닥이 3턴간 얼어요 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동할 수 없어요(조준·발사는 가능) · 얼음 바닥 위에서는 이동이 느려지고 연료를 2배로 써요 · 피해 14'], ['vampire', '흡혈탄', '기본탄과 같은 피해(17) · 적에게 입힌 피해의 절반만큼 내 체력을 회복해요 · 맞히지 못하면 회복도 없어요'], ['water', '물폭탄', '맞은 자리에 물폭탄이 터져 주변에 커다란 반원형 물 범위가 3턴간 남아요 · 물 범위 안의 탱크가 포탄을 쏘면 50% 확률로 불발 · 피해 26'], ['explosive', '고폭탄', '바퀴가 없어 이동 불가(연료 0) · 대신 사거리가 맵 전체를 덮어요 · 피해 34(기본탄의 2배) · 폭발도 더 커요'], ['intercept', '요격탄', '탄은 기본탄과 같아요 · 내 차례가 올 때마다 요격 티켓이 설치돼요 · 티켓이 있으면 범위 안으로 날아온 적 포탄 한 발을 50% 확률로 요격 (성공·실패와 관계없이 티켓은 소모)'], ['plasma', '플라즈마', '조준한 방향으로 15° 부채꼴 광역 플라즈마를 뿜어요 · 파워 무관 · 사거리가 아주 길지만 멀리서 맞을수록 피해가 줄어요 (가까이 34 → 최대 사거리 약 3) · 범위 안의 적을 모두 맞혀요 · 지형에 가려진 적은 맞지 않아요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
+TN.escalation = '에스컬레이션';
+const ESC_DESC = '에스컬레이션 모드 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 어떤 탄이 나갈지는 발사하는 순간 정해져요(레일건·요격탄 제외) · 탱크는 고를 수 없고 조준 점선도 없어요';
 const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = 3200, PLASMA_MIN = .08;   // 플라즈마: 부채꼴 반각(총 15°) / 사거리(px) / 최대 사거리에서의 피해 비율 (서버 PLASMA_* 와 같은 값)
 const RAIL_LEN = [1500, 2300, 3200, 4600], RAIL_WF = [1, 1.5, 2.1, 3], RAIL_MAX = 3, RAIL_AIM_MIN = -45;   // 레일건 충전 단계별 사거리(px) / 빔 반폭 배율(×탱크 피격 반경) — 서버(server.js RAIL_LV)와 같아야 해요
 
@@ -820,9 +823,9 @@ function renderRooms() {
   const box = $('rooms'); box.textContent = ''; $('rcnt').textContent = rooms.length ? rooms.length + '개' : '';
   if (!rooms.length) (box.innerHTML = '<div class="rempty"><div><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#5a6aa0" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M8 12h8"></path></svg><span style="font-size:22px;font-weight:700;color:#cfd9f5">열린 방이 없어요</span><span style="font-size:15px">오른쪽 아래 방 만들기로 첫 방을 열어 보세요</span></div></div>');
   rooms.forEach(r => {
-    const b = el('button', null, box), full = r.count >= 4, dead = r.playing || full, col = dead ? '#ff8a6a' : r.mode === 'team' ? '#4dd2ff' : '#5dffb0';
+    const b = el('button', null, box), full = r.count >= 4, dead = r.playing || full, col = dead ? '#ff8a6a' : r.mode === 'team' ? '#4dd2ff' : r.mode === 'escalation' ? '#ffb347' : '#5dffb0';
     b.className = 'rc'; b.style.setProperty('--c', col);
-    b.innerHTML = `<span class="blob"></span><span class="rt"><span class="cp pp">${r.mode === 'team' ? '팀전' : '개인전'}</span><span class="st">${r.playing ? '게임 중' : full ? '가득 참' : r.count + ' / 4'}</span></span><span class="rcode">${esc(r.code)}</span><span class="rb"><span class="rh">${esc(r.host)}의 방</span><span class="chp"><i></i>${r.map === RANDOM ? '랜덤 맵' : esc(MAPS[r.map].name)}</span></span>`;
+    b.innerHTML = `<span class="blob"></span><span class="rt"><span class="cp pp">${r.mode === 'team' ? '팀전' : r.mode === 'escalation' ? '에스컬레이션' : '개인전'}</span><span class="st">${r.playing ? '게임 중' : full ? '가득 참' : r.count + ' / 4'}</span></span><span class="rcode">${esc(r.code)}</span><span class="rb"><span class="rh">${esc(r.host)}의 방</span><span class="chp"><i></i>${r.map === RANDOM ? '랜덤 맵' : esc(MAPS[r.map].name)}</span></span>`;
     b.disabled = r.playing || r.count >= 4;
     b.onclick = () => joinRoom(r.code);
   });
@@ -948,16 +951,16 @@ function emptyCard(team, dense) {
 function renderRoom() {
   const solo = !!st.solo;
   $('rc').textContent = solo ? 'SOLO' : st.code;
-  $('copy').style.display = solo ? 'none' : 'flex'; $('mffa').parentElement.style.display = solo ? 'none' : 'flex';   // 솔로는 방 코드 · 팀전이 없어요
+  $('copy').style.display = solo ? 'none' : 'flex'; $('mtabs').style.display = solo ? 'none' : 'flex';   // 솔로는 방 코드 · 팀전이 없어요
   const team = !solo && st.mode === 'team', isHost = me === st.host, filled = st.names.map((n, i) => n ? i : -1).filter(i => i >= 0), cnt = filled.length;
   // 모드 전환
-  const on = 'background:linear-gradient(180deg,#5dffb0,#2fd48b);color:#04210f;font-weight:900', off = 'background:transparent;color:#a9b8de;font-weight:700';
-  $('mffa').style.cssText += ';' + (team ? off : on); $('mteam').style.cssText += ';' + (team ? on : off);
-  $('mffa').style.pointerEvents = $('mteam').style.pointerEvents = isHost ? '' : 'none';
+  const escm = !solo && st.mode === 'escalation', mdn = team ? 'team' : escm ? 'esc' : 'ffa';
+  const on = 'background:linear-gradient(180deg,#5dffb0,#2fd48b);color:#04210f;font-weight:900', onEsc = 'background:linear-gradient(180deg,#ffc56b,#ff9a2f);color:#2a1500;font-weight:900', off = 'background:transparent;color:#a9b8de;font-weight:700';
+  [['mffa', 'ffa', on], ['mteam', 'team', on], ['mesc', 'esc', onEsc]].forEach(([id, k, onSt]) => { const b = $(id); b.style.cssText += ';' + (mdn === k ? onSt : off); b.style.pointerEvents = isHost ? '' : 'none'; b.setAttribute('aria-selected', mdn === k); });
   // 참가자 / 팀 구성
   $('ptitle').textContent = team ? '팀 구성' : '참가자';
   $('pcount').textContent = `${cnt} / 4`;
-  $('psub').textContent = team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
+  $('psub').textContent = team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : escm ? '각자 싸워요 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 마지막까지 살아남은 1명이 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
   $('vs').hidden = !team;
   const box = $('cards'), tc = [0, 1].map(k => filled.filter(i => st.teams[i] === k));
   if (!team) {
@@ -976,13 +979,14 @@ function renderRoom() {
   drawTanks(box);
   box.querySelectorAll('[data-bl]').forEach(b => { const i = +b.dataset.bl; b.onclick = () => sendMsg({ type: 'bot', op: 'level', slot: i, level: ({ easy: 'normal', normal: 'hard', hard: 'easy' })[st.bots[i]] }); });
   box.querySelectorAll('[data-bd]').forEach(b => { b.onclick = () => sendMsg({ type: 'bot', op: 'del', slot: +b.dataset.bd }); });
-  box.querySelectorAll('[data-bt]').forEach(b => { const i = +b.dataset.bt; b.onclick = () => { const ks = TANKS.map(t => t[0]), n = ks[(ks.indexOf(st.tanks[i]) + 1) % ks.length]; sendMsg({ type: 'bot', op: 'tank', slot: i, kind: n }); }; });
+  box.querySelectorAll('[data-bt]').forEach(b => { const i = +b.dataset.bt; b.onclick = () => { if (st.mode === 'escalation') return; const ks = TANKS.map(t => t[0]), n = ks[(ks.indexOf(st.tanks[i]) + 1) % ks.length]; sendMsg({ type: 'bot', op: 'tank', slot: i, kind: n }); }; });
   box.querySelectorAll('[data-badd]').forEach(b => { b.onclick = () => sendMsg({ type: 'bot', op: 'add', level: soloLv }); });
   // 내 탱크
-  const mk = st.tanks[me] || 'basic', macc = TANKC[mk];
-  tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const sel = TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
+  const mk = st.tanks[me] || 'basic', macc = TANKC[mk] || TANKC.basic;
+  $('tanks').style.opacity = escm ? .35 : ''; $('tanks').style.pointerEvents = escm ? 'none' : '';
+  tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const sel = !escm && TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
   $('tdesc').style.cssText += `;background:${hexA(macc, .08)};border:1px solid ${hexA(macc, .35)}`;
-  const td = TANKS.find(t => t[0] === mk);
+  const td = escm ? ['escalation', '에스컬레이션', ESC_DESC.replace('에스컬레이션 모드 · ', '')] : TANKS.find(t => t[0] === mk);
   $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${esc(td[1])}</b> · ${esc(td[2])}</span>`;
   drawTanks($('tanks'));
   requestAnimationFrame(tkFade);
@@ -999,6 +1003,7 @@ function renderRoom() {
 }
 $('mffa').onclick = () => sendMsg({ type: 'mode', mode: 'ffa' });
 $('mteam').onclick = () => sendMsg({ type: 'mode', mode: 'team' });
+$('mesc').onclick = () => sendMsg({ type: 'mode', mode: 'escalation' });
 $('start').onclick = () => { enterFS(); sendMsg({ type: 'start' }); };
 $('leave').onclick = () => { sendMsg({ type: 'leave' }); me = -1; st = null; show('menu'); };
 
