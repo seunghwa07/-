@@ -128,12 +128,12 @@ const send = (ws, m) => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
 const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
-const toRoom = (r, m) => r.slots.forEach(s => s && send(s.ws, m));
+const toRoom = (r, m) => { r.slots.forEach(s => s && send(s.ws, m)); if (r.watch) r.watch.forEach(w => send(w, m)); };   // 토너먼트 경기방은 관전자(watch)에게도 보내요
 const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, solo: !!r.solo, bots: r.slots.map(s => (s && s.bot ? s.level : null)), teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && (FIXED_TANK[r.mode] || s.tank)), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
 const listMsg = () => ({
   type: 'rooms',
   rooms: [...rooms.values()].filter(r => !r.solo).map(r => ({
-    code: r.code, count: count(r), map: r.mapId, mode: r.mode, host: r.slots[host(r)].name, playing: !!r.game,
+    code: r.code, count: count(r), map: r.mapId, mode: r.mode, host: r.slots[host(r)].name, playing: !!r.game || !!r.tour,
   })),
 });
 const pushList = () => { const m = listMsg(); wss.clients.forEach(c => !c.room && send(c, m)); };
@@ -203,6 +203,7 @@ function spawnXs(r) {
   return xs;
 }
 
+let GID = 0;
 function newGame(r) {
   const xs = spawnXs(r);
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
@@ -211,6 +212,8 @@ function newGame(r) {
     players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (FIXED_TANK[r.mode] || (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank)) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
+  g.gid = ++GID;   // 게임마다 고유 번호 (토너먼트에서 화면이 다른 경기로 바뀐 걸 클라이언트가 알아채요)
+  if (r.mode === 'tournament') g.tm = { seed: true };   // 토너먼트: 이 게임은 대진(시드)을 정하는 목표 맞추기만 해요
   g.players.forEach(q => { q.ticket = q.tank === 'intercept' ? 1 : 0; });   // 요격탄: 첫 차례부터 티켓이 설치돼 있어요
   g.rings = []; g.ringSeq = 0; tickRings(g, true);   // 튕김 링 (2~3개)
   g.turn = g.players.findIndex(p => p.on);
@@ -227,7 +230,7 @@ function newGame(r) {
 function snapshot(r) {
   const g = r.game;
   return {
-    type: 'state', solo: !!r.solo, map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam, busy: !!g.busy, fuelMax: fuelOf(g, g.turn),
+    type: 'state', gid: g.gid, tm: g.tm || null, solo: !!r.solo, map: g.map, terrain: g.terrain, turn: g.turn, wind: g.wind, winner: g.winner, fuel: g.fuel, mode: g.mode, winTeam: g.winTeam, busy: !!g.busy, fuelMax: fuelOf(g, g.turn),
     phase: g.phase, target: g.target, rings: g.rings, order: g.order, ofired: g.players.map((_, i) => !!g.oshots[i]),
     orderGo: Math.max(0, g.orderGoAt - Date.now()), orderLeft: Math.max(0, g.orderEnd - Date.now()),
     teams: g.players.map(p => p.team),
@@ -244,10 +247,12 @@ function checkEnd(r, animMs = 0) {   // animMs: 이번 포탄 화면 연출 길�
     if (ts.size > 1) return false;
     g.winTeam = ts.size ? [...ts][0] : -1;
   } else if (a.length > 1) return false;
+  if (r.parent && !a.length) a.push(g.order[0]);   // 토너먼트 경기에서 둘 다 쓰러지면 시드가 높은 쪽이 올라가요
   g.winner = a.length ? (r.solo ? a.slice().sort((x, y) => g.players[y].hp - g.players[x].hp)[0] : a[0]) : -2; // -2: 무승부 (솔로에서 내가 쓰러졌을 땐 체력이 가장 많은 AI 가 승자)
-  clearTimeout(g.orderTimer); clearTimeout(g.augTimer); BOT.clearBots(g);
+  clearTimeout(g.orderTimer); clearTimeout(g.augTimer); clearTimeout(g.introTimer); BOT.clearBots(g);
   setTimeout(() => {
-    if (r.game === g) { r.game = null; toRoom(r, roomMsg(r)); pushList(); }
+    if (r.game === g && r.parent) { r.game = null; matchEnd(r, g); }   // 토너먼트 경기: 다음 라운드로
+    else if (r.game === g) { r.game = null; toRoom(r, roomMsg(r)); pushList(); }
   }, 5000 + animMs);
   return true;
 }
@@ -479,10 +484,11 @@ function resolveOrder(r, g) {
   g.busyTimer = setTimeout(() => {
     if (r.game !== g || !g.busy) return;
     endBusy(g);
+    if (g.tm && g.tm.seed) return startTournament(r, g);   // 토너먼트: 목표 맞추기 순위 = 시드 → 대진표
     startAugment(r, g);   // 순서가 정해졌으니 증강을 고르고 시작해요
   }, ms);
   toRoom(r, {
-    type: 'oshot', order: g.order,
+    type: 'oshot', order: g.order, seed: !!(g.tm && g.tm.seed),
     shots: res.filter(e => e.path).map(e => ({ by: e.i, angle: e.angle, path: e.path, impact: e.impact })),
     ranks: rank.map(e => ({ i: e.i, dist: isFinite(e.dist) ? Math.round(e.dist) : null })),
     state: snapshot(r),
@@ -783,23 +789,132 @@ function join(ws, r, name, icon) {
   pushList();
 }
 
+function dropFromGame(r, i) {   // 게임 중에 나간 플레이어: 쓰러진 것으로 처리 (true 면 이미 상태를 보냈어요)
+  const g = r.game;
+  if (g.players[i].on && g.winner === -1) {
+    g.players[i].hp = 0;
+    if (!checkEnd(r)) {
+      if (g.phase === 'order') { if (allFired(g)) { toRoom(r, snapshot(r)); resolveOrder(r, g); return true; } }
+      else if (g.phase === 'augment') { if (allPicked(g)) finishAugment(r, g); }
+      else if (g.turn === i) { endBusy(g); advance(r, i); }
+    }
+  }
+  toRoom(r, snapshot(r)); BOT.turn(r, g);
+  return false;
+}
 function leave(ws) {
   const r = ws.room;
   if (!r) return;
   const i = ws.slot, g = r.game;
   r.slots[i] = null; ws.room = null;
+  if (r.tour) return tourLeave(r, ws, i);
   if (!humans(r)) { destroyRoom(r); }   // 사람이 한 명도 없으면 (AI 만 남은 솔로 방 포함) 방을 닫아요
-  else if (g) {
-    if (g.players[i].on && g.winner === -1) {
-      g.players[i].hp = 0;
-      if (!checkEnd(r)) {
-        if (g.phase === 'order') { if (allFired(g)) { toRoom(r, snapshot(r)); resolveOrder(r, g); pushList(); return; } }
-        else if (g.phase === 'augment') { if (allPicked(g)) finishAugment(r, g); }
-        else if (g.turn === i) { endBusy(g); advance(r, i); }
-      }
-    }
-    toRoom(r, snapshot(r)); BOT.turn(r, g);
-  } else toRoom(r, roomMsg(r));
+  else if (g) { if (dropFromGame(r, i)) { pushList(); return; } }
+  else toRoom(r, roomMsg(r));
+  pushList();
+}
+
+// ===== 토너먼트 모드 (3~4명) =====
+// 1) 모두 목표 맞추기 → 가까운 순서가 시드(1~4번)
+// 2) 4명: 1번 vs 4번 · 2번 vs 3번 준결승을 '동시에' / 3명: 1번은 부전승, 2번 vs 3번 준결승
+// 3) 준결승 승자끼리 결승 → 우승. 경기가 없는 사람(이긴 사람 · 진 사람 · 부전승)은 진행 중인 다른 경기를 관전해요
+// 경기 하나 = 작은 방(match room): 두 사람 자리만 채운 slots 로 기존 게임 코드를 그대로 써요 (r.parent = 원래 방)
+let TID = 0;   // 토너먼트 번호 (클라이언트가 결과 애니메이션을 한 번만 보여주는 데 써요)
+const MATCH_INTRO = 3200, FINAL_DELAY = 4200, TOUR_END_MS = 9000;   // 우승 뒤 대진표를 보여주는 시간
+const tourMsg = (r, show = true) => {
+  const T = r.tour;
+  return { type: 'tour', show, key: 't' + T.id + '_', seeds: T.seeds, bye: T.bye, champ: T.champ, info: T.info,
+    matches: T.matches.map(mt => ({ id: mt.id, label: mt.label, final: !!mt.final, p: mt.p, winner: mt.winner, state: mt.state, from: mt.from || null })) };
+};
+const liveMatchOf = (r, i) => r.tour && r.tour.matches.find(mt => mt.state === 'live' && mt.room && mt.p.includes(i));
+function startTournament(r, g) {
+  const seeds = g.order.filter(i => r.slots[i]);   // 목표 맞추기 순위 (나간 사람 제외)
+  r.game = null;
+  const T = r.tour = { id: ++TID, seeds, bye: -1, champ: -1, matches: [], info: r.slots.map(s => s && { name: s.name, icon: s.icon }) };
+  const n = seeds.length;
+  if (n >= 4) {
+    T.matches.push({ id: 0, label: '준결승 1', p: [seeds[0], seeds[3]] }, { id: 1, label: '준결승 2', p: [seeds[1], seeds[2]] });
+    T.matches.push({ id: 2, label: '결승', final: true, p: [-1, -1], from: [0, 1] });
+  } else if (n === 3) {
+    T.bye = seeds[0];
+    T.matches.push({ id: 0, label: '준결승', p: [seeds[1], seeds[2]] });
+    T.matches.push({ id: 1, label: '결승', final: true, p: [seeds[0], -1], from: [null, 0] });
+  } else T.matches.push({ id: 0, label: '결승', final: true, p: seeds.slice(0, 2).concat([-1, -1]).slice(0, 2) });
+  T.matches.forEach(mt => { mt.winner = -1; mt.state = 'wait'; mt.room = null; });
+  T.matches.filter(mt => !mt.final).forEach(mt => startMatch(r, mt));
+  if (n <= 2) startMatch(r, T.matches[0]);
+  toRoom(r, tourMsg(r));
+  freeWatch(r);
+  pushList();
+}
+function startMatch(r, mt) {
+  if (r.dead || !r.tour) return;
+  const here = mt.p.filter(i => i >= 0 && r.slots[i]);
+  if (here.length < 2) {   // 상대가 나갔으면 남은 사람이 자동으로 올라가요 (부전승)
+    mt.state = 'done'; mt.winner = here.length ? here[0] : -1;
+    return progress(r);
+  }
+  const m = { code: r.code, parent: r, slots: Array(MAX).fill(null), mapId: r.mapId, mode: 'tour', game: null, watch: new Set(), mid: mt.id };
+  mt.p.forEach(i => { m.slots[i] = r.slots[i]; });
+  mt.room = m; mt.state = 'live';
+  newGame(m);
+  const g = m.game;
+  clearTimeout(g.orderTimer);   // 경기에서는 목표 맞추기 없이 시드가 높은 쪽이 먼저 쏴요
+  g.tm = { id: mt.id, label: mt.label, final: !!mt.final, p: mt.p.slice() };
+  g.phase = 'intro'; g.order = mt.p.slice(); g.turn = mt.p[0]; g.fuel = fuelOf(g, g.turn); g.busy = true; g.target = null;
+  g.introTimer = setTimeout(() => { if (m.game === g && g.winner === -1) { g.phase = 'play'; endBusy(g); startAugment(m, g); } }, MATCH_INTRO);   // 시작 연출 → 증강 고르기 → 경기
+  mt.p.forEach(i => { const w = r.slots[i] && r.slots[i].ws; if (w) r.tour.matches.forEach(x => x !== mt && x.room && x.room.watch.delete(w)); });   // 경기에 나가는 사람은 관전을 그만둬요
+  toRoom(m, snapshot(m));
+  if (mt.final) { toRoom(r, tourMsg(r, false)); freeWatch(r); }   // 결승: 나머지는 모두 결승을 관전
+}
+function matchEnd(m, g) {
+  const r = m.parent, T = r.tour;
+  if (!T || r.dead) return;
+  const mt = T.matches.find(x => x.id === m.mid);
+  mt.winner = g.winner; mt.state = 'done'; mt.room = null;
+  progress(r);
+}
+function progress(r) {   // 경기가 끝날 때마다: 다음 경기 준비 / 우승 확정 / 남는 사람은 관전
+  const T = r.tour;
+  if (!T || r.dead) return;
+  const fin = T.matches.find(mt => mt.final);
+  if (fin.state === 'done') {   // 우승!
+    T.champ = fin.winner;
+    toRoom(r, tourMsg(r));
+    setTimeout(() => { if (r.tour === T && !r.dead) { r.tour = null; toRoom(r, roomMsg(r)); pushList(); } }, TOUR_END_MS);
+    return;
+  }
+  if (fin.state === 'wait' && fin.from && fin.from.every(k => k == null || T.matches[k].state === 'done')) {   // 준결승이 모두 끝났어요 → 결승
+    fin.p = fin.p.map((q, k) => fin.from[k] == null ? q : T.matches[fin.from[k]].winner);
+    fin.state = 'ready';
+    toRoom(r, tourMsg(r));
+    setTimeout(() => startMatch(r, fin), FINAL_DELAY);
+    return;
+  }
+  toRoom(r, tourMsg(r));
+  freeWatch(r);
+}
+function setWatch(r, ws, mt) {   // ws 가 경기 mt 를 관전해요 (다른 경기 관전은 그만둬요)
+  r.tour.matches.forEach(x => x.room && x.room.watch.delete(ws));
+  if (!mt || !mt.room) return;
+  mt.room.watch.add(ws); ws.watching = mt.id;
+  send(ws, snapshot(mt.room));
+}
+function freeWatch(r) {   // 경기가 없는 사람은 진행 중인 경기를 자동으로 관전해요
+  const live = r.tour.matches.filter(mt => mt.state === 'live' && mt.room);
+  r.slots.forEach((sl, i) => {
+    if (!sl || !sl.ws || liveMatchOf(r, i)) return;
+    if (live.some(mt => mt.room.watch.has(sl.ws))) return;   // 이미 진행 중인 경기를 보고 있어요
+    if (live.length) setWatch(r, sl.ws, live[0]);
+  });
+}
+function tourLeave(r, ws, i) {
+  const T = r.tour;
+  T.matches.forEach(mt => mt.room && mt.room.watch.delete(ws));
+  if (!humans(r)) { destroyRoom(r); pushList(); return; }
+  const mt = liveMatchOf(r, i);
+  if (mt) { mt.room.slots[i] = null; dropFromGame(mt.room, i); }   // 경기 중이면 기권 (상대 승리)
+  toRoom(r, tourMsg(r, false));
   pushList();
 }
 
@@ -811,7 +926,8 @@ const isBot = (r, i) => !!(r.slots[i] && r.slots[i].bot);
 function destroyRoom(r) {   // 방을 닫고 남은 타이머를 모두 정리해요
   r.dead = true; clearInterval(r.hb);
   const g = r.game;
-  if (g) { clearTimeout(g.orderTimer); clearTimeout(g.augTimer); clearTimeout(g.busyTimer); clearInterval(g.burnTimer); BOT.clearBots(g); }
+  const gs = [g].concat(r.tour ? r.tour.matches.map(mt => mt.room && mt.room.game) : []).filter(Boolean);
+  gs.forEach(g => { clearTimeout(g.orderTimer); clearTimeout(g.augTimer); clearTimeout(g.busyTimer); clearTimeout(g.introTimer); clearInterval(g.burnTimer); BOT.clearBots(g); });
   rooms.delete(r.code);
 }
 
@@ -880,7 +996,14 @@ wss.on('connection', ws => {
 
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
-    const r = ws.room;
+    const r0 = ws.room;
+    if (r0 && r0.tour) {   // 토너먼트 진행 중: 대기실 조작은 막고, 게임 조작은 내가 뛰는 경기방으로 보내요
+      if (['start', 'mode', 'map', 'tank', 'team', 'bot'].includes(m.type)) return;
+      if (m.type === 'watch') { const mt = r0.tour.matches.find(x => x.id === (m.id | 0) && x.state === 'live'); if (mt && !liveMatchOf(r0, ws.slot)) setWatch(r0, ws, mt); return; }
+      if (m.type === 'tourinfo') return send(ws, tourMsg(r0));
+    }
+    const lm = r0 && r0.tour && liveMatchOf(r0, ws.slot);
+    const r = lm ? lm.room : r0;
     const name = String(m.name || '').trim().slice(0, 8) || '플레이어';
     const icon = ICONS.includes(m.icon) ? m.icon : ICONS[0];
 
@@ -903,7 +1026,7 @@ wss.on('connection', ws => {
       const t = rooms.get(String(m.code || '').toUpperCase());
       if (!t) return send(ws, { type: 'error', msg: '방을 찾을 수 없어요' });
       if (t.solo) return send(ws, { type: 'error', msg: '솔로 방에는 참가할 수 없어요' });
-      if (t.game) return send(ws, { type: 'error', msg: '이미 게임이 진행 중이에요' });
+      if (t.game || t.tour) return send(ws, { type: 'error', msg: '이미 게임이 진행 중이에요' });
       if (!t.slots.includes(null)) return send(ws, { type: 'error', msg: '방이 가득 찼어요' });
       join(ws, t, name, icon);
     } else if (m.type === 'leave') {
@@ -912,7 +1035,7 @@ wss.on('connection', ws => {
       r.mapId = Math.max(0, Math.min(RANDOM_MAP, (+m.id) | 0));
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'mode' && !r.game && !r.solo && ws.slot === host(r)) {
-      r.mode = ['team', 'escalation', 'laser'].includes(m.mode) ? m.mode : 'ffa';   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
+      r.mode = ['team', 'escalation', 'laser', 'tournament'].includes(m.mode) ? m.mode : 'ffa';   // tournament: 3~4명 1:1 대진   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'bot' && r.solo && !r.game && ws.slot === host(r)) {   // AI 추가 / 제거 / 난이도 / 탱크
       const sl = r.slots[m.slot | 0];
@@ -928,11 +1051,12 @@ wss.on('connection', ws => {
       if (r.mode === 'team' && r.slots[target]) { r.slots[target].team = m.team === 1 ? 1 : 0; toRoom(r, roomMsg(r)); }
     } else if (r && m.type === 'tank' && !r.game && isTank(m.kind)) {
       r.slots[ws.slot].tank = m.kind; toRoom(r, roomMsg(r));
-    } else if (r && m.type === 'start' && !r.game && ws.slot === host(r) && count(r) >= 2) {
+    } else if (r && m.type === 'start' && !r.game && !r.tour && ws.slot === host(r) && count(r) >= 2) {
       if (r.mode === 'team') {
         const t0 = r.slots.filter(s => s && s.team === 0).length, t1 = r.slots.filter(s => s && s.team === 1).length;
         if (!t0 || !t1) return send(ws, { type: 'error', msg: '팀전은 양 팀에 최소 1명씩 필요해요' });
       }
+      if (r.mode === 'tournament' && count(r) < 3) return send(ws, { type: 'error', msg: '토너먼트는 3명 이상부터 할 수 있어요' });
       newGame(r); toRoom(r, snapshot(r)); pushList();
     } else if (r && m.type === 'landed') {
       const g = r.game;
