@@ -215,33 +215,33 @@
   .pad,#fire,#charge,#fuel,#rd,#pw{--s:clamp(96px,calc(var(--ch) * .36),150px);--hh:clamp(66px,calc(var(--ch) * .22),96px);--mw:calc(var(--hh) * 2.3);--aw:calc(var(--s) * 1.15);--fw:calc(var(--s) * .74);--m:max(14px,env(safe-area-inset-left,0px));--b:max(14px,env(safe-area-inset-bottom,0px));--bw:6px}
 
   /* ---------- 조이스틱: 유리(글래스) 패널 + 민트 포인트 ---------- */
-  #game{--ac:#5dffb0;--ac2:#b9ffdf;--neon:#4dd2ff;--glass:rgba(12,20,17,.62);--line:rgba(255,255,255,.16)}
+  #game{--ac:#5dffb0;--ac2:#b9ffdf;--ac3:#1fbf7d;--acd:#05241a;--acr:93,255,176;--nr:77,210,255;--nlr:130,225,255;--neon:#4dd2ff;--kshape:circle(50%);--kin:34%;--kglyph:var(--ac);--kmask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='12'/%3E%3C/svg%3E");--kbg:linear-gradient(150deg,#fff,#dbe6e0 55%,#aebdb6);--glass:rgba(12,20,17,.62);--line:rgba(255,255,255,.16)}
   .glass{position:absolute;inset:0;pointer-events:none;border-radius:999px;
     background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.03) 45%,rgba(0,0,0,.16)),var(--glass);
-    border:1px solid rgba(77,210,255,.42);
-    box-shadow:0 10px 26px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -10px 18px rgba(0,0,0,.18),inset 0 0 12px rgba(77,210,255,.1);
+    border:1px solid rgba(var(--nr),.42);
+    box-shadow:0 10px 26px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -10px 18px rgba(0,0,0,.18),inset 0 0 12px rgba(var(--nr),.1);
     transition:box-shadow .18s,border-color .18s}
   .glass::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;   /* 바깥으로 번지는 하늘색 네온: 투명도만 천천히 숨 쉬어요 */
-    box-shadow:0 0 0 1px rgba(77,210,255,.3),0 0 10px rgba(77,210,255,.4),0 0 26px rgba(77,210,255,.2);
+    box-shadow:0 0 0 1px rgba(var(--nr),.3),0 0 10px rgba(var(--nr),.4),0 0 26px rgba(var(--nr),.2);
     opacity:.8;transition:opacity .18s}
-  .pad.on .glass,#pw.on .glass{border-color:rgba(130,225,255,.8);
-    box-shadow:0 10px 26px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 16px rgba(77,210,255,.2)}
+  .pad.on .glass,#pw.on .glass{border-color:rgba(var(--nlr),.8);
+    box-shadow:0 10px 26px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 16px rgba(var(--nr),.2)}
   .pad.on .glass::after,#pw.on .glass::after{opacity:1;animation:none;
-    box-shadow:0 0 0 1px rgba(130,225,255,.55),0 0 16px rgba(77,210,255,.65),0 0 40px rgba(77,210,255,.35)}
+    box-shadow:0 0 0 1px rgba(var(--nlr),.55),0 0 16px rgba(var(--nr),.65),0 0 40px rgba(var(--nr),.35)}
   @keyframes neonb{0%,100%{opacity:.6}50%{opacity:1}}
   #am .glass{inset:0 6.7%}   /* 조준: 높이만큼의 정원 (폭 × √3/2) */
   #mv .glass::before{content:"";position:absolute;left:22%;right:22%;top:50%;border-top:2px dotted rgba(255,255,255,.14)}
 
   .pad{position:absolute;bottom:var(--b);touch-action:none;z-index:5}
   .pad::after,#pw::after{content:attr(data-l);position:absolute;top:-27px;left:50%;transform:translateX(-50%);padding:3px 12px;border-radius:999px;
-    background:var(--glass);border:1px solid rgba(77,210,255,.32);box-shadow:0 0 10px rgba(77,210,255,.18);
-    color:#e9fff4;font-size:11px;font-weight:600;letter-spacing:.14em;white-space:nowrap;pointer-events:none}
+    background:var(--glass);border:1px solid rgba(var(--nr),.32);box-shadow:0 0 10px rgba(var(--nr),.18);
+    color:var(--ac2);font-size:11px;font-weight:600;letter-spacing:.14em;white-space:nowrap;pointer-events:none}
   #mv{left:var(--m);width:var(--mw);height:var(--hh);--k:calc(var(--hh) * .62)}
   #am{right:var(--m);width:var(--aw);height:calc(var(--aw) * .866);--k:calc(var(--aw) * .2)}  /* 정육각형 비율 그대로: 높이 = 폭 × √3/2 */
   #am::after{top:auto;bottom:12%;padding:0;background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;font-size:10px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.32em}
 
   /* 연료: 이동 패널 아래쪽의 가는 게이지 (노브가 움직이는 범위와 같은 길이) */
-  .fuelsvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 0 4px rgba(93,255,176,.45))}
+  .fuelsvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 0 4px rgba(var(--acr),.45))}
   .fuelsvg .ftrack{fill:none;stroke:rgba(255,255,255,.14);stroke-width:4;stroke-linecap:round}
   .fuelsvg #fuelf{fill:none;stroke-width:4;stroke-linecap:round;transition:opacity .15s}
   .fuelsvg.low #fuelf{stroke:#ff5a3c}
@@ -252,13 +252,17 @@
     border:solid rgba(255,255,255,.5);border-width:0 0 2.5px 2.5px;pointer-events:none}
   .ar.l{left:12%;transform:rotate(45deg)}
   .ar.r{right:12%;transform:rotate(-135deg)}
-  .knob{position:absolute;left:50%;top:50%;width:var(--k);height:var(--k);margin:calc(var(--k) / -2);border-radius:50%;pointer-events:none;
-    background:linear-gradient(150deg,#fff,#dbe6e0 55%,#aebdb6);
-    box-shadow:0 6px 14px rgba(0,0,0,.5),0 0 0 3px rgba(255,255,255,.14),inset 0 1px 0 #fff;
-    transition:box-shadow .18s}
-  .knob::after{content:"";position:absolute;inset:34%;border-radius:50%;background:var(--ac);box-shadow:0 0 10px var(--ac)}
-  .knob.snap{transition:transform .16s ease-out,box-shadow .18s}
-  .pad.on .knob{box-shadow:0 6px 16px rgba(0,0,0,.5),0 0 0 5px rgba(93,255,176,.22),0 0 22px rgba(93,255,176,.5),inset 0 1px 0 #fff}
+  /* 노브: 모양(--kshape) · 바탕(--kbg) · 가운데 아이콘(--kmask) 을 탱크마다 바꿔요 (applyJoy 가 #game 에 값을 넣어요) */
+  .knob{position:absolute;left:50%;top:50%;width:var(--k);height:var(--k);margin:calc(var(--k) / -2);pointer-events:none;
+    filter:drop-shadow(0 5px 4px rgba(0,0,0,.5)) drop-shadow(0 0 4px rgba(var(--acr),.3));transition:filter .18s}
+  .knob::before{content:"";position:absolute;inset:0;clip-path:var(--kshape);background:var(--kbg)}
+  .knob::after{content:"";position:absolute;inset:var(--kin);background:var(--kglyph);-webkit-mask:var(--kmask) center/contain no-repeat;mask:var(--kmask) center/contain no-repeat}
+  .knob.snap{transition:transform .16s ease-out,filter .18s}
+  .pad.on .knob{filter:drop-shadow(0 6px 5px rgba(0,0,0,.5)) drop-shadow(0 0 7px rgba(var(--acr),.85)) drop-shadow(0 0 16px rgba(var(--acr),.45))}
+  @keyframes kpulse{0%,100%{opacity:.6}50%{opacity:1}}
+  @keyframes kflick{0%,100%{opacity:1}20%{opacity:.7}35%{opacity:1}55%{opacity:.8}75%{opacity:1}}
+  #game[data-fx="pulse"] .knob::after{animation:kpulse 1.8s ease-in-out infinite}
+  #game[data-fx="flick"] .knob::after{animation:kflick .9s linear infinite}
 
   /* 조준: 눈금 다이얼 + 중심에서 노브까지 이어지는 빛줄기 */
   .arc{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
@@ -266,10 +270,8 @@
   .arc .ticks{fill:none;stroke:rgba(255,255,255,.38);stroke-width:.9;stroke-linecap:round}
   .arc .dot{fill:rgba(255,255,255,.55)}
   .beam{position:absolute;left:50%;top:50%;height:2px;margin-top:-1px;width:0;transform-origin:0 50%;border-radius:2px;pointer-events:none;
-    background:linear-gradient(90deg,rgba(93,255,176,0),rgba(93,255,176,.95));box-shadow:0 0 8px rgba(93,255,176,.6)}
-  #am .knob{background:linear-gradient(150deg,#e9fff4,var(--ac) 55%,#1fbf7d);box-shadow:0 6px 14px rgba(0,0,0,.5),0 0 14px rgba(93,255,176,.45),inset 0 1px 0 rgba(255,255,255,.8)}
-  #am .knob::after{background:#fff;box-shadow:none}
-  #am.on .knob{box-shadow:0 6px 16px rgba(0,0,0,.5),0 0 0 5px rgba(93,255,176,.22),0 0 24px rgba(93,255,176,.65),inset 0 1px 0 rgba(255,255,255,.8)}
+    background:linear-gradient(90deg,rgba(var(--acr),0),rgba(var(--acr),.95));box-shadow:0 0 8px rgba(var(--acr),.6)}
+  #am .knob{--kbg:linear-gradient(150deg,var(--ac2),var(--ac) 55%,var(--ac3));--kglyph:#fff}
 
   /* ---------- 파워: 알약형 슬라이더 (초록 → 노랑 → 주황으로 차올라요) ---------- */
   #pw{--ph:clamp(40px,calc(var(--aw) * .3),56px);--th:calc(var(--ph) * .58);
@@ -287,16 +289,16 @@
   /* ---------- 발사 버튼: 유리 원 + 퍼져나가는 링 ---------- */
   #fire{position:absolute;right:calc(var(--m) + var(--aw) + 22px);bottom:calc(var(--b) + 6px);width:var(--fw);height:var(--fw);padding:0;border-radius:50%;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ac2);touch-action:none;z-index:5;
-    border:1.5px solid rgba(77,210,255,.6);
-    background:radial-gradient(circle at 50% 28%,rgba(93,255,176,.32) 0,rgba(12,22,18,.6) 62%,rgba(6,12,10,.72) 100%);
-    box-shadow:0 10px 26px rgba(0,0,0,.45),0 0 12px rgba(77,210,255,.45),0 0 30px rgba(77,210,255,.2),inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 18px rgba(93,255,176,.14);
+    border:1.5px solid rgba(var(--nr),.6);
+    background:radial-gradient(circle at 50% 28%,rgba(var(--acr),.32) 0,rgba(12,22,18,.6) 62%,rgba(6,12,10,.72) 100%);
+    box-shadow:0 10px 26px rgba(0,0,0,.45),0 0 12px rgba(var(--nr),.45),0 0 30px rgba(var(--nr),.2),inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 18px rgba(var(--acr),.14);
     transition:transform .08s,background .12s,box-shadow .12s,color .12s}
   #fire::before{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--neon);opacity:0;pointer-events:none}
   #fire .fi{width:34%;height:auto;filter:drop-shadow(0 0 5px var(--ac))}
-  #fire b{font-size:clamp(13px,calc(var(--ch) * .04),19px);letter-spacing:.2em;font-weight:700;text-shadow:0 0 8px rgba(93,255,176,.7)}
-  #fire:active:not(:disabled){transform:scale(.94);color:#05241a;
-    background:radial-gradient(circle at 50% 28%,#c8ffe4 0,var(--ac) 65%,#1fbf7d 100%);
-    box-shadow:0 6px 16px rgba(0,0,0,.5),0 0 34px rgba(93,255,176,.6),0 0 22px rgba(77,210,255,.6),inset 0 1px 0 rgba(255,255,255,.6)}
+  #fire b{font-size:clamp(13px,calc(var(--ch) * .04),19px);letter-spacing:.2em;font-weight:700;text-shadow:0 0 8px rgba(var(--acr),.7)}
+  #fire:active:not(:disabled){transform:scale(.94);color:var(--acd);
+    background:radial-gradient(circle at 50% 28%,var(--ac2) 0,var(--ac) 65%,var(--ac3) 100%);
+    box-shadow:0 6px 16px rgba(0,0,0,.5),0 0 34px rgba(var(--acr),.6),0 0 22px rgba(var(--nr),.6),inset 0 1px 0 rgba(255,255,255,.6)}
   #fire:active:not(:disabled) .fi,#fire:active:not(:disabled) b{filter:none;text-shadow:none}
   #fire:disabled{filter:grayscale(.85) brightness(.6)}
   #fire:disabled::before{animation:none}
@@ -633,9 +635,9 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [];
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최소 1번 충전해야 발사 가능 · 최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 15/28/45/70'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 24'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크에 0.2초마다 3 피해'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿은 탱크에 10 피해 · 너무 가파른 벽에서는 멈춰요'], ['frost', '냉각탄', '얼음 포탄 · 맞은 자리 주변 바닥이 3턴간 얼어요 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동할 수 없어요(조준·발사는 가능) · 얼음 바닥 위에서는 이동이 느려지고 연료를 2배로 써요 · 피해 14'], ['vampire', '흡혈탄', '기본탄과 같은 피해(17) · 적에게 입힌 피해의 절반만큼 내 체력을 회복해요 · 맞히지 못하면 회복도 없어요'], ['water', '물폭탄', '맞은 자리에 물폭탄이 터져 주변에 커다란 반원형 물 범위가 3턴간 남아요 · 물 범위 안의 탱크가 포탄을 쏘면 50% 확률로 불발 · 피해 26'], ['explosive', '고폭탄', '바퀴가 없어 이동 불가(연료 0) · 대신 사거리가 맵 전체를 덮어요 · 피해 34(기본탄의 2배) · 폭발도 더 커요'], ['intercept', '요격탄', '탄은 기본탄과 같아요 · 내 차례가 올 때마다 요격 티켓이 설치돼요 · 티켓이 있으면 범위 안으로 날아온 적 포탄 한 발을 50% 확률로 요격 (성공·실패와 관계없이 티켓은 소모)'], ['plasma', '플라즈마', '조준한 방향으로 15° 부채꼴 광역 플라즈마를 뿜어요 · 파워 무관 · 사거리가 아주 길지만 멀리서 맞을수록 피해가 줄어요 (가까이 34 → 최대 사거리 약 7) · 범위 안의 적을 모두 맞혀요 · 지형에 가려진 적은 맞지 않아요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최소 1번 충전해야 발사 가능 · 최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 15/28/45/70'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 24'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크에 0.2초마다 3 피해'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿은 탱크에 10 피해 · 너무 가파른 벽에서는 멈춰요'], ['frost', '냉각탄', '얼음 포탄 · 맞은 자리 주변 바닥이 3턴간 얼어요 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동할 수 없어요(조준·발사는 가능) · 얼음 바닥 위에서는 이동이 느려지고 연료를 2배로 써요 · 피해 14'], ['vampire', '흡혈탄', '기본탄과 같은 피해(17) · 적에게 입힌 피해의 절반만큼 내 체력을 회복해요 · 맞히지 못하면 회복도 없어요'], ['water', '물폭탄', '맞은 자리에 물폭탄이 터져 주변에 커다란 반원형 물 범위가 3턴간 남아요 · 물 범위 안의 탱크가 포탄을 쏘면 50% 확률로 불발 · 피해 26'], ['explosive', '고폭탄', '바퀴가 없어 이동 불가(연료 0) · 대신 사거리가 맵 전체를 덮어요 · 피해 34(기본탄의 2배) · 폭발도 더 커요'], ['intercept', '요격탄', '탄은 기본탄과 같아요 · 내 차례가 올 때마다 요격 티켓이 설치돼요 · 티켓이 있으면 범위 안으로 날아온 적 포탄 한 발을 50% 확률로 요격 (성공·실패와 관계없이 티켓은 소모)'], ['plasma', '플라즈마', '조준한 방향으로 15° 부채꼴 광역 플라즈마를 뿜어요 · 파워 무관 · 사거리가 아주 길지만 멀리서 맞을수록 피해가 줄어요 (가까이 34 → 최대 사거리 약 3) · 범위 안의 적을 모두 맞혀요 · 지형에 가려진 적은 맞지 않아요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
-const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = 3200, PLASMA_MIN = .2;   // 플라즈마: 부채꼴 반각(총 15°) / 사거리(px) / 최대 사거리에서의 피해 비율 (서버 PLASMA_* 와 같은 값)
+const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = 3200, PLASMA_MIN = .08;   // 플라즈마: 부채꼴 반각(총 15°) / 사거리(px) / 최대 사거리에서의 피해 비율 (서버 PLASMA_* 와 같은 값)
 const RAIL_LEN = [1500, 2300, 3200, 4600], RAIL_WF = [1, 1.5, 2.1, 3], RAIL_MAX = 3, RAIL_AIM_MIN = -45;   // 레일건 충전 단계별 사거리(px) / 빔 반폭 배율(×탱크 피격 반경) — 서버(server.js RAIL_LV)와 같아야 해요
 
 const ls = {
@@ -1045,6 +1047,7 @@ function renderOL() {   // 정해진 차례 표시 (왼쪽 위)
 let frzShown = false;
 function ui() {
   if (!st || st.type !== 'state') return;
+  try { applyJoy(); } catch (e) { console.error('applyJoy', e); }
   const mine = me >= 0 && st.players[me].on && st.players[me].hp > 0;
   const ordering = st.phase === 'order';
   const rail = mine && !ordering && st.players[me].tank === 'rail', rc = rail ? (st.players[me].charge || 0) : 0;
@@ -1145,6 +1148,66 @@ function makePad(pad, onMove, resetOnEnd, opts = {}) {
   };
 }
 
+// ---------- 탱크별 조이스틱 디자인 ----------
+// 탱크 포인트 색(TK.acc)으로 패널·노브·빛줄기·발사 버튼 색을 바꾸고, 노브 모양 · 노브 가운데 아이콘 · 발사 버튼 아이콘을 탱크마다 달리해요. 기본탄은 원래 민트 디자인 그대로예요.
+var JOYT = null, joyKind = null, joyFi0 = null;
+(function () {
+  const poly = (n, ro, ri, rot = -90) => 'polygon(' + Array.from({ length: n * 2 }, (_, k) => { const r = k % 2 ? ri : ro, a = (rot + k * 180 / n) * Math.PI / 180; return (50 + Math.cos(a) * r).toFixed(1) + '% ' + (50 + Math.sin(a) * r).toFixed(1) + '%'; }).join(',') + ')';
+  const gear = n => 'polygon(' + Array.from({ length: n * 4 }, (_, k) => { const t = Math.floor(k / 4), q = k % 4, a = (t * 360 / n + [-.2, -.1, .1, .2][q] * 360 / n - 90) * Math.PI / 180, r = q === 0 || q === 3 ? 41 : 50; return (50 + Math.cos(a) * r).toFixed(1) + '% ' + (50 + Math.sin(a) * r).toFixed(1) + '%'; }).join(',') + ')';
+  const SH = {
+    circle: 'circle(50%)', hex: poly(3, 50, 50), oct: poly(4, 50, 50, -67.5), diamond: 'polygon(50% 0,100% 50%,50% 100%,0 50%)',
+    squircle: 'inset(3% round 32%)', shield: 'polygon(0 8%,50% 0,100% 8%,100% 56%,50% 100%,0 56%)',
+    drop: 'polygon(50% 0,70% 28%,92% 54%,90% 80%,70% 98%,30% 98%,10% 80%,8% 54%,30% 28%)',
+    flame: 'polygon(50% 0,64% 24%,90% 46%,88% 78%,68% 98%,32% 98%,12% 78%,10% 46%,36% 24%)',
+    burst6: poly(6, 50, 38), star4: poly(4, 50, 24), spark8: poly(8, 50, 30), blast8: poly(8, 50, 40), plasma6: poly(6, 50, 33), snow: poly(6, 50, 36), gear: gear(10),
+  };
+  const st_ = c => `fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
+  const ICON = {
+    basic: c => `<circle cx="12" cy="12" r="6.5" ${st_(c)}/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5" ${st_(c)}/><circle cx="12" cy="12" r="1.8" fill="${c}"/>`,
+    incendiary: c => `<path d="M12 2.2c.7 4 5.6 6.2 5.6 11.2a5.6 5.6 0 0 1-11.2 0c0-2.3 1-3.8 2.5-5 .2 1.9 1 2.9 2.1 3.3-.9-3.8-.5-6.6 1-9.5z" fill="${c}"/>`,
+    cluster: c => `<circle cx="12" cy="6.5" r="3.4" fill="${c}"/><circle cx="6.2" cy="16.5" r="3.4" fill="${c}"/><circle cx="17.8" cy="16.5" r="3.4" fill="${c}"/>`,
+    homing: c => `<path d="M5 19L19 5M19 5h-7.5M19 5v7.5" ${st_(c)}/><circle cx="5" cy="19" r="2" fill="${c}"/>`,
+    heavy: c => `<circle cx="11.5" cy="14" r="7.6" fill="${c}"/><path d="M15.5 7.2l3-3.4M19.2 2.6v2.6M16.6 2.4l2.6 1" ${st_(c)}/>`,
+    pierce: c => `<path d="M12 1.8l4.3 9.2H7.7z" fill="${c}"/><path d="M8.4 14h7.2M9.4 17.2h5.2M10.4 20.4h3.2" ${st_(c)}/>`,
+    laser: c => `<path d="M2.5 12h19" ${st_(c)}/><path d="M12 3.5l3 8.5-3 8.5-3-8.5z" fill="${c}"/>`,
+    carpet: c => [6.2, 12, 17.8].map(x => `<path d="M${x - 2.1} 3h4.2v9.4L${x} 16.4l-2.1-4z" fill="${c}"/>`).join('') + `<path d="M3 20.5h18" ${st_(c)}/>`,
+    bumper: c => `<circle cx="12" cy="12" r="8.6" ${st_(c)}/><circle cx="9" cy="9" r="2.2" fill="${c}"/><path d="M14.5 15.5a4 4 0 0 0 1.5-2" ${st_(c)}/>`,
+    sniper: c => `<circle cx="12" cy="12" r="7.8" fill="none" stroke="${c}" stroke-width="1.5"/><path d="M12 1v8M12 15v8M1 12h8M15 12h8" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="1.3" fill="${c}"/>`,
+    rail: c => `<path d="M2.5 8.5h13M2.5 15.5h13" ${st_(c)}/><path d="M14.5 4l7 8-7 8z" fill="${c}"/>`,
+    gravity: c => `<circle cx="12" cy="12" r="9.2" fill="none" stroke="${c}" stroke-width="1.8" stroke-dasharray="3.4 2.6" stroke-linecap="round"/><circle cx="12" cy="12" r="5.2" ${st_(c)}/><circle cx="12" cy="12" r="2.1" fill="${c}"/>`,
+    electro: c => `<path d="M13.5 1.8 5 13.5h6L10 22.2l9-12.5h-6z" fill="${c}"/>`,
+    grinder: c => `<circle cx="12" cy="12" r="4.2" ${st_(c)}/>` + Array.from({ length: 8 }, (_, k) => { const a = k * Math.PI / 4; return `<path d="M${(12 + Math.cos(a) * 7).toFixed(2)} ${(12 + Math.sin(a) * 7).toFixed(2)}L${(12 + Math.cos(a) * 10.4).toFixed(2)} ${(12 + Math.sin(a) * 10.4).toFixed(2)}" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`; }).join(''),
+    frost: c => `<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7" ${st_(c)}/><path d="M9.6 4.2L12 6.6l2.4-2.4M9.6 19.8L12 17.4l2.4 2.4" ${st_(c)}/><circle cx="12" cy="12" r="1.8" fill="${c}"/>`,
+    vampire: c => `<path d="M12 2C12 2 5.2 9.6 5.2 14.6a6.8 6.8 0 0 0 13.6 0C18.8 9.6 12 2 12 2z" fill="${c}"/>`,
+    water: c => `<path d="M2.5 8.5c2.2-2.8 4.4-2.8 6.6 0s4.4 2.8 6.6 0 3.2-2 5.8-.2M2.5 15c2.2-2.8 4.4-2.8 6.6 0s4.4 2.8 6.6 0 3.2-2 5.8-.2" ${st_(c)}/>`,
+    explosive: c => `<path d="${Array.from({ length: 16 }, (_, k) => { const r = k % 2 ? 5.2 : 10.8, a = (k * 22.5 - 90) * Math.PI / 180; return (k ? 'L' : 'M') + (12 + Math.cos(a) * r).toFixed(2) + ' ' + (12 + Math.sin(a) * r).toFixed(2); }).join('')}Z" fill="${c}"/>`,
+    intercept: c => `<path d="M12 2.4l8 3v6.2c0 4.7-3.3 8.4-8 10-4.7-1.6-8-5.3-8-10V5.4z" ${st_(c)}/><path d="M8.4 12l2.6 2.6 4.6-5" ${st_(c)}/>`,
+    plasma: c => `<circle cx="5" cy="12" r="3" fill="${c}"/><path d="M9.6 10.6L21.4 4.4v15.2L9.6 13.4z" fill="${c}"/>`,
+  };
+  const FX = { incendiary: 'flick', electro: 'flick', laser: 'pulse', rail: 'pulse', gravity: 'pulse', plasma: 'pulse', frost: 'pulse', intercept: 'pulse', explosive: 'flick', grinder: '' };
+  const SHAPE = { incendiary: 'flame', cluster: 'burst6', homing: 'oct', heavy: 'hex', pierce: 'diamond', laser: 'star4', carpet: 'squircle', bumper: 'circle', sniper: 'diamond', rail: 'hex', gravity: 'circle', electro: 'spark8', grinder: 'gear', frost: 'snow', vampire: 'drop', water: 'circle', explosive: 'blast8', intercept: 'shield', plasma: 'plasma6' };
+  JOYT = { SH, ICON, FX, SHAPE };
+})();
+const joyRgb = h => { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const joyMix = (h, t, k) => { const c = joyRgb(h).map(v => Math.round(v + (t - v) * k)); return '#' + c.map(v => v.toString(16).padStart(2, '0')).join(''); };
+function applyJoy() {   // 내 탱크 종류가 바뀔 때만 다시 칠해요
+  if (!JOYT) return;
+  const t = (st && st.players && me >= 0 && st.players[me] && st.players[me].tank) || 'basic', kind = TK[t] ? t : 'basic';
+  if (kind === joyKind) return; joyKind = kind;
+  const g = $('game'), S = g.style, fi = $('fire').querySelector('.fi'); if (joyFi0 == null) joyFi0 = fi.innerHTML;
+  ['--ac', '--ac2', '--ac3', '--acd', '--acr', '--nr', '--nlr', '--neon', '--kshape', '--kmask', '--kin'].forEach(n => S.removeProperty(n));
+  g.removeAttribute('data-fx'); fi.innerHTML = joyFi0;
+  if (kind === 'basic') return;   // 기본탄: 원래 민트 디자인
+  const ac = TK[kind].acc, ic = JOYT.ICON[kind], svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${ic('#000')}</svg>`;
+  const rgb = joyRgb(ac).join(','), lite = joyMix(ac, 255, .45);
+  S.setProperty('--ac', ac); S.setProperty('--ac2', joyMix(ac, 255, .72)); S.setProperty('--ac3', joyMix(ac, 0, .42)); S.setProperty('--acd', joyMix(ac, 0, .86));
+  S.setProperty('--acr', rgb); S.setProperty('--nr', rgb); S.setProperty('--nlr', joyRgb(lite).join(',')); S.setProperty('--neon', lite);
+  S.setProperty('--kshape', JOYT.SH[JOYT.SHAPE[kind]] || JOYT.SH.circle); S.setProperty('--kin', '23%');
+  S.setProperty('--kmask', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+  if (JOYT.FX[kind]) g.setAttribute('data-fx', JOYT.FX[kind]);
+  fi.innerHTML = ic('currentColor');
+}
+
 // 이동: 좌우로 밀면 이동 (턴마다 연료 한도 안에서)
 let mvDir = 0;
 makePad($('mv'), (dx, dy, Rm) => { mvDir = dx > Rm * 0.3 ? 1 : dx < -Rm * 0.3 ? -1 : 0; }, true, { horiz: true, rm: p => p.offsetHeight * 0.46 });
@@ -1152,7 +1215,7 @@ let kbDir = 0;   // 키보드 A/D 이동 방향
 setInterval(() => { const d = mvDir || kbDir; if (d && canAct() && st.fuel > 0) sendMsg({ type: 'move', dir: d }); }, 40);
 
 // 조준: 방향 = 각도(0~180°), 당긴 거리 = 파워. 놓아도 값은 유지돼요.
-const aimRange = () => (st && st.players && me >= 0 && st.players[me] && st.players[me].tank === 'rail' && st.phase !== 'order') ? [RAIL_AIM_MIN, 180 - RAIL_AIM_MIN] : [0, 180];   // 레일건은 수평 아래로도 쏠 수 있어요
+const aimRange = () => (st && st.players && me >= 0 && st.players[me] && (st.players[me].tank === 'rail' || st.players[me].tank === 'plasma') && st.phase !== 'order') ? [RAIL_AIM_MIN, 180 - RAIL_AIM_MIN] : [0, 180];   // 레일건은 수평 아래로도 쏠 수 있어요
 makePad($('am'), (dx, dy, Rm, h) => {   // 조준 조이스틱: 각도만 담당
   if (me < 0) return;
   if (h < Rm * 0.2) { placeAim(); return; }  // 중앙 근처는 무시
@@ -2252,14 +2315,14 @@ function drawPlasma(an) {   // 플라즈마: 포구에서 15° 부채꼴로 뿜�
   const at = (t, o) => [a0[0] + dx * t + nx * o, a0[1] + dy * t + ny * o];
   const wob = t => 1 + .07 * Math.sin(t / 38 - now / 70) + .04 * Math.sin(t / 17 + now / 41);   // 가장자리가 일렁여요
   const shape = (m) => { ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); for (let t = 12; t <= L; t += 24) { const [x, y] = at(t, -t * tn * m * wob(t)); ctx.lineTo(x, y); } { const [x, y] = at(L, -L * tn * m); ctx.lineTo(x, y); } { const [x, y] = at(L, L * tn * m); ctx.lineTo(x, y); } for (let t = Math.floor(L / 24) * 24 + 12; t >= 12; t -= 24) { if (t > L) continue; const [x, y] = at(t, t * tn * m * wob(t + 90)); ctx.lineTo(x, y); } ctx.closePath(); };
-  const fall = (a) => { const g = ctx.createLinearGradient(a0[0], a0[1], a0[0] + dx * full, a0[1] + dy * full); g.addColorStop(0, rgba(col, a)); g.addColorStop(1, rgba(col, a * (pl.min != null ? pl.min : .2))); return g; };
+  const fall = (a) => { const g = ctx.createLinearGradient(a0[0], a0[1], a0[0] + dx * full, a0[1] + dy * full); g.addColorStop(0, rgba(col, a)); g.addColorStop(1, rgba(col, a * (pl.min != null ? pl.min : .08))); return g; };
   ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   shape(1); ctx.fillStyle = fall(.5 * f * grow); ctx.fill();                                           // 바깥 부채꼴
   shape(.62); ctx.fillStyle = fall(.55 * f * grow); ctx.fill();                                        // 안쪽 더 밝은 부채꼴
   { const g = ctx.createLinearGradient(a0[0], a0[1], a0[0] + dx * full, a0[1] + dy * full); g.addColorStop(0, `rgba(255,255,255,${.95 * f})`); g.addColorStop(1, `rgba(255,255,255,${.12 * f})`); shape(.24); ctx.fillStyle = g; ctx.fill(); }   // 흰 중심 줄기
   ctx.strokeStyle = rgba(col, .8 * f); ctx.lineWidth = 2.2; ctx.beginPath(); { const [x1, y1] = at(L, -L * tn); const [x2, y2] = at(L, L * tn); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(x1, y1); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(x2, y2); } ctx.stroke();   // 가장자리 빛
   for (let k = 0; k < 46; k++) {   // 바깥으로 흘러가는 플라즈마 알갱이
-    const u = (now / (900 + (k % 5) * 120) + k * .618) % 1, t = u * L, lat = (((k * 37) % 100) / 100 * 2 - 1) * t * tn * .92 + Math.sin(now / 160 + k) * 3, [x, y] = at(t, lat), r = (5 + (k % 4) * 3) * (.4 + u) * (1 - u * .35), al = (1 - u * .8) * .85 * f * (1 - (1 - (pl.min != null ? pl.min : .2)) * (t / full) * .8);
+    const u = (now / (900 + (k % 5) * 120) + k * .618) % 1, t = u * L, lat = (((k * 37) % 100) / 100 * 2 - 1) * t * tn * .92 + Math.sin(now / 160 + k) * 3, [x, y] = at(t, lat), r = (5 + (k % 4) * 3) * (.4 + u) * (1 - u * .35), al = (1 - u * .8) * .85 * f * (1 - (1 - (pl.min != null ? pl.min : .08)) * (t / full) * .8);
     const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(255,255,255,${al})`); g.addColorStop(.4, rgba(col, al * .7)); g.addColorStop(1, rgba(col, 0));
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
   }

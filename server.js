@@ -614,9 +614,9 @@ function fireRail(r, shooter, angle) {
   return { type: 'shot', by: shooter, angle, kind: 'rail', dud: false, shells: [{ path, impact: null }], rail: { lv, wid: Math.round(wid), hits }, state: snapshot(r) };
 }
 
-// ----- 플라즈마: 조준 방향으로 15° 부채꼴(좌우 7.5°) 광역 플라즈마를 뿜어요. 사거리가 길지만 멀리서 맞을수록 피해가 줄어요 (가까이 100% → 최대 사거리 20%) -----
+// ----- 플라즈마: 조준 방향으로 15° 부채꼴(좌우 7.5°) 광역 플라즈마를 뿜어요. 사거리가 길지만 멀리서 맞을수록 피해가 줄어요 (가까이 100% → 최대 사거리 8%) -----
 // 포탄이 아니라 즉시 판정이라 파워는 무관하고, 지형이 가로막은 탱크(시선이 막힘)는 맞지 않아요. 땅은 안 파여요.
-const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = 3200, PLASMA_MIN = .2, PLASMA_STEP = 80;   // 부채꼴 반각 / 사거리(px) / 최대 사거리에서의 피해 비율 / 화면 연출용 경로 점 간격
+const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = 3200, PLASMA_MIN = .08, PLASMA_STEP = 80;   // 부채꼴 반각 / 사거리(px) / 최대 사거리에서의 피해 비율 / 화면 연출용 경로 점 간격
 const plasmaDmg = (base, dist) => Math.max(1, Math.round(base * (1 - (1 - PLASMA_MIN) * Math.max(0, Math.min(1, dist / PLASMA_RANGE)))));
 function plasmaCone(g, shooter, angle) {   // 쏘지 않고 판정만 계산 (봇 조준도 같이 써요)
   const p = g.players[shooter], a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), x0 = p.x, y0 = g.terrain[p.x] - 20 * TS, tn = Math.tan(PLASMA_HALF), base = SHELL.plasma.dmg;
@@ -816,7 +816,7 @@ function doFire(r, i, angle, power) {
   const g = r.game;
   if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== i || g.players[i].hp <= 0) return false;
   if (g.players[i].tank === 'rail' && (g.players[i].charge || 0) < 1) return false;   // 레일건은 최소 1번 충전해야 발사할 수 있어요
-  const railAim = g.players[i].tank === 'rail';   // 레일건만 수평 아래로도 조준 가능
+  const railAim = g.players[i].tank === 'rail' || g.players[i].tank === 'plasma';   // 레일건·플라즈마는 수평 아래로도 조준 가능
   toRoom(r, fire(r, i,
     Math.min(railAim ? 180 - RAIL_AIM_MIN : 180, Math.max(railAim ? RAIL_AIM_MIN : 0, +angle || 0)),
     Math.min(100, Math.max(10, +power || 10))));

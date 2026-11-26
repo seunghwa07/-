@@ -164,10 +164,10 @@ module.exports = function (X) {
       if (!s) foesOf(g, i).forEach(k => { const q = g.players[k]; near = Math.min(near, Math.abs(Math.atan2(-(tankY(g, q) - c.y0), q.x - c.x0) * 180 / Math.PI - a) * Math.PI / 180 * Math.hypot(q.x - c.x0, tankY(g, q) - c.y0)); });
       return { a, s, key: shaped(s, near) };
     };
-    const all = []; for (let a = 0; a <= 180; a += 3) all.push(ev(a));
+    const all = []; for (let a = RAIL_AIM_MIN; a <= 180 - RAIL_AIM_MIN; a += 3) all.push(ev(a));
     all.sort((x, y) => y.key - x.key); let best = all[0];
-    for (const t of all.slice(0, 3)) for (let a = t.a - 3; a <= t.a + 3; a += .5) { if (a < 0 || a > 180) continue; const c = ev(a); if (c.key > best.key) best = c; }
-    return { angle: best.a, power: 100, score: best.s };
+    for (const t of all.slice(0, 3)) for (let a = t.a - 3; a <= t.a + 3; a += .5) { if (a < RAIL_AIM_MIN || a > 180 - RAIL_AIM_MIN) continue; const c = ev(a); if (c.key > best.key) best = c; }
+    return { angle: best.a, power: 100, score: best.s, wide: true };
   }
   function planLaser(ctx) {
     const { g, i } = ctx, m = g.players[i].mods, dmg = SHELL.laser.dmg * m.dmg * (m.kindDmg.laser || 1);
@@ -184,7 +184,7 @@ module.exports = function (X) {
     for (const t of all.slice(0, 4)) for (let a = t.a - 2; a <= t.a + 2; a += .25) { if (a < 0 || a > 180) continue; const c = ev(a); if (c.key > best.key) best = c; }
     return { angle: best.a, power: 100, score: best.s };
   }
-  const noisy = (pl, lv) => ({ ...pl, angle: clamp(pl.angle + gauss() * lv.sa, 0, 180), power: clamp(pl.power * (1 + gauss() * lv.sp), 10, 100) });
+  const noisy = (pl, lv) => ({ ...pl, angle: clamp(pl.angle + gauss() * lv.sa, pl.wide ? RAIL_AIM_MIN : 0, pl.wide ? 180 - RAIL_AIM_MIN : 180), power: clamp(pl.power * (1 + gauss() * lv.sp), 10, 100) });
 
   // ---------- 레일건: 충전(턴 소모) → 직선 관통 빔. 몇 번 충전할지, 어디를 겨눌지 ----------
   function railBeam(g, i, angle, lv) {   // 이 각도·충전 단계로 쏘면 맞는 (적) 가치
