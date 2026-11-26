@@ -15,7 +15,7 @@
 //          grav    스나이퍼탄이 받는 중력 ×N   hitr  스나이퍼탄 피격 범위 ×N   scope  조준 점선(스나이퍼) 길이 ×N
 //          heal    고르는 즉시 체력 +N 회복   rad  폭발 범위 ×N   dud  유도탄 불발 확률 ×N   fireMs  소이탄 불길·일렉트로 전기장·그라인더 톱니바퀴 지속 시간 ×N   spread  융단폭격 미사일 간격 ×N
 //          turns   냉각탄 얼음·물폭탄 물 범위가 남는 차례 +N   drain  흡혈탄 회복 비율 +N(0.3 = +30%p)   charge0  레일건 발사 뒤 충전 시작 단계(기본 0)
-//          icptR   요격탄 요격 범위 ×N   icptP  요격 성공 확률 +N(0.2 = +20%p)   tickets  요격 티켓 최대 보유 수 +N (한 번에 더 많은 탄 요격)
+//          icptR   요격탄 요격 범위 ×N   icptP  요격 성공 확률 +N(0.2 = +20%p)   tickets  요격 터렛이 적이 한 번 쏠 때 요격을 시도하는 포탄 수 +N
 //   (아래 목록은 틀이 잘 도는지 확인하려고 넣은 샘플이에요. 마음대로 바꾸고 늘리세요)
 (function (root) {
   const POOL = [
@@ -66,7 +66,7 @@
     { id: 'hollow',    tank: 'sniper', rarity: 'rare', icon: '🔻', name: '고관통 탄심', desc: '저격탄 피해 ×1.2 (50 → 60)',          mods: { kindDmg: { sniper: 1.2 } } },
     { id: 'zeroing',   tank: 'sniper', rarity: 'common', icon: '🎯', name: '영점 조절',   desc: '저격탄 피격 범위 ×1.5',                mods: { hitr: 1.5 } },
     { id: 'scope',     tank: 'sniper', rarity: 'common', icon: '🔭', name: '고배율 조준경', desc: '조준 점선이 2배 길어져요',             mods: { scope: 2 } },
-    { id: 'highvolt', tank: 'electro', rarity: 'rare', icon: '⚡', name: '고전압',        desc: '전기장 피해 ×1.5 (3 → 5)',                    mods: { kindDmg: { electro: 1.5 } } },
+    { id: 'highvolt', tank: 'electro', rarity: 'rare', icon: '⚡', name: '고전압',        desc: '전기장 피해 ×1.5 (8 → 12)',                    mods: { kindDmg: { electro: 1.5 } } },
     { id: 'longarc',  tank: 'electro', rarity: 'common', icon: '🔌', name: '장시간 방전',   desc: '전기장이 나아가는 시간 ×1.5 (3초 → 4.5초)',     mods: { fireMs: 1.5 } },
     { id: 'carbide',  tank: 'grinder', rarity: 'rare', icon: '🔩', name: '초경 톱날',     desc: '톱니바퀴 피해 ×1.4 (10 → 14)',                 mods: { kindDmg: { grinder: 1.4 } } },
     { id: 'longroll', tank: 'grinder', rarity: 'common', icon: '🛞', name: '장거리 구동',   desc: '톱니바퀴가 굴러가는 시간 ×1.5 (3초 → 4.5초)',   mods: { fireMs: 1.5 } },
@@ -98,7 +98,7 @@
     // ----- 요격탄 -----
     { id: 'scanner', tank: 'intercept', rarity: 'common', icon: '📡', name: '광역 레이더',   desc: '요격 범위 ×1.4',                           mods: { icptR: 1.4 } },
     { id: 'lock',    tank: 'intercept', rarity: 'rare', icon: '🎯', name: '정밀 추적',     desc: '요격 성공 확률 +20%p (50% → 70%)',         mods: { icptP: .2 } },
-    { id: 'twin',    tank: 'intercept', rarity: 'epic', icon: '🛡️', name: '이중 티켓',     desc: '요격 티켓 최대 2장 · 한 번에 탄 2발까지 요격 시도', mods: { tickets: 1 } },
+    { id: 'twin',    tank: 'intercept', rarity: 'epic', icon: '🛡️', name: '이중 터렛',     desc: '터렛이 적이 한 번 쏠 때 포탄 2발까지 요격 시도', mods: { tickets: 1 } },
     // ----- 에픽 · 전설 (잘 안 나오는 대신 강해요) -----
     { id: 'bastion',   tank: null, rarity: 'epic',      icon: '🏯', name: '철옹성',       desc: '최대 체력 +80 · 받는 피해 ×0.9',                   mods: { hp: 80, taken: .9 } },
     { id: 'warlord',   tank: null, rarity: 'epic',      icon: '🦾', name: '전쟁 군주',     desc: '주는 피해 ×1.25 · 최대 체력 +20',                  mods: { dmg: 1.25, hp: 20 } },

@@ -17,7 +17,7 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept', 'plasma'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept', 'plasma', 'shadow'];
 const ESC_POOL = KINDS.filter(k => k !== 'rail' && k !== 'intercept');   // 에스컬레이션이 쏠 때마다 뽑는 포탄 후보 (레일건은 충전이 필요해서, 요격탄은 기본탄과 같아서 뺐어요)
 const FIXED_TANK = { escalation: 'escalation', laser: 'laser' };   // 이 모드에서는 모두가 같은 탱크예요 (탱크를 고를 수 없어요)
 const LASER_MODE_BOUNCES = 10;   // 레이저 모드: 모두 레이저 탱크 · 반사 횟수는 언제나 10회
@@ -31,7 +31,8 @@ const SHELL = {
   heavy: { dmg: 68, rad: Math.round(CRATER * Math.sqrt(6)) },   // 광폭탄: 피해 4배(기본탄 17의 4배), 폭발 면적 6배(반지름 √6배)
   gravity: { dmg: 24, rad: 75 },   // 중력탄: 블랙홀에 끌려온 탱크가 받는 붕괴 폭발 피해 / 붕괴 크레이터 (아래 GRAV_* 와 같은 값)
   rail: { dmg: 0, rad: 0 },        // 레일건: 단계별 값은 RAIL_LV 에 있어요
-  electro: { dmg: 3, rad: 0 },     // 일렉트로: 전깃줄에 닿은 탱크가 틱마다 받는 피해 (아래 ELEC_* 와 같은 값) · 땅은 안 파여요
+  electro: { dmg: 8, rad: 0 },     // 일렉트로: 전깃줄에 닿은 탱크가 틱마다 받는 피해 (아래 ELEC_* 와 같은 값) · 땅은 안 파여요
+  shadow: { dmg: 15, rad: 45 },    // 섀도우: 약한 피해 + 착탄 자리에 작은 어둠 영역 (아래 SHADOW_* 참고)
   water: { dmg: 26, rad: CRATER },   // 물폭탄: 기본탄(17)보다 센 피해 26 + 착탄 주변에 물 범위가 생겨요 (아래 WATER_* 참고)
   vampire: { dmg: 17, rad: CRATER },   // 흡혈탄: 기본탄과 같은 피해·폭발 · 실제로 입힌 피해의 절반만큼 쏜 사람이 회복 (VAMP_RATE)
   frost: { dmg: 14, rad: 40 },      // 냉각탄: 약한 피해 + 착탄 주변 바닥이 얼어요 (아래 FROST_* 참고)
@@ -64,7 +65,7 @@ const GRAV_MS = GRAV_FRAMES * 1000 / 60 + 200;
 // 그라인더: 톱니바퀴가 땅을 타고 굴러가요. 닿은 탱크는 (탱크마다 한 번) GRIND_DMG 피해, 너무 가파른 벽을 만나면 그 자리에서 멈춰요
 // 이동 경로와 피해는 발사 순간 서버가 한 번에 계산해서 보내요. (탱크는 움직이지 않고, 지형도 안 변하니까 결과가 같아요) 아래 값은 클라이언트(index.html)에도 필요한 것만 같이 보내요
 const ZONE_STEP = 50;                                                    // 장판 위치를 기록하는 간격(ms)
-const ELEC_MS = 3000, ELEC_SPEED = 280, ELEC_H = 240, ELEC_W = 55, ELEC_TICK = 200, ELEC_DMG = 3;   // 지속 / 이동 속도(px/s) / 전깃줄 길이(px) / 닿는 폭(px) / 피해 간격(ms) / 틱당 피해
+const ELEC_MS = 3000, ELEC_SPEED = 280, ELEC_H = 240, ELEC_W = 55, ELEC_TICK = 300, ELEC_DMG = 8, ELEC_HITS = 2;   // 지속 / 이동 속도(px/s) / 전깃줄 길이(px) / 닿는 폭(px) / 피해 간격(ms · 느려졌어요) / 틱당 피해 / 탱크 하나가 전기장 한 번에 맞는 횟수(2번)
 const GRIND_MS = 3000, GRIND_SPEED = 220, GRIND_R = 34, GRIND_HIT = GRIND_R + 16, GRIND_DMG = 10, GRIND_CLIMB = 1.7;   // 지속 / 이동 속도 / 톱니바퀴 반지름 / 피격 거리 / 피해 / 오를 수 있는 최대 기울기(높이÷거리)
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
 const SNIPER_G = .3, SNIPER_HIT = HIT_R * .55, SNIPER_ANIM = 1.8;   // 스나이퍼탄: 중력 30% / 피격 범위 55%(작아서 맞추기 어려워요) / 화면에서 날아가는 속도 배율(빨라요)
@@ -81,18 +82,19 @@ const FROST_R = 150, FROST_TURNS = 3;   // 냉각탄: 얼음 바닥 반경(px) /
 const ICE_GAP = 70, ICE_FUEL = 2;   // 얼음 바닥 위: 이동 간격 70ms(기본 30~40ms 대비 절반 속도) / 한 걸음당 연료 2배
 const onIce = (g, q) => (g.ice || []).some(f => Math.hypot(q.x - f.x, tankY(g, q) - f.y) < f.r);
 // 물폭탄: 착탄 주변에 물 범위가 WATER_TURNS 차례 동안 남아요. 그 범위 안의 (적) 탱크가 쏘는 포탄은 WATER_DUD 확률로 불발(날아가다 사라짐)
-const WATER_R = 240, WATER_TURNS = 3, WATER_DUD = .5;   // 물 범위 반경(px) / 남아 있는 차례 수 / 범위 안에서 쏜 포탄이 불발될 확률
+const SHADOW_R = 150, SHADOW_TURNS = 3;   // 섀도우: 어둠 영역 반경(px) / 남아 있는 차례 수 — 영역 안은 지형과 다른 탱크가 안 보이고 자기 탱크만 보여요 (화면 연출이라 서버는 위치만 기억해요)
+const WATER_R = 200, WATER_TURNS = 3, WATER_DUD = .5;   // 물 범위 반경(px) / 남아 있는 차례 수 / 범위 안에서 쏜 포탄이 불발될 확률
 const inWater = (g, i) => { const q = g.players[i]; return (g.water || []).some(z => !isAlly(g, z.by, i) && Math.hypot(q.x - z.x, tankY(g, q) - z.y) < z.r); };
-// 요격탄: 자기 차례가 시작될 때마다 요격 티켓이 1장 설치돼요 (쌓이지 않아요). 티켓은 쓰일 때까지 유지돼요.
-// 적이 쏜 포탄이 범위(ICPT_R) 안에 들어오면 그중 딱 한 발만 요격을 시도하고(티켓은 성공·실패와 관계없이 소모), 성공 확률은 ICPT_P 예요.
-const ICPT_R = 380, ICPT_P = .5;   // (증강: 광역 레이더 icptR · 정밀 추적 icptP · 이중 티켓 tickets)
-const icptCap = q => 1 + q.mods.tickets;   // 티켓 최대 보유 수   // 요격 범위 반경(px) / 요격 성공 확률 — 클라이언트(index.html)와 같아야 해요
+// 요격탄: 자기 차례를 ICPT_EVERY 번 맞을 때마다(첫 차례 · 3번째 · 5번째…) 그 자리에 요격 터렛을 설치해요. 터렛은 다음 설치 때까지 필드에 남고, 새로 설치하면 이전 것은 사라져요. 탄은 기본탄과 같아서 평소처럼 쏠 수 있어요.
+// 적이 쏜 포탄이 터렛 범위(ICPT_R) 안에 들어오면 그중 한 발에 대해 요격을 시도하고(포탄 한 번에 한 번), 성공 확률은 ICPT_P 예요. 터렛은 몇 번이든 쓸 수 있어요.
+const ICPT_R = 380, ICPT_P = .5, ICPT_EVERY = 2;   // (증강: 광역 레이더 icptR · 정밀 추적 icptP · 이중 터렛 tickets) · 터렛 설치 주기(자기 차례 수)
+const icptCap = q => 1 + q.mods.tickets;   // 터렛이 적 포탄 한 번에 요격을 시도하는 최대 발수   // 요격 범위 반경(px) / 요격 성공 확률 — 클라이언트(index.html)와 같아야 해요
 function intercepts(g, shooter, shells) {   // 발사 직후 비행 경로가 나온 뒤 호출 · 요격된 포탄은 경로가 잘리고 착탄·피해가 사라져요
   const out = [];
   g.players.forEach((q, i) => {
-    if (q.tank !== 'intercept' || !q.ticket || q.hp <= 0 || !q.on || i === shooter || isAlly(g, shooter, i)) return;
-    const cx = q.x, cy = tankY(g, q), R = ICPT_R * q.mods.icptR, P = Math.min(1, ICPT_P + q.mods.icptP);
-    while (q.ticket > 0) {   // 티켓 1장마다 탄 한 발 (이중 티켓이면 최대 2발)
+    if (q.tank !== 'intercept' || !q.turret || q.hp <= 0 || !q.on || i === shooter || isAlly(g, shooter, i)) return;
+    const cx = q.turret.x, cy = q.turret.y, R = ICPT_R * q.mods.icptR, P = Math.min(1, ICPT_P + q.mods.icptP);
+    for (let n = 0; n < icptCap(q); n++) {   // 터렛은 적이 한 번 쏠 때 포탄 한 발씩 (이중 터렛이면 최대 2발) 요격을 시도해요
       let best = null;   // 범위에 가장 먼저 들어온 포탄 한 발
       shells.forEach((s, si) => {
         if (s.icpt || s.dudShell || !s.path || s.path.length < 2 || (s.triedBy || []).includes(i)) return;
@@ -100,10 +102,9 @@ function intercepts(g, shooter, shells) {   // 발사 직후 비행 경로가 �
         if (k >= 0 && (!best || k < best.k)) best = { s, si, k };
       });
       if (!best) break;
-      q.ticket--;   // 티켓 소모 (성공·실패 무관)
       const ok = Math.random() < P, pt = best.s.path[best.k];
       (best.s.triedBy = best.s.triedBy || []).push(i);
-      out.push({ by: i, si: best.si, idx: best.k, x: pt[0], y: pt[1], ok });
+      out.push({ by: i, si: best.si, idx: best.k, x: pt[0], y: pt[1], tx: cx, ty: cy, ok });
       if (ok) {   // 요격 성공: 그 지점에서 포탄이 터져 사라져요 (지형 파임·피해·장판 없음)
         best.s.path = best.s.path.slice(0, best.k + 1);
         best.s.impact = null; best.s.hit = null; best.s.hd = 0; best.s.icpt = true;
@@ -148,8 +149,9 @@ function newCode() {
 // ----- 증강 헬퍼: 능력치는 p.mods (augments.js 의 calc 결과) 에 모여 있어요 -----
 const fuelOf = (g, i) => g.players[i].tank === 'explosive' ? 0 : Math.round(FUEL * g.players[i].mods.fuel);   // 고폭탄 포대는 바퀴가 없어서 연료 0 = 이동 불가
 const iceList = g => (g.ice || []).map(q => ({ id: q.id, x: q.x, y: q.y, r: q.r, left: q.left }));
+const darkList = g => (g.dark || []).map(q => ({ id: q.id, x: q.x, y: q.y, r: q.r, left: q.left, by: q.by }));
 const waterList = g => (g.water || []).map(q => ({ id: q.id, x: q.x, y: q.y, r: q.r, left: q.left, by: q.by }));
-const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn), rings: g.rings, frozen: !!g.frozen, frz: g.players.map(p => p.frz || 0), tk: g.players.map(p => p.ticket || 0), ice: iceList(g), water: waterList(g) });
+const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn), rings: g.rings, frozen: !!g.frozen, frz: g.players.map(p => p.frz || 0), tk: g.players.map(p => p.ticket || 0), tur: g.players.map(p => p.turret || null), ice: iceList(g), water: waterList(g), dark: darkList(g) });
 
 // ----- 튕김 링: 2~3개가 떠 있다가 2~5턴 뒤에 사라지고, 다른 자리에 새로 나타나요 -----
 function tickRings(g, init) {
@@ -208,13 +210,13 @@ function newGame(r) {
   const xs = spawnXs(r);
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
-    map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [], ice: [], water: [], frozen: false, iceSeq: 0, waterSeq: 0,
+    map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [], ice: [], water: [], dark: [], frozen: false, iceSeq: 0, waterSeq: 0, darkSeq: 0,
     players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (FIXED_TANK[r.mode] || (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank)) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
   g.gid = ++GID;   // 게임마다 고유 번호 (토너먼트에서 화면이 다른 경기로 바뀐 걸 클라이언트가 알아채요)
   if (r.mode === 'tournament') g.tm = { seed: true };   // 토너먼트: 이 게임은 대진(시드)을 정하는 목표 맞추기만 해요
-  g.players.forEach(q => { q.ticket = q.tank === 'intercept' ? 1 : 0; });   // 요격탄: 첫 차례부터 티켓이 설치돼 있어요
+  g.players.forEach(q => { q.icN = 1; q.turret = q.tank === 'intercept' ? { x: q.x, y: tankY(g, q) } : null; q.ticket = q.turret ? 1 : 0; });   // 요격탄: 첫 차례부터 요격 터렛이 설치돼 있어요 (ticket 은 '터렛 가동 중' 표시용 1/0)
   g.rings = []; g.ringSeq = 0; tickRings(g, true);   // 튕김 링 (2~3개)
   g.turn = g.players.findIndex(p => p.on);
   g.fuel = fuelOf(g, g.turn);
@@ -234,8 +236,8 @@ function snapshot(r) {
     phase: g.phase, target: g.target, rings: g.rings, order: g.order, ofired: g.players.map((_, i) => !!g.oshots[i]),
     orderGo: Math.max(0, g.orderGoAt - Date.now()), orderLeft: Math.max(0, g.orderEnd - Date.now()),
     teams: g.players.map(p => p.team),
-    fires: fireList(g), ice: iceList(g), water: waterList(g), frozen: !!g.frozen,
-    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, maxHp: p.maxHp, aug: p.aug, on: p.on, name: p.name, icon: p.icon, charge: p.charge || 0, frz: p.frz || 0, ticket: p.ticket || 0, icr: Math.round(ICPT_R * p.mods.icptR) })),
+    fires: fireList(g), ice: iceList(g), water: waterList(g), dark: darkList(g), frozen: !!g.frozen,
+    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, maxHp: p.maxHp, aug: p.aug, on: p.on, name: p.name, icon: p.icon, charge: p.charge || 0, frz: p.frz || 0, ticket: p.ticket || 0, tur: p.turret || null, icr: Math.round(ICPT_R * p.mods.icptR) })),
   };
 }
 
@@ -394,6 +396,10 @@ function explode(g, shooter, impact, kind, delay = 0, mul = 1) {   // mul: 이 �
     g.ice.push({ id: ++g.iceSeq, x: fx, y: fy, r: fr, left: FROST_TURNS + g.players[shooter].mods.turns + 1 });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
     g.players.forEach((q, i) => { if (q.hp > 0 && !isAlly(g, shooter, i) && Math.hypot(q.x - fx, tankY(g, q) - fy) < fr) q.frz = 1; });
   }
+  if (kind === 'shadow') {   // 섀도우: 착탄 자리에 어둠 영역 생성
+    const dx0 = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), dr = Math.round(SHADOW_R * g.players[shooter].mods.area);
+    g.dark.push({ id: ++g.darkSeq, x: dx0, y: g.terrain[dx0], r: dr, left: SHADOW_TURNS + g.players[shooter].mods.turns + 1, by: shooter });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
+  }
   if (kind === 'water') {   // 물폭탄: 착탄 주변에 물 범위 생성 (그 안의 적 탱크가 쏘는 포탄은 50% 불발)
     const wx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), wy = g.terrain[wx], wr = Math.round(WATER_R * g.players[shooter].mods.area);
     g.water.push({ id: ++g.waterSeq, x: wx, y: wy, r: wr, left: WATER_TURNS + g.players[shooter].mods.turns + 1, by: shooter });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
@@ -536,7 +542,7 @@ function finishAugment(r, g) {
     g.picks[i] = id; p.aug.push(id);
     const before = p.mods.hp; p.mods = FAUG.calc(p.aug);
     if (p.tank === 'rail') p.charge = Math.max(p.charge || 0, p.mods.charge0);   // 예열 코일: 바로 충전 1단계
-    if (p.tank === 'intercept') p.ticket = Math.max(p.ticket || 0, icptCap(p));   // 이중 티켓: 티켓이 바로 2장
+    if (p.tank === 'intercept') p.ticket = p.turret ? 1 : 0;
     p.maxHp = 100 + p.mods.hp; p.hp = Math.max(1, p.hp + p.mods.hp - before);   // 체력 증강은 현재 체력도 같이 올려요
     const heal = (FAUG.byId[id].mods || {}).heal || 0;
     if (heal) p.hp = Math.min(p.maxHp, p.hp + heal);                            // 응급 수리: 즉시 회복
@@ -558,9 +564,10 @@ function advance(r, from) {   // 다음 차례로 넘겨요
   const g = r.game;
   g.turn = nextTurn(g, from); g.wind = rndWind(); g.fuel = fuelOf(g, g.turn);
   g.frozen = false; const tp = g.players[g.turn];
-  if (tp_isIcpt(g, g.turn)) g.players[g.turn].ticket = icptCap(g.players[g.turn]);   // 요격탄: 차례마다 요격 티켓 설치 (이미 있으면 그대로 1장)
+  if (tp_isIcpt(g, g.turn)) { const q = g.players[g.turn]; q.icN = (q.icN || 1) + 1; if ((q.icN - 1) % ICPT_EVERY === 0 || !q.turret) q.turret = { x: q.x, y: tankY(g, q) }; q.ticket = q.turret ? 1 : 0; }   // 요격탄: 자기 차례 ICPT_EVERY 번마다 지금 있는 자리에 새 요격 터렛 설치 (이전 터렛은 사라져요)
   if (tp.frz > 0) { tp.frz--; g.frozen = true; g.fuel = 0; }   // 얼어붙은 탱크: 이번 차례는 이동 불가 (연료 0)
   g.ice = (g.ice || []).map(q => ({ ...q, left: q.left - 1 })).filter(q => q.left > 0);   // 얼음 바닥은 몇 차례 뒤에 녹아요
+  g.dark = (g.dark || []).map(q => ({ ...q, left: q.left - 1 })).filter(q => q.left > 0);   // 어둠 영역도 몇 차례 뒤에 걷혀요
   g.water = (g.water || []).map(q => ({ ...q, left: q.left - 1 })).filter(q => q.left > 0);   // 물 범위도 몇 차례 뒤에 마르고 사라져요
   tickRings(g);   // 차례가 넘어갈 때마다 링이 사라지고 새로 나타나요
 }
@@ -696,7 +703,7 @@ function zoneRun(g, shooter, impact, vx, kind) {
   const dir = vx >= 0 ? 1 : -1, sp = (el ? ELEC_SPEED : GRIND_SPEED) * ZONE_STEP / 1000;
   const ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.round(x)))];
   let x = Math.max(20, Math.min(W - 20, impact[0]));
-  const path = [], hits = [], next = g.players.map(() => 0);
+  const path = [], hits = [], next = g.players.map(() => 0), cnt = g.players.map(() => 0);
   for (let k = 0; k <= n; k++) {
     const t = k * ZONE_STEP;
     let y = ty(x);
@@ -708,7 +715,7 @@ function zoneRun(g, shooter, impact, vx, kind) {
       if (!(el ? segDist(x, y - ELEC_H, x, y, q.x, qy) < ELEC_W : Math.hypot(x - q.x, y - qy) < GRIND_HIT)) return;
       const hp0 = q.hp;
       q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, i, el ? ELEC_DMG : GRIND_DMG, kind));
-      next[i] = el ? t + ELEC_TICK : Infinity;   // 전기는 계속 지지고, 톱날은 탱크마다 한 번만 갈아요
+      cnt[i]++; next[i] = el ? (cnt[i] >= ELEC_HITS ? Infinity : t + ELEC_TICK) : Infinity;   // 전기는 탱크마다 ELEC_TICK 간격으로 딱 2번만 지지고, 톱날은 탱크마다 한 번만 갈아요
       hits.push({ i, t, x: q.x, y: Math.round(qy), d: hp0 - q.hp });
     });
     if (k < n) {

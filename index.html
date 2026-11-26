@@ -786,7 +786,7 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [], curG
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최소 1번 충전해야 발사 가능 · 최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 15/28/45/70'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 24'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크에 0.2초마다 3 피해'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿은 탱크에 10 피해 · 너무 가파른 벽에서는 멈춰요'], ['frost', '냉각탄', '얼음 포탄 · 맞은 자리 주변 바닥이 3턴간 얼어요 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동할 수 없어요(조준·발사는 가능) · 얼음 바닥 위에서는 이동이 느려지고 연료를 2배로 써요 · 피해 14'], ['vampire', '흡혈탄', '기본탄과 같은 피해(17) · 적에게 입힌 피해의 절반만큼 내 체력을 회복해요 · 맞히지 못하면 회복도 없어요'], ['water', '물폭탄', '맞은 자리에 물폭탄이 터져 주변에 커다란 반원형 물 범위가 3턴간 남아요 · 물 범위 안의 탱크가 포탄을 쏘면 50% 확률로 불발 · 피해 26'], ['explosive', '고폭탄', '바퀴가 없어 이동 불가(연료 0) · 대신 사거리가 맵 전체를 덮어요 · 피해 34(기본탄의 2배) · 폭발도 더 커요'], ['intercept', '요격탄', '탄은 기본탄과 같아요 · 내 차례가 올 때마다 요격 티켓이 설치돼요 · 티켓이 있으면 범위 안으로 날아온 적 포탄 한 발을 50% 확률로 요격 (성공·실패와 관계없이 티켓은 소모)'], ['plasma', '플라즈마', '조준한 방향으로 15° 부채꼴 광역 플라즈마를 뿜어요 · 파워 무관 · 사거리가 맵 끝까지 닿지만 멀리서 맞을수록 피해가 줄어요 (가까이 34 → 맵 맨 끝 4) · 범위 안의 적을 모두 맞혀요 · 지형에 가려진 적은 맞지 않아요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최소 1번 충전해야 발사 가능 · 최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 15/28/45/70'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 24'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크는 0.3초 간격으로 8 피해씩 딱 2번(총 16) 맞아요'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿은 탱크에 10 피해 · 너무 가파른 벽에서는 멈춰요'], ['frost', '냉각탄', '얼음 포탄 · 맞은 자리 주변 바닥이 3턴간 얼어요 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동할 수 없어요(조준·발사는 가능) · 얼음 바닥 위에서는 이동이 느려지고 연료를 2배로 써요 · 피해 14'], ['vampire', '흡혈탄', '기본탄과 같은 피해(17) · 적에게 입힌 피해의 절반만큼 내 체력을 회복해요 · 맞히지 못하면 회복도 없어요'], ['water', '물폭탄', '맞은 자리에 물폭탄이 터져 주변에 반원형 물 범위(반경 200)가 3턴간 남아요 · 물 범위 안의 탱크가 포탄을 쏘면 50% 확률로 불발 · 피해 26'], ['shadow', '섀도우', '까만 포탄 · 착탄 자리에 작은 어둠 영역이 3턴간 남아요 · 영역 안에 들어간 탱크는 시야가 가려져 화면이 까맣게 되고 자기 탱크만 보여요 · 밖에서는 영역 안의 탱크가 테두리만 보여요 · 피해 15'], ['explosive', '고폭탄', '바퀴가 없어 이동 불가(연료 0) · 대신 사거리가 맵 전체를 덮어요 · 피해 34(기본탄의 2배) · 폭발도 더 커요'], ['intercept', '요격탄', '탄은 기본탄과 같아서 평소처럼 쏠 수 있어요 · 2턴마다(첫 차례 · 3번째 · 5번째…) 있는 자리에 요격 터렛을 설치해요 · 터렛은 다음 설치 때까지 남고, 적 포탄이 터렛 범위에 들어오면 50% 확률로 격추해요'], ['plasma', '플라즈마', '조준한 방향으로 15° 부채꼴 광역 플라즈마를 뿜어요 · 파워 무관 · 사거리가 맵 끝까지 닿지만 멀리서 맞을수록 피해가 줄어요 (가까이 34 → 맵 맨 끝 4) · 범위 안의 적을 모두 맞혀요 · 지형에 가려진 적은 맞지 않아요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 TN.escalation = '에스컬레이션';
 const ESC_DESC = '에스컬레이션 모드 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 어떤 탄이 나갈지는 발사하는 순간 정해져요(레일건·요격탄 제외) · 탱크는 고를 수 없고 조준 점선도 없어요';
@@ -918,7 +918,7 @@ function onMsg(m) {
   }
   else if (m.type === 'turn') {   // 포탄이 끝나서 차례가 넘어갔어요 (애니메이션 중이면 끝난 뒤 적용될 상태에 반영)
     const t = anim ? anim.pending : st;
-    if (t && t.players) { if (m.rings) t.rings = m.rings; t.turn = m.turn; t.wind = m.wind; t.fuel = m.fuel; t.fuelMax = m.fuelMax; t.busy = false; t.frozen = !!m.frozen; if (m.ice) t.ice = m.ice; if (m.water) t.water = m.water; if (m.frz) m.frz.forEach((z, i) => { if (t.players[i]) t.players[i].frz = z; }); if (m.tk) m.tk.forEach((z, i) => { const q = t.players[i]; if (!q) return; if (z && !q.ticket && q.on && q.hp > 0) FX.floats.push({ x: q.x, y: q.y - 130, t: 0, txt: '🛡️ 요격 티켓 설치', big: false }); q.ticket = z; }); }
+    if (t && t.players) { if (m.rings) t.rings = m.rings; t.turn = m.turn; t.wind = m.wind; t.fuel = m.fuel; t.fuelMax = m.fuelMax; t.busy = false; t.frozen = !!m.frozen; if (m.ice) t.ice = m.ice; if (m.water) t.water = m.water; if (m.dark) t.dark = m.dark; if (m.frz) m.frz.forEach((z, i) => { if (t.players[i]) t.players[i].frz = z; }); if (m.tk) m.tk.forEach((z, i) => { const q = t.players[i]; if (!q) return; const nt = m.tur && m.tur[i] ? m.tur[i] : null; if (nt && (!q.tur || q.tur.x !== nt.x || q.tur.y !== nt.y) && q.on && q.hp > 0) FX.floats.push({ x: nt.x, y: nt.y - 130, t: 0, txt: '🛡️ 요격 터렛 설치', big: false }); q.ticket = z; q.tur = nt; }); }
     hideRank();
     ui();
   }
@@ -1017,7 +1017,7 @@ function preview(c, id) {
   x.lineWidth = 1.4; x.strokeStyle = TC.lite(.6); x.stroke(E);
 }
 // ---- 대기실 (1280×720 디자인 무대) ----
-const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', homing: '#4dffe0', heavy: '#d0a15a', pierce: '#ff4d6a', laser: '#7df3ff', carpet: '#ff5a3c', bumper: '#7dff6a', sniper: '#c58cff', rail: '#4d7bff', gravity: '#b84dff', electro: '#d4ff3a', grinder: '#c4cfdf', random: '#c9d3ff' , frost: '#b4e6ff' , vampire: '#ff3b5c', water: '#4dc3ff', explosive: '#ff7a45', intercept: '#5df0b4', plasma: '#ff5af0', escalation: '#ffb347' };   // 탱크 종류별 포인트 색
+const TANKC = { basic: '#fff6b0', incendiary: '#ff8a1e', cluster: '#ffd23a', homing: '#4dffe0', heavy: '#d0a15a', pierce: '#ff4d6a', laser: '#7df3ff', carpet: '#ff5a3c', bumper: '#7dff6a', sniper: '#c58cff', rail: '#4d7bff', gravity: '#b84dff', electro: '#d4ff3a', grinder: '#c4cfdf', random: '#c9d3ff' , frost: '#b4e6ff' , vampire: '#ff3b5c', water: '#4dc3ff', shadow: '#b07cff', explosive: '#ff7a45', intercept: '#5df0b4', plasma: '#ff5af0', escalation: '#ffb347' };   // 탱크 종류별 포인트 색
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
 const CROWN = w => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="currentColor" aria-label="방장" role="img"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"></path></svg>`;
@@ -1234,7 +1234,7 @@ function ui() {
   const frzMe = !ordering && st.winner === -1 && st.turn === me && !!st.frozen;
   if (!ordering && st.winner === -1 && st.turn === me && !st.frozen && mine && (st.ice || []).some(f => Math.hypot(st.players[me].x - f.x, st.players[me].y - f.y) < f.r)) t += ' · 🧊 얼음 위 (느림 · 연료 2배)';
   if (!ordering && st.winner === -1 && st.turn === me && mine && (st.water || []).some(f => Math.hypot(st.players[me].x - f.x, st.players[me].y - f.y) < f.r && !(st.mode === 'team' && me !== f.by && st.teams[me] === st.teams[f.by]))) t += ' · 💦 물 범위 안 (포탄 50% 불발)';
-  if (!ordering && st.winner === -1 && st.turn === me && mine && st.players[me].tank === 'intercept') t += st.players[me].ticket ? ` · 🛡️ 요격 티켓 ${st.players[me].ticket}장 (범위 안 적 포탄 · 티켓당 1발)` : ' · 🛡️ 요격 티켓 없음';
+  if (!ordering && st.winner === -1 && st.turn === me && mine && st.players[me].tank === 'intercept') t += st.players[me].tur ? ' · 🛡️ 요격 터렛 가동 중 (범위 안 적 포탄 50% 격추 · 2턴마다 새로 설치)' : ' · 🛡️ 요격 터렛 없음';
   if (!ordering && st.winner === -1 && st.frozen) t += st.turn === me ? ' · 🧊 얼어서 이동 불가' : ' · 🧊 얼어붙음';
   if (frzMe && !frzShown) { frzShown = true; showBanner('🧊 얼어붙었어요!', '이번 차례는 이동할 수 없어요 · 조준과 발사는 가능해요'); } else if (!frzMe) frzShown = false;
   $('info').textContent = t; setWind(st.wind); renderOL(); $('tbtn').hidden = !tourSt;
@@ -1348,6 +1348,7 @@ var JOYT = null, joyKind = null, joyFi0 = null;
     grinder: c => `<circle cx="12" cy="12" r="4.2" ${st_(c)}/>` + Array.from({ length: 8 }, (_, k) => { const a = k * Math.PI / 4; return `<path d="M${(12 + Math.cos(a) * 7).toFixed(2)} ${(12 + Math.sin(a) * 7).toFixed(2)}L${(12 + Math.cos(a) * 10.4).toFixed(2)} ${(12 + Math.sin(a) * 10.4).toFixed(2)}" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`; }).join(''),
     frost: c => `<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7" ${st_(c)}/><path d="M9.6 4.2L12 6.6l2.4-2.4M9.6 19.8L12 17.4l2.4 2.4" ${st_(c)}/><circle cx="12" cy="12" r="1.8" fill="${c}"/>`,
     vampire: c => `<path d="M12 2C12 2 5.2 9.6 5.2 14.6a6.8 6.8 0 0 0 13.6 0C18.8 9.6 12 2 12 2z" fill="${c}"/>`,
+    shadow: c => `<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" ${st_(c)}/><circle cx="15.5" cy="7" r="1.1" fill="${c}"/>`,
     water: c => `<path d="M2.5 8.5c2.2-2.8 4.4-2.8 6.6 0s4.4 2.8 6.6 0 3.2-2 5.8-.2M2.5 15c2.2-2.8 4.4-2.8 6.6 0s4.4 2.8 6.6 0 3.2-2 5.8-.2" ${st_(c)}/>`,
     explosive: c => `<path d="${Array.from({ length: 16 }, (_, k) => { const r = k % 2 ? 5.2 : 10.8, a = (k * 22.5 - 90) * Math.PI / 180; return (k ? 'L' : 'M') + (12 + Math.cos(a) * r).toFixed(2) + ' ' + (12 + Math.sin(a) * r).toFixed(2); }).join('')}Z" fill="${c}"/>`,
     intercept: c => `<path d="M12 2.4l8 3v6.2c0 4.7-3.3 8.4-8 10-4.7-1.6-8-5.3-8-10V5.4z" ${st_(c)}/><path d="M8.4 12l2.6 2.6 4.6-5" ${st_(c)}/>`,
@@ -1355,7 +1356,7 @@ var JOYT = null, joyKind = null, joyFi0 = null;
     plasma: c => `<circle cx="5" cy="12" r="3" fill="${c}"/><path d="M9.6 10.6L21.4 4.4v15.2L9.6 13.4z" fill="${c}"/>`,
   };
   const FX = { incendiary: 'flick', electro: 'flick', laser: 'pulse', rail: 'pulse', gravity: 'pulse', plasma: 'pulse', escalation: 'pulse', frost: 'pulse', intercept: 'pulse', explosive: 'flick', grinder: '' };
-  const SHAPE = { incendiary: 'flame', cluster: 'burst6', homing: 'oct', heavy: 'hex', pierce: 'diamond', laser: 'star4', carpet: 'squircle', bumper: 'circle', sniper: 'diamond', rail: 'hex', gravity: 'circle', electro: 'spark8', grinder: 'gear', frost: 'snow', vampire: 'drop', water: 'circle', explosive: 'blast8', intercept: 'shield', plasma: 'plasma6', escalation: 'star4' };
+  const SHAPE = { incendiary: 'flame', cluster: 'burst6', homing: 'oct', heavy: 'hex', pierce: 'diamond', laser: 'star4', carpet: 'squircle', bumper: 'circle', sniper: 'diamond', rail: 'hex', gravity: 'circle', electro: 'spark8', grinder: 'gear', frost: 'snow', vampire: 'drop', water: 'circle', shadow: 'circle', explosive: 'blast8', intercept: 'shield', plasma: 'plasma6', escalation: 'star4' };
   JOYT = { SH, ICON, FX, SHAPE };
 })();
 const joyRgb = h => { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
@@ -2239,6 +2240,7 @@ const BODY = {
 };
 
 // o: { col, lite, edge, dir(±1), a(조준 라디안), tilt, now, i }
+TK.shadow = { acc: '#b07cff', acc2: '#14081f' }; TPK.shadow = TPK.basic; BARREL.shadow = BARREL.basic; BODY.shadow = BODY.basic;   // 섀도우: 차체는 기본 탱크와 같고 보랏빛 포인트 색만 달라요
 TK.escalation = { acc: '#ffb347', acc2: '#ff4d6a' }; TPK.escalation = TPK.basic; BARREL.escalation = BARREL.basic; BODY.escalation = BODY.basic;   // 에스컬레이션: 차체는 기본 탱크와 같고 포인트 색만 달라요
 function paintTank(kind, o) {
   o.k = TK[kind]; o.tp = TPK[kind];
@@ -2614,6 +2616,16 @@ function drawShell(an) {   // an: { path, i, by, kind, small, big }
   if (an.kind === 'rail') { drawRail(an); return; }
   if (an.kind === 'plasma' && an.plasma) { drawPlasma(an); return; }   // 불발(물 범위)일 땐 평범한 포탄처럼 날아가요
   const idx = Math.min(an.i, an.path.length - 1), pt = ptAt(an.path, idx), L = an.small ? 18 : 34;
+  if (an.kind === 'shadow') {   // 섀도우: 까만 포탄 — 검은 연기 꼬리 + 얇은 보랏빛 테두리 (어두운 하늘에서도 보이게)
+    ctx.save(); ctx.lineCap = 'round';
+    for (let j = L - 1; j >= 0; j--) {
+      const p0 = ptAt(an.path, idx - j - 1), p1 = ptAt(an.path, idx - j), f = 1 - j / L;
+      ctx.strokeStyle = `rgba(150,90,255,${.18 * f})`; ctx.lineWidth = (3 + 11 * f) * Z; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+      ctx.strokeStyle = `rgba(4,2,10,${.85 * f})`; ctx.lineWidth = (1 + 8 * f) * Z; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+    }
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(pt[0], pt[1], 5.6 * Z, 0, 7); ctx.fill(); ctx.lineWidth = 1.5 * Z; ctx.strokeStyle = 'rgba(176,124,255,.85)'; ctx.stroke();
+    ctx.restore(); return;
+  }
   let col = an.kind === 'frost' ? '#a8e6ff' : an.kind === 'water' ? '#7ad8ff' : an.kind === 'vampire' ? '#ff3b5c' : (pc(an.by) || '#ffffff'), red = 0;
   if (an.dud) {   // 불발: 날아가는 도중 점점 붉게 달아올라 깜빡여요
     red = Math.max(0, Math.min(1, (idx / Math.max(1, an.path.length - 1) - .12) / .5));
@@ -3374,6 +3386,7 @@ function updateCam() {
 
 // ----- 화면 밖 상대: 가장자리에 방향 화살표 + 내 탱크로부터의 거리(m) -----
 function drawOffscreen() {
+  if (blind) return;   // 시야가 가려지면 화면 밖 탱크 표시도 안 보여요
   if (!st || st.type !== 'state' || st.winner !== -1 || zm.on) return;
   const mine = me >= 0 && st.players[me].on && st.players[me].hp > 0;
   const ref = mine ? st.players[me] : { x: cam.x + VW / 2, y: cam.y + VH / 2 };
@@ -3519,8 +3532,8 @@ const icptFx = [];    // 요격 연출: { x0, y0, x1, y1, ok, t0 }
 function drawIntercept(now) {   // 요격 티켓이 설치된 요격탄 탱크: 요격 범위를 은은한 돔 + 돌아가는 점선 + 레이더 스윕으로 보여줘요
   if (!st || !st.players) return;
   st.players.forEach((p, i) => {
-    if (!p.on || p.hp <= 0 || p.tank !== 'intercept' || !p.ticket) return;
-    const cx = p.x, cy = p.y - 10 * TS;
+    if (!p.on || p.hp <= 0 || p.tank !== 'intercept' || !p.tur) return;
+    const cx = p.tur.x, cy = p.tur.y - 10 * TS;
     const IR = p.icr || ICPT_R;
     if (cx + IR < VX0 || cx - IR > VX1) return;
     const pu = .5 + .5 * Math.sin(now / 500 + i), a = now / 700 + i * 2;
@@ -3532,6 +3545,14 @@ function drawIntercept(now) {   // 요격 티켓이 설치된 요격탄 탱크: 
     ctx.beginPath(); ctx.arc(cx, cy, IR, 0, 7); ctx.stroke(); ctx.setLineDash([]);
     ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(93,240,180,.10)';
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, IR, a - .55, a); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.save(); ctx.translate(p.tur.x, p.tur.y); ctx.scale(TS, TS); ctx.lineJoin = 'round';   // 요격 터렛: 받침 + 둥근 포탑 + 적을 노리듯 흔들리는 포신
+    ctx.fillStyle = '#16302b'; ctx.strokeStyle = '#5df0b4'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-15, 0); ctx.lineTo(-11, -6); ctx.lineTo(11, -6); ctx.lineTo(15, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, -6, 9, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.translate(0, -12); ctx.rotate(-Math.PI / 2 + Math.sin(now / 650 + i) * .55);
+    ctx.fillStyle = '#5df0b4'; ctx.fillRect(2, -2, 17, 4); ctx.fillStyle = '#e8fff6'; ctx.fillRect(15, -2.6, 5, 5.2); ctx.restore();
+    ctx.fillStyle = `rgba(232,255,246,${.55 + .45 * pu})`; ctx.beginPath(); ctx.arc(0, -8, 2.2, 0, 7); ctx.fill();
     ctx.restore();
   });
 }
@@ -3546,6 +3567,41 @@ function drawIcptFx(now) {   // 요격 순간: 탱크에서 포탄까지 번쩍�
     ctx.strokeStyle = `rgba(255,255,255,${e})`; ctx.lineWidth = 2; ctx.stroke();
     ctx.beginPath(); ctx.arc(f.x1, f.y1, (f.ok ? 56 : 28) * u + 8, 0, 7); ctx.lineWidth = 4 * e + .5; ctx.strokeStyle = `rgba(${c},${e})`; ctx.stroke();
     ctx.restore();
+  }
+}
+function drawTankOutline(p, i, deg) {   // 어둠 속 탱크: 검은 바탕 위에 차체·포탑·포신의 테두리 선만 보여요 (색 채움·이름표·장식은 없어요)
+  const kind = TK[p.tank] ? p.tank : 'basic', tp = TPK[kind] || TPK.basic, col = pc(i), a = deg * Math.PI / 180, dir = deg <= 90 ? 1 : -1, T = st.terrain;
+  const x0 = Math.max(0, Math.round(p.x - 14 * TS)), x1 = Math.min(W - 1, Math.round(p.x + 14 * TS)), tilt = Math.max(-0.5, Math.min(0.5, Math.atan2(T[x1] - T[x0], x1 - x0)));
+  ctx.save(); ctx.translate(p.x, p.y); ctx.scale(TS, TS); ctx.rotate(tilt); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = col; ctx.lineWidth = 1.7; ctx.globalAlpha = .9;
+  ctx.save(); ctx.scale(dir, 1); ctx.stroke(tp.hull); ctx.stroke(tp.turret); ctx.restore();
+  ctx.translate(8 * dir, -19.5); ctx.rotate(-a - tilt); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(24, 0); ctx.stroke();
+  ctx.restore();
+}
+let blind = false;   // 내 탱크가 어둠 영역 안에 있어서 시야가 가려진 상태
+const darkSeen = new Map();   // 어둠 영역 id → 처음 보인 시각 (처음 나타날 때만 번져 나가는 연출)
+function drawDark(rp, alive) {   // 섀도우 어둠 영역: 밖에서 보면 영역이 검게 칠해지고 그 안의 탱크는 테두리만 보여요 · 영역 안에 들어간 탱크의 주인은 시야가 완전히 가려져 화면이 온통 까매지고, 자기 탱크만 보여요
+  blind = false;
+  if (!st || !st.dark || !st.dark.length) return;
+  const now = performance.now(), mp = me >= 0 && alive[me] ? rp[me] : null;
+  let mineIn = false;
+  ctx.save();
+  st.dark.forEach(f => {
+    if (mp && Math.hypot(mp.x - f.x, mp.y - 10 - f.y) < f.r) mineIn = true;
+    if (f.x + f.r * 1.3 < VX0 || f.x - f.r * 1.3 > VX1) return;
+    if (!darkSeen.has(f.id)) darkSeen.set(f.id, now);
+    const g0 = Math.min(1, (now - darkSeen.get(f.id)) / 500), R = Math.max(2, f.r * (1 - Math.pow(1 - g0, 3))), fade = f.left <= 1 ? .6 : 1;
+    const gr = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, R); gr.addColorStop(0, `rgba(0,0,0,${fade})`); gr.addColorStop(.82, `rgba(0,0,0,${fade})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(f.x, f.y, R, 0, 7); ctx.fill();
+    ctx.setLineDash([18 * Z, 14 * Z]); ctx.lineDashOffset = -now / 60; ctx.lineWidth = 2 * Z; ctx.strokeStyle = `rgba(150,90,255,${.3 * fade})`; ctx.beginPath(); ctx.arc(f.x, f.y, R * .86, 0, 7); ctx.stroke(); ctx.setLineDash([]);   // 가장자리에 일렁이는 보랏빛 테두리
+  });
+  ctx.restore();
+  if (!mineIn) rp.forEach((p, i) => { if (alive[i] && st.dark.some(f => Math.hypot(p.x - f.x, p.y - 10 - f.y) < f.r)) drawTankOutline(p, i, aimVis[i] ?? aims[i]); });   // 밖에서 보면 어둠 속 탱크는 테두리만 보여요
+  if (mineIn) {
+    blind = true;
+    ctx.save(); ctx.fillStyle = '#000'; ctx.fillRect(VX0 - 80, VY0 - 80, VX1 - VX0 + 160, VY1 - VY0 + 160); ctx.restore();   // 시야 차단: 지형·다른 탱크·배경이 전부 가려져요
+    drawTank(mp, me, aimVis[me] ?? aims[me], isTurn(me)); drawTag(mp, me, isTurn(me));
+    ctx.save(); ctx.textAlign = 'center'; ctx.font = `bold ${22 * Z}px sans-serif`; ctx.lineWidth = 5 * Z; ctx.strokeStyle = '#000'; ctx.fillStyle = 'rgba(176,124,255,.95)';
+    ctx.strokeText('어둠 속 · 시야 차단', mp.x, mp.y - 110 * Z); ctx.fillText('어둠 속 · 시야 차단', mp.x, mp.y - 110 * Z); ctx.restore();
   }
 }
 function drawWater() {   // 물 범위: 서버의 원형 범위 안에서 '땅 위쪽'만 물로 차올라요 — 밑면이 지형을 따라가고(경사·구덩이에 고여요), 수면은 출렁이며 · 깊이 그라데이션 + 물결 + 빛무늬 + 거품
@@ -3846,7 +3902,8 @@ function draw() {
   const rp = st.players.map((p, i) => vis[i] ? { ...p, x: vis[i].x, y: vis[i].y } : p);
   rp.forEach((p, i) => { if (alive[i]) drawTank(p, i, aimVis[i] ?? aims[i], isTurn(i)); });
   rp.forEach((p, i) => { if (alive[i]) drawTag(p, i, isTurn(i)); });
-  drawIcptFx(now);
+  drawDark(rp, alive);
+  if (!blind) drawIcptFx(now);
   if (zm.on && me >= 0 && alive[me]) {   // 축소 중: 내 탱크 위에 '나' 표시
     const p = rp[me], lk = Math.min(1 / zm.z, 2.4), bob = Math.sin(now / 180) * 8 * lk;
     ctx.save(); ctx.translate(p.x, p.y - 150 * lk + bob); ctx.scale(lk, lk); ctx.textAlign = 'center';
@@ -3874,7 +3931,7 @@ function draw() {
     (A.icpt || []).forEach(ev => {   // 요격 이벤트: 포탄이 요격 범위에 들어선 순간
       if (ev.done || A.i < ev.idx) return; ev.done = true;
       const q = st.players[ev.by];
-      if (q) { q.ticket = Math.max(0, (q.ticket || 0) - 1); icptFx.push({ x0: q.x, y0: q.y - 10 * TS - 24, x1: ev.x, y1: ev.y, ok: ev.ok, t0: performance.now() }); }
+      if (q) icptFx.push({ x0: ev.tx != null ? ev.tx : q.x, y0: (ev.ty != null ? ev.ty : q.y) - 24 * TS, x1: ev.x, y1: ev.y, ok: ev.ok, t0: performance.now() });
       if (ev.ok) { spawnBoom(ev.x, ev.y, 1.1); FX.shake = Math.max(FX.shake, 4); FX.floats.push({ x: ev.x, y: ev.y - 30, t: 0, txt: '🛡️ 요격 성공!', big: true }); }
       else FX.floats.push({ x: ev.x, y: ev.y - 30, t: 0, txt: '🛡️ 요격 실패…', big: false });
     });
@@ -3887,6 +3944,7 @@ function draw() {
       if (A.kind === 'gravity') { if (A.grav) { A.gt = 0; FX.shake = Math.max(FX.shake, 6); } }   // 중력탄: 착탄하면 블랙홀 시작 (폭발은 붕괴 때)
       else if (A.zone && s.impact) { A.zt = 0; spawnBoom(s.impact[0], s.impact[1], A.zone.kind === 'electro' ? .55 : .4); FX.shake = Math.max(FX.shake, 5); }   // 일렉트로·그라인더: 착탄하면 장판 시작 (땅은 안 파여요)
       else if (s.impact && A.order) spawnBoom(s.impact[0], s.impact[1], .9);   // 순서 정하기: 지형은 안 파여요
+      else if (s.impact && A.kind === 'shadow') { spawnBoom(s.impact[0], s.impact[1], .7); FX.shake = Math.max(FX.shake, 3); }   // 섀도우: 작은 폭발 뒤에 어둠이 번져요
       else if (s.impact && A.kind === 'water') { waterBurst(s.impact[0], s.impact[1]); spawnBoom(s.impact[0], s.impact[1], .9); }   // 물폭탄: 물보라가 사방으로 튀어요
       else if (s.impact && A.kind === 'frost') { frostBurst(s.impact[0], s.impact[1]); spawnBoom(s.impact[0], s.impact[1], .55); }   // 냉각탄: 얼음 파편이 사방으로 튀어요
       else if (s.impact && A.kind === 'pierce') spawnBoom(s.impact[0], s.impact[1], (s.hit == null ? 1 : .8) * (s.small ? .6 : 1));
