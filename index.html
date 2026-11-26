@@ -961,7 +961,7 @@ function renderRoom() {
   // 참가자 / 팀 구성
   $('ptitle').textContent = team ? '팀 구성' : '참가자';
   $('pcount').textContent = `${cnt} / 4`;
-  $('psub').textContent = team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : fixm === 'laser' ? '각자 싸워요 · 모두 레이저 탱크 · 레이저가 벽에 10번 튕겨요 · 마지막까지 살아남은 1명이 승리해요' : escm ? '각자 싸워요 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 마지막까지 살아남은 1명이 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
+  $('psub').textContent = team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : fixm === 'laser' ? '각자 싸워요 · 모두 레이저 탱크 · 레이저가 벽에 10번 튕겨요 · 한 방 맞으면 즉사 · 마지막까지 살아남은 1명이 승리해요' : escm ? '각자 싸워요 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 마지막까지 살아남은 1명이 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
   $('vs').hidden = !team;
   const box = $('cards'), tc = [0, 1].map(k => filled.filter(i => st.teams[i] === k));
   if (!team) {
@@ -987,7 +987,7 @@ function renderRoom() {
   $('tanks').style.opacity = escm ? .35 : ''; $('tanks').style.pointerEvents = escm ? 'none' : '';
   tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const sel = !escm && TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
   $('tdesc').style.cssText += `;background:${hexA(macc, .08)};border:1px solid ${hexA(macc, .35)}`;
-  const td = fixm === 'laser' ? ['laser', '레이저 모드', '모두 레이저 탱크예요 · 탱크는 고를 수 없어요 · 레이저가 벽·맵 경계에 10번 반사돼요 · 반사 증강은 나오지 않아요'] : escm ? ['escalation', '에스컬레이션', ESC_DESC.replace('에스컬레이션 모드 · ', '')] : TANKS.find(t => t[0] === mk);
+  const td = fixm === 'laser' ? ['laser', '레이저 모드', '모두 레이저 탱크예요 · 탱크는 고를 수 없어요 · 레이저가 벽·맵 경계에 10번 반사돼요 · 한 방 맞으면 즉사해요 · 반사 증강은 나오지 않아요'] : escm ? ['escalation', '에스컬레이션', ESC_DESC.replace('에스컬레이션 모드 · ', '')] : TANKS.find(t => t[0] === mk);
   $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${esc(td[1])}</b> · ${esc(td[2])}</span>`;
   drawTanks($('tanks'));
   requestAnimationFrame(tkFade);
