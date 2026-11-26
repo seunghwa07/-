@@ -10,14 +10,14 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const { K, W, H, TS, FUEL, STEP } = FMAP;
-const G = 500 * K, CRATER = 60, HIT_R = 18 * TS, MAX = 4, RANDOM_MAP = FMAP.MAPS.length;
+const G = 500 * K, CRATER = 60, HIT_R = 20 * TS, MAX = 4, RANDOM_MAP = FMAP.MAPS.length;
 const SPAWN = [100, 366, 633, 900].map(x => Math.round(x * W / 1000));   // 월드 폭에 비례해서 흩어 놓아요
 const ICONS = ['🪖', '🐸', '🚀', '🐱', '🤖', '🦖'];
 const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept', 'plasma'];
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
@@ -33,6 +33,7 @@ const SHELL = {
   frost: { dmg: 14, rad: 40 },      // 냉각탄: 약한 피해 + 착탄 주변 바닥이 얼어요 (아래 FROST_* 참고)
   explosive: { dmg: 34, rad: 70 },   // 고폭탄: 기본탄(17)의 2배 피해 + 조금 더 큰 폭발(반지름 70) · 대신 이동 불가 (fuelOf 참고) · 사거리는 SPEED 참고
   intercept: { dmg: 17, rad: CRATER },   // 요격탄: 탄은 기본탄과 완전히 같아요 · 대신 매 차례 요격 티켓이 설치돼요 (아래 ICPT_* 참고)
+  plasma: { dmg: 34, rad: 0 },     // 플라즈마: 가까이서 맞는 최대 피해 (거리에 따라 줄어요 · 아래 PLASMA_* 참고) · 땅은 안 파여요
   grinder: { dmg: 10, rad: 0 },    // 그라인더: 톱니바퀴에 닿은 탱크가 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
 };
 const EXPL_SPEED = 1.35;   // 고폭탄 탄속 배율: 최대 사거리 ≈ 5800px 로 월드 폭(5000px)보다 길어서 맵 어디든 닿아요 (한 걸음 22.5px < 피격 반경 23.4px 라 탱크를 건너뛰지도 않아요) — 클라이언트(index.html)와 같아야 해요
@@ -613,6 +614,44 @@ function fireRail(r, shooter, angle) {
   return { type: 'shot', by: shooter, angle, kind: 'rail', dud: false, shells: [{ path, impact: null }], rail: { lv, wid: Math.round(wid), hits }, state: snapshot(r) };
 }
 
+// ----- 플라즈마: 조준 방향으로 15° 부채꼴(좌우 7.5°) 광역 플라즈마를 뿜어요. 사거리가 길지만 멀리서 맞을수록 피해가 줄어요 (가까이 100% → 최대 사거리 20%) -----
+// 포탄이 아니라 즉시 판정이라 파워는 무관하고, 지형이 가로막은 탱크(시선이 막힘)는 맞지 않아요. 땅은 안 파여요.
+const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = 3200, PLASMA_MIN = .2, PLASMA_STEP = 80;   // 부채꼴 반각 / 사거리(px) / 최대 사거리에서의 피해 비율 / 화면 연출용 경로 점 간격
+const plasmaDmg = (base, dist) => Math.max(1, Math.round(base * (1 - (1 - PLASMA_MIN) * Math.max(0, Math.min(1, dist / PLASMA_RANGE)))));
+function plasmaCone(g, shooter, angle) {   // 쏘지 않고 판정만 계산 (봇 조준도 같이 써요)
+  const p = g.players[shooter], a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), x0 = p.x, y0 = g.terrain[p.x] - 20 * TS, tn = Math.tan(PLASMA_HALF), base = SHELL.plasma.dmg;
+  const ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.floor(x)))];
+  let reach = PLASMA_RANGE;   // 맵 경계(좌·우·위)에서 끝나요
+  if (dx > 1e-6) reach = Math.min(reach, (W - 1 - x0) / dx); else if (dx < -1e-6) reach = Math.min(reach, -x0 / dx);
+  if (dy < -1e-6) reach = Math.min(reach, -y0 / dy); else if (dy > 1e-6) reach = Math.min(reach, (H - 1 - y0) / dy);
+  reach = Math.max(20, reach);
+  let wall = reach;   // 가운데 줄기가 지형에 막히는 거리
+  for (let t = 40; t < reach; t += 16) if (y0 + dy * t >= ty(x0 + dx * t)) { wall = t; break; }
+  const hits = []; let far = 0;
+  g.players.forEach((q, i) => {
+    if (i === shooter || q.hp <= 0 || isAlly(g, shooter, i)) return;
+    const qy = tankY(g, q), vx = q.x - x0, vy = qy - y0, along = vx * dx + vy * dy, dist = Math.hypot(vx, vy), perp = Math.abs(vx * dy - vy * dx);
+    if (dist > PLASMA_RANGE + HIT_R || along > reach + HIT_R || (along < 0 && dist > HIT_R)) return;
+    if (dist > HIT_R && perp > Math.max(0, along) * tn + HIT_R) return;   // 부채꼴 밖 (탱크 반지름만큼 여유)
+    for (let t = 40; t < dist - HIT_R; t += 16) if (y0 + vy / dist * t >= ty(x0 + vx / dist * t)) return;   // 지형이 시선을 막음
+    hits.push({ i, dist, dmg: plasmaDmg(base, dist), along }); far = Math.max(far, along);
+  });
+  return { x0, y0, dx, dy, reach, len: Math.max(60, Math.min(reach, Math.max(wall, far + HIT_R))), hits };
+}
+function firePlasma(r, shooter, angle) {
+  const g = r.game, c = plasmaCone(g, shooter, angle), len = c.len;
+  const n = Math.max(2, Math.ceil(len / PLASMA_STEP) + 1), step = len / (n - 1);
+  const path = Array.from({ length: n }, (_, k) => [c.x0 + c.dx * step * k, c.y0 + c.dy * step * k]);
+  const hits = c.hits.map(h => {
+    const q = g.players[h.i], hp0 = q.hp;
+    q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, h.i, h.dmg, 'plasma'));
+    return { i: h.i, idx: Math.max(0, Math.min(n - 1, h.along / step)), x: q.x, y: Math.round(tankY(g, q)), d: hp0 - q.hp };
+  });
+  const ms = n * 1000 / 60 / FMAP.SHOT_SPEED + 900 + 2000;
+  if (!checkEnd(r, ms - 2000)) { g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), ms); }
+  return { type: 'shot', by: shooter, angle, kind: 'plasma', dud: false, shells: [{ path, impact: null }], plasma: { half: PLASMA_HALF, len: Math.round(len), range: PLASMA_RANGE, min: PLASMA_MIN, hits }, state: snapshot(r) };
+}
+
 // 중력탄: 떨어진 자리(cx, cy)에 블랙홀 → 반경 안의 탱크는 중심으로 끌려오고(서로 간격을 두고 늘어서요), 붕괴 폭발 피해를 받아요. 팀전에서 아군은 끌려오기만 하고 피해는 없어요.
 function gravityWell(g, shooter, impact) {
   const mods = g.players[shooter].mods, R = GRAV_R * mods.rad;
@@ -666,6 +705,7 @@ function fire(r, shooter, angle, power) {
   const wet = inWater(g, shooter) && Math.random() < WATER_DUD;   // 물 범위 안에서 쏘면 어떤 탱크든 50% 확률로 불발
   if (!wet && kind === 'carpet') return fireCarpet(r, shooter, angle, power);
   if (!wet && kind === 'rail') return fireRail(r, shooter, angle);
+  if (!wet && kind === 'plasma') return firePlasma(r, shooter, angle);
   let shells, dud = false, grav = null, zone = null;
   if (wet) {   // 불발: 날아가다 떨어져 사라져요 (피해·폭발·장판 없음)
     const s = flight(g, shooter, angle, power, 'basic');
@@ -799,7 +839,7 @@ function pickAug(r, i, id) {   // 증강 선택
 }
 
 // ===== 솔로 모드 AI: bot.js (쉬움 · 보통 · 어려움) =====
-const BOT = require('./bot.js')({ FMAP, FAUG, SHELL, flight, laserFlight, bumperFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
+const BOT = require('./bot.js')({ FMAP, FAUG, SHELL, flight, laserFlight, plasmaCone, bumperFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
   W, STEP, MAX_CLIMB, HIT_R, DIRECT, GRAV_R, GRAV_DMG, SNIPER_HIT, PIERCE_HIT, FIRE_R, FROST_R, WATER_R, CARPET_SPREAD, CARPET_GRAZE, ICE_FUEL, ICE_GAP,
   doMove, doCharge, doFire, orderFire, pickAug, isBot });
 const LEVELS = BOT.LEVELS;

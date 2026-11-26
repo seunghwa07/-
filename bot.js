@@ -3,7 +3,7 @@
 // 조준은 서버의 비행 계산(flight · laserFlight · bumperFlight · zoneRun)을 그대로 돌려 보는 '시뮬레이션 탐색'이고,
 // 난이도는 (1) 조준 오차 (2) 바람을 얼마나 정확히 읽는지 (3) 생각하는 시간 (4) 위치 잡기 (5) 증강 고르는 안목 으로 나뉘어요.
 module.exports = function (X) {
-  const { FMAP, FAUG, SHELL, flight, laserFlight, bumperFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
+  const { FMAP, FAUG, SHELL, flight, laserFlight, plasmaCone, bumperFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
     W, STEP, MAX_CLIMB, HIT_R, DIRECT, GRAV_R, GRAV_DMG, SNIPER_HIT, PIERCE_HIT, FIRE_R, FROST_R, WATER_R, CARPET_SPREAD, CARPET_GRAZE, ICE_FUEL, ICE_GAP,
     doMove, doCharge, doFire, orderFire, pickAug, isBot } = X;
 
@@ -150,10 +150,24 @@ module.exports = function (X) {
   function planAt(r, g, i, lv, fast) {
     const ctx = { r, g, i, lv }, p = g.players[i], kind = p.tank;
     if (kind === 'laser') return planLaser(ctx);
+    if (kind === 'plasma') return planPlasma(ctx);
     return perceived(g, lv, () => {
       const best = search((a, pw) => { const e = evalShot(ctx, a, pw); return { a, pw, s: e.s, key: shaped(e.s, e.near) }; }, fast ? { aStep: 4, pStep: 6, tops: 3, fast: false } : {});
       return { angle: best.a, power: best.pw, score: best.s };
     });
+  }
+  function planPlasma(ctx) {   // 15° 부채꼴: 각도를 훑어서 맞는 적 가치(거리 감쇠 반영)가 가장 큰 방향을 골라요
+    const { g, i } = ctx, m = g.players[i].mods, mul = m.dmg * (m.kindDmg.plasma || 1);
+    const ev = a => {
+      const c = plasmaCone(g, i, a); let s = 0, near = Infinity;
+      c.hits.forEach(h => { s += val(ctx, h.i, h.dmg * mul); });
+      if (!s) foesOf(g, i).forEach(k => { const q = g.players[k]; near = Math.min(near, Math.abs(Math.atan2(-(tankY(g, q) - c.y0), q.x - c.x0) * 180 / Math.PI - a) * Math.PI / 180 * Math.hypot(q.x - c.x0, tankY(g, q) - c.y0)); });
+      return { a, s, key: shaped(s, near) };
+    };
+    const all = []; for (let a = 0; a <= 180; a += 3) all.push(ev(a));
+    all.sort((x, y) => y.key - x.key); let best = all[0];
+    for (const t of all.slice(0, 3)) for (let a = t.a - 3; a <= t.a + 3; a += .5) { if (a < 0 || a > 180) continue; const c = ev(a); if (c.key > best.key) best = c; }
+    return { angle: best.a, power: 100, score: best.s };
   }
   function planLaser(ctx) {
     const { g, i } = ctx, m = g.players[i].mods, dmg = SHELL.laser.dmg * m.dmg * (m.kindDmg.laser || 1);
