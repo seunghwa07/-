@@ -19,6 +19,8 @@ const rooms = new Map();
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
 const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept', 'plasma'];
 const ESC_POOL = KINDS.filter(k => k !== 'rail' && k !== 'intercept');   // 에스컬레이션이 쏠 때마다 뽑는 포탄 후보 (레일건은 충전이 필요해서, 요격탄은 기본탄과 같아서 뺐어요)
+const FIXED_TANK = { escalation: 'escalation', laser: 'laser' };   // 이 모드에서는 모두가 같은 탱크예요 (탱크를 고를 수 없어요)
+const LASER_MODE_BOUNCES = 10;   // 레이저 모드: 모두 레이저 탱크 · 반사 횟수는 언제나 10회
 const isTank = k => KINDS.includes(k) || k === 'escalation' || k === 'random';   // 고를 수 있는 탱크 종류
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
@@ -127,7 +129,7 @@ const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
 const toRoom = (r, m) => r.slots.forEach(s => s && send(s.ws, m));
-const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, solo: !!r.solo, bots: r.slots.map(s => (s && s.bot ? s.level : null)), teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && (r.mode === 'escalation' ? 'escalation' : s.tank)), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
+const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, solo: !!r.solo, bots: r.slots.map(s => (s && s.bot ? s.level : null)), teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && (FIXED_TANK[r.mode] || s.tank)), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
 const listMsg = () => ({
   type: 'rooms',
   rooms: [...rooms.values()].filter(r => !r.solo).map(r => ({
@@ -206,7 +208,7 @@ function newGame(r) {
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [], ice: [], water: [], frozen: false, iceSeq: 0, waterSeq: 0,
-    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (r.mode === 'escalation' ? 'escalation' : r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (FIXED_TANK[r.mode] || (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank)) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
   g.players.forEach(q => { q.ticket = q.tank === 'intercept' ? 1 : 0; });   // 요격탄: 첫 차례부터 티켓이 설치돼 있어요
@@ -332,7 +334,7 @@ function bumperFlight(g, shooter, angle, power) {
 // 레이저: 포물선 없이 직선으로 날아가고, 벽(지형)과 맵 경계(왼쪽·오른쪽·위)에 닿으면 반사돼요. 4번 반사한 뒤 또 닿으면 사라져요.
 const LASER_BOUNCES = 4;
 function laserFlight(g, shooter, angle) {
-  const p = g.players[shooter], a = angle * Math.PI / 180, STEP = 4, maxB = LASER_BOUNCES + p.mods.bounce, hitR = LASER_HIT * p.mods.beam, MAXLEN = 60000 * (maxB / LASER_BOUNCES);   // 증강: 반사 횟수·판정 범위   // 맵 폭(5000)보다 훨씬 길게: 4번 튕기는 동안 거리 제한에 걸려 사라지지 않게 해요
+  const p = g.players[shooter], a = angle * Math.PI / 180, STEP = 4, maxB = g.mode === 'laser' ? LASER_MODE_BOUNCES : LASER_BOUNCES + p.mods.bounce, hitR = LASER_HIT * p.mods.beam, MAXLEN = 60000 * (maxB / LASER_BOUNCES);   // 증강: 반사 횟수·판정 범위   // 맵 폭(5000)보다 훨씬 길게: 4번 튕기는 동안 거리 제한에 걸려 사라지지 않게 해요
   let x = p.x, y = g.terrain[p.x] - 20 * TS, dx = Math.cos(a), dy = -Math.sin(a);
   let bounces = 0, len = 0, rec = 0, hit = null, impact = null;
   const path = [[x, y]];
@@ -494,7 +496,7 @@ function startAugment(r, g, who, why = 'start') {
   if (r.game !== g || g.winner !== -1) return;
   const ps = who || g.players.map((p, i) => (p.on && p.hp > 0 ? i : -1)).filter(i => i >= 0);
   g.phase = 'augment'; g.busy = true; g.picks = {}; g.augWhy = why;
-  g.offers = g.players.map((p, i) => (ps.includes(i) ? FAUG.offer(p.tank, p.aug) : []));
+  g.offers = g.players.map((p, i) => (ps.includes(i) ? offerFor(g, p) : []));
   g.pickers = ps.filter(i => g.offers[i].length);
   if (!g.pickers.length) return finishAugment(r, g);
   g.augTimer = setTimeout(() => finishAugment(r, g), FAUG.PICK_MS + 800);   // 시간이 지나면 못 고른 사람은 랜덤
@@ -510,7 +512,7 @@ function startMid(r, g) {
   const ps = [];
   g.players.forEach((p, i) => {
     if (!p.on || p.hp <= 0 || owed(p) <= 0) return;
-    if (FAUG.offer(p.tank, p.aug).length) ps.push(i); else p.augTaken += owed(p);   // 더 고를 증강이 없으면 넘어가요
+    if (offerFor(g, p).length) ps.push(i); else p.augTaken += owed(p);   // 더 고를 증강이 없으면 넘어가요
   });
   if (!ps.length) return false;
   startAugment(r, g, ps, 'hit');
@@ -544,6 +546,7 @@ function finishAugment(r, g) {
   toRoom(r, turnMsg(g)); BOT.turn(r, g);
 }
 
+const offerFor = (g, p) => FAUG.offer(p.tank, g.mode === 'laser' ? p.aug.concat(['reflect', 'prism']) : p.aug);   // 레이저 모드는 반사 횟수가 10회로 고정이라 반사 증강은 나오지 않아요
 const tp_isIcpt = (g, i) => g.players[i] && g.players[i].tank === 'intercept' && g.players[i].hp > 0;
 function advance(r, from) {   // 다음 차례로 넘겨요
   const g = r.game;
@@ -909,7 +912,7 @@ wss.on('connection', ws => {
       r.mapId = Math.max(0, Math.min(RANDOM_MAP, (+m.id) | 0));
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'mode' && !r.game && !r.solo && ws.slot === host(r)) {
-      r.mode = m.mode === 'team' ? 'team' : m.mode === 'escalation' ? 'escalation' : 'ffa';   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
+      r.mode = ['team', 'escalation', 'laser'].includes(m.mode) ? m.mode : 'ffa';   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'bot' && r.solo && !r.game && ws.slot === host(r)) {   // AI 추가 / 제거 / 난이도 / 탱크
       const sl = r.slots[m.slot | 0];

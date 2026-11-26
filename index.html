@@ -559,6 +559,7 @@
       <button id="mffa" role="tab" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">개인전</button>
       <button id="mteam" role="tab" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">팀전</button>
       <button id="mesc" role="tab" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">🎲 에스컬레이션</button>
+      <button id="mlaser" role="tab" style="height:42px;padding:0 22px;border-radius:12px;font-size:16px">🔦 레이저</button>
     </div>
   </div>
 
@@ -823,9 +824,9 @@ function renderRooms() {
   const box = $('rooms'); box.textContent = ''; $('rcnt').textContent = rooms.length ? rooms.length + '개' : '';
   if (!rooms.length) (box.innerHTML = '<div class="rempty"><div><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#5a6aa0" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M8 12h8"></path></svg><span style="font-size:22px;font-weight:700;color:#cfd9f5">열린 방이 없어요</span><span style="font-size:15px">오른쪽 아래 방 만들기로 첫 방을 열어 보세요</span></div></div>');
   rooms.forEach(r => {
-    const b = el('button', null, box), full = r.count >= 4, dead = r.playing || full, col = dead ? '#ff8a6a' : r.mode === 'team' ? '#4dd2ff' : r.mode === 'escalation' ? '#ffb347' : '#5dffb0';
+    const b = el('button', null, box), full = r.count >= 4, dead = r.playing || full, col = dead ? '#ff8a6a' : r.mode === 'team' ? '#4dd2ff' : r.mode === 'escalation' ? '#ffb347' : r.mode === 'laser' ? '#7df3ff' : '#5dffb0';
     b.className = 'rc'; b.style.setProperty('--c', col);
-    b.innerHTML = `<span class="blob"></span><span class="rt"><span class="cp pp">${r.mode === 'team' ? '팀전' : r.mode === 'escalation' ? '에스컬레이션' : '개인전'}</span><span class="st">${r.playing ? '게임 중' : full ? '가득 참' : r.count + ' / 4'}</span></span><span class="rcode">${esc(r.code)}</span><span class="rb"><span class="rh">${esc(r.host)}의 방</span><span class="chp"><i></i>${r.map === RANDOM ? '랜덤 맵' : esc(MAPS[r.map].name)}</span></span>`;
+    b.innerHTML = `<span class="blob"></span><span class="rt"><span class="cp pp">${r.mode === 'team' ? '팀전' : r.mode === 'escalation' ? '에스컬레이션' : r.mode === 'laser' ? '레이저' : '개인전'}</span><span class="st">${r.playing ? '게임 중' : full ? '가득 참' : r.count + ' / 4'}</span></span><span class="rcode">${esc(r.code)}</span><span class="rb"><span class="rh">${esc(r.host)}의 방</span><span class="chp"><i></i>${r.map === RANDOM ? '랜덤 맵' : esc(MAPS[r.map].name)}</span></span>`;
     b.disabled = r.playing || r.count >= 4;
     b.onclick = () => joinRoom(r.code);
   });
@@ -954,13 +955,13 @@ function renderRoom() {
   $('copy').style.display = solo ? 'none' : 'flex'; $('mtabs').style.display = solo ? 'none' : 'flex';   // 솔로는 방 코드 · 팀전이 없어요
   const team = !solo && st.mode === 'team', isHost = me === st.host, filled = st.names.map((n, i) => n ? i : -1).filter(i => i >= 0), cnt = filled.length;
   // 모드 전환
-  const escm = !solo && st.mode === 'escalation', mdn = team ? 'team' : escm ? 'esc' : 'ffa';
-  const on = 'background:linear-gradient(180deg,#5dffb0,#2fd48b);color:#04210f;font-weight:900', onEsc = 'background:linear-gradient(180deg,#ffc56b,#ff9a2f);color:#2a1500;font-weight:900', off = 'background:transparent;color:#a9b8de;font-weight:700';
-  [['mffa', 'ffa', on], ['mteam', 'team', on], ['mesc', 'esc', onEsc]].forEach(([id, k, onSt]) => { const b = $(id); b.style.cssText += ';' + (mdn === k ? onSt : off); b.style.pointerEvents = isHost ? '' : 'none'; b.setAttribute('aria-selected', mdn === k); });
+  const fixm = !solo && (st.mode === 'escalation' || st.mode === 'laser') ? st.mode : null, escm = !!fixm, mdn = team ? 'team' : fixm === 'escalation' ? 'esc' : fixm === 'laser' ? 'laser' : 'ffa';
+  const onLaser = 'background:linear-gradient(180deg,#8ff6ff,#3fc8e8);color:#02222b;font-weight:900', on = 'background:linear-gradient(180deg,#5dffb0,#2fd48b);color:#04210f;font-weight:900', onEsc = 'background:linear-gradient(180deg,#ffc56b,#ff9a2f);color:#2a1500;font-weight:900', off = 'background:transparent;color:#a9b8de;font-weight:700';
+  [['mffa', 'ffa', on], ['mteam', 'team', on], ['mesc', 'esc', onEsc], ['mlaser', 'laser', onLaser]].forEach(([id, k, onSt]) => { const b = $(id); b.style.cssText += ';' + (mdn === k ? onSt : off); b.style.pointerEvents = isHost ? '' : 'none'; b.setAttribute('aria-selected', mdn === k); });
   // 참가자 / 팀 구성
   $('ptitle').textContent = team ? '팀 구성' : '참가자';
   $('pcount').textContent = `${cnt} / 4`;
-  $('psub').textContent = team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : escm ? '각자 싸워요 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 마지막까지 살아남은 1명이 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
+  $('psub').textContent = team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : fixm === 'laser' ? '각자 싸워요 · 모두 레이저 탱크 · 레이저가 벽에 10번 튕겨요 · 마지막까지 살아남은 1명이 승리해요' : escm ? '각자 싸워요 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 마지막까지 살아남은 1명이 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
   $('vs').hidden = !team;
   const box = $('cards'), tc = [0, 1].map(k => filled.filter(i => st.teams[i] === k));
   if (!team) {
@@ -979,14 +980,14 @@ function renderRoom() {
   drawTanks(box);
   box.querySelectorAll('[data-bl]').forEach(b => { const i = +b.dataset.bl; b.onclick = () => sendMsg({ type: 'bot', op: 'level', slot: i, level: ({ easy: 'normal', normal: 'hard', hard: 'easy' })[st.bots[i]] }); });
   box.querySelectorAll('[data-bd]').forEach(b => { b.onclick = () => sendMsg({ type: 'bot', op: 'del', slot: +b.dataset.bd }); });
-  box.querySelectorAll('[data-bt]').forEach(b => { const i = +b.dataset.bt; b.onclick = () => { if (st.mode === 'escalation') return; const ks = TANKS.map(t => t[0]), n = ks[(ks.indexOf(st.tanks[i]) + 1) % ks.length]; sendMsg({ type: 'bot', op: 'tank', slot: i, kind: n }); }; });
+  box.querySelectorAll('[data-bt]').forEach(b => { const i = +b.dataset.bt; b.onclick = () => { if (st.mode === 'escalation' || st.mode === 'laser') return; const ks = TANKS.map(t => t[0]), n = ks[(ks.indexOf(st.tanks[i]) + 1) % ks.length]; sendMsg({ type: 'bot', op: 'tank', slot: i, kind: n }); }; });
   box.querySelectorAll('[data-badd]').forEach(b => { b.onclick = () => sendMsg({ type: 'bot', op: 'add', level: soloLv }); });
   // 내 탱크
   const mk = st.tanks[me] || 'basic', macc = TANKC[mk] || TANKC.basic;
   $('tanks').style.opacity = escm ? .35 : ''; $('tanks').style.pointerEvents = escm ? 'none' : '';
   tankBtns.forEach((b, i) => { b.firstChild.dataset.c = pc(me >= 0 ? me : 0); const sel = !escm && TANKS[i][0] === mk, c = TANKC[TANKS[i][0]]; b.style.borderColor = sel ? c : '#2a3556'; b.style.background = sel ? hexA(c, .14) : '#0d1433'; });
   $('tdesc').style.cssText += `;background:${hexA(macc, .08)};border:1px solid ${hexA(macc, .35)}`;
-  const td = escm ? ['escalation', '에스컬레이션', ESC_DESC.replace('에스컬레이션 모드 · ', '')] : TANKS.find(t => t[0] === mk);
+  const td = fixm === 'laser' ? ['laser', '레이저 모드', '모두 레이저 탱크예요 · 탱크는 고를 수 없어요 · 레이저가 벽·맵 경계에 10번 반사돼요 · 반사 증강은 나오지 않아요'] : escm ? ['escalation', '에스컬레이션', ESC_DESC.replace('에스컬레이션 모드 · ', '')] : TANKS.find(t => t[0] === mk);
   $('tdesc').innerHTML = `<span style="width:10px;height:10px;margin-top:6px;flex-shrink:0;border-radius:50%;background:${macc};box-shadow:0 0 8px ${macc}"></span><span style="font-size:14px;line-height:1.5;color:#e6ecff"><b style="color:${macc}">${esc(td[1])}</b> · ${esc(td[2])}</span>`;
   drawTanks($('tanks'));
   requestAnimationFrame(tkFade);
@@ -1004,6 +1005,7 @@ function renderRoom() {
 $('mffa').onclick = () => sendMsg({ type: 'mode', mode: 'ffa' });
 $('mteam').onclick = () => sendMsg({ type: 'mode', mode: 'team' });
 $('mesc').onclick = () => sendMsg({ type: 'mode', mode: 'escalation' });
+$('mlaser').onclick = () => sendMsg({ type: 'mode', mode: 'laser' });
 $('start').onclick = () => { enterFS(); sendMsg({ type: 'start' }); };
 $('leave').onclick = () => { sendMsg({ type: 'leave' }); me = -1; st = null; show('menu'); };
 
