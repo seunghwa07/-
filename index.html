@@ -492,6 +492,11 @@
   #ol .oc.cur{opacity:1;box-shadow:0 0 10px var(--c);transform:scale(1.08)}
   #ol .oc.dead{opacity:.25;text-decoration:line-through}
   #fs{display:none;position:absolute;inset:0;background:#000d;color:#fff;align-items:center;justify-content:center;text-align:center;font-size:20px;padding:20px;line-height:1.6;z-index:20}
+  /* iOS 사파리 확대 방지: 입력창 글자가 16px 미만이면 포커스 때 화면이 확대돼요 / 더블탭 확대 / 글자 자동 확대 */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}
+  *{touch-action:manipulation}
+  #game,#game *,.pad,.pad *{touch-action:none}
+  input,select,textarea,#home input,#home select,#url,#code,#name{font-size:16px!important}
 </style>
 </head>
 <body>
@@ -640,6 +645,12 @@
 
 <script src="maps.js"></script>
 <script src="augments.js"></script>
+<script>
+// iOS 사파리는 user-scalable=no 를 무시해서 직접 막아요: 핀치 확대 · 더블탭 확대
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+(() => { let lt = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - lt < 350 && !(e.target.closest && e.target.closest('input,textarea,select'))) e.preventDefault(); lt = n; }, { passive: false }); })();
+document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+</script>
 <script>
 const $ = id => document.getElementById(id);
 const cv = $('c'), ctx = cv.getContext('2d'), W = FMAP.W, H = FMAP.H, K = FMAP.K, TS = FMAP.TS, Z = 1.6, TGS = 1.9, VW = 2000, VH = 1200, MPP = 10;   // VW×VH: 카메라가 비추는 월드 범위, MPP: 1m = 10px
