@@ -45,7 +45,7 @@ module.exports = function (X) {
   const shaped = (s, near) => s + (isFinite(near) ? 7 * Math.exp(-near / 260) : 0);   // 아직 못 맞히는 후보도 '가까울수록' 높게 쳐서 탐색이 길을 잃지 않게 해요
 
   function evalShot(ctx, a, pw) {
-    const { g, i } = ctx, p = g.players[i], m = p.mods, kind = p.tank;
+    const { g, i } = ctx, p = g.players[i], m = p.mods, kind = p.tank === 'escalation' ? 'basic' : p.tank;
     const dm = kind === 'bumper' ? 1 : (SHELL[kind] ? SHELL[kind].dmg : 0) * m.dmg * (m.kindDmg[kind] || 1);
     const rad = SHELL[kind] ? SHELL[kind].rad * m.rad : 0;
     if (kind === 'bumper') {
@@ -148,7 +148,7 @@ module.exports = function (X) {
 
   // 한 자리에서의 최선의 포격 계획
   function planAt(r, g, i, lv, fast) {
-    const ctx = { r, g, i, lv }, p = g.players[i], kind = p.tank;
+    const ctx = { r, g, i, lv }, p = g.players[i], kind = p.tank === 'escalation' ? 'basic' : p.tank;
     if (kind === 'laser') return planLaser(ctx);
     if (kind === 'plasma') return planPlasma(ctx);
     return perceived(g, lv, () => {
@@ -256,7 +256,7 @@ module.exports = function (X) {
     if (best && best.score > cur.score + 4) return best.x;
     return out ? approach(lv === LEVELS.hard ? 1 : .85) : null;   // 어느 자리에서도 못 맞히면 적 쪽으로 최대한(보통은 조금 덜) 다가가요
   }
-  const nominal = (g, i) => { const p = g.players[i], k = p.tank; return Math.max(6, (SHELL[k] && SHELL[k].dmg || 15) * p.mods.dmg * (p.mods.kindDmg[k] || 1)); };
+  const nominal = (g, i) => { const p = g.players[i], k = p.tank === 'escalation' ? 'basic' : p.tank; return Math.max(6, (SHELL[k] && SHELL[k].dmg || 15) * p.mods.dmg * (p.mods.kindDmg[k] || 1)); };
 
   // ---------- 한 차례 ----------
   function turn(r, g) {

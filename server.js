@@ -18,6 +18,8 @@ const rooms = new Map();
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
 const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept', 'plasma'];
+const ESC_POOL = KINDS.filter(k => k !== 'rail' && k !== 'intercept');   // 에스컬레이션이 쏠 때마다 뽑는 포탄 후보 (레일건은 충전이 필요해서, 요격탄은 기본탄과 같아서 뺐어요)
+const isTank = k => KINDS.includes(k) || k === 'escalation' || k === 'random';   // 고를 수 있는 탱크 종류
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
@@ -618,25 +620,36 @@ function fireRail(r, shooter, angle) {
 // 포탄이 아니라 즉시 판정이라 파워는 무관하고, 지형이 가로막은 탱크(시선이 막힘)는 맞지 않아요. 땅은 안 파여요.
 const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = 3200, PLASMA_MIN = .08, PLASMA_STEP = 80;   // 부채꼴 반각 / 사거리(px) / 최대 사거리에서의 피해 비율 / 화면 연출용 경로 점 간격
 const plasmaDmg = (base, dist) => Math.max(1, Math.round(base * (1 - (1 - PLASMA_MIN) * Math.max(0, Math.min(1, dist / PLASMA_RANGE)))));
-function plasmaCone(g, shooter, angle) {   // 쏘지 않고 판정만 계산 (봇 조준도 같이 써요)
-  const p = g.players[shooter], a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), x0 = p.x, y0 = g.terrain[p.x] - 20 * TS, tn = Math.tan(PLASMA_HALF), base = SHELL.plasma.dmg;
-  const ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.floor(x)))];
+const PLASMA_RAYS = 32;   // 부채꼴을 가르는 광선 수 (광선마다 지형에 막히는 거리를 따로 재요) — 클라이언트 plasmaProf 와 같아야 해요
+function plasmaRay(g, x0, y0, ang) {   // 광선 하나가 지형·맵 경계에 막히는 거리
+  const dx = Math.cos(ang), dy = -Math.sin(ang), ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.floor(x)))];
   let reach = PLASMA_RANGE;   // 맵 경계(좌·우·위)에서 끝나요
   if (dx > 1e-6) reach = Math.min(reach, (W - 1 - x0) / dx); else if (dx < -1e-6) reach = Math.min(reach, -x0 / dx);
   if (dy < -1e-6) reach = Math.min(reach, -y0 / dy); else if (dy > 1e-6) reach = Math.min(reach, (H - 1 - y0) / dy);
   reach = Math.max(20, reach);
-  let wall = reach;   // 가운데 줄기가 지형에 막히는 거리
-  for (let t = 40; t < reach; t += 16) if (y0 + dy * t >= ty(x0 + dx * t)) { wall = t; break; }
-  const hits = []; let far = 0;
+  for (let t = 40; t < reach; t += 16) if (y0 + dy * t >= ty(x0 + dx * t)) return t;   // 지형(벽)에 닿으면 그 광선은 거기서 멈춰요
+  return reach;
+}
+function plasmaCone(g, shooter, angle) {   // 쏘지 않고 판정만 계산 (봇 조준도 같이 써요)
+  const p = g.players[shooter], a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), x0 = p.x, y0 = g.terrain[p.x] - 20 * TS, tn = Math.tan(PLASMA_HALF), base = SHELL.plasma.dmg;
+  const ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.floor(x)))];
+  const reach = plasmaRay(g, x0, y0, a);   // 가운데 줄기가 맵 경계·최대 사거리까지 가는 거리 (지형은 상관없이 — 벽에 막힌 광선만 따로 잘려요)
+  let full = PLASMA_RANGE;   // 지형을 무시하고 맵 경계까지 가는 거리 (연출용 경로 길이)
+  if (dx > 1e-6) full = Math.min(full, (W - 1 - x0) / dx); else if (dx < -1e-6) full = Math.min(full, -x0 / dx);
+  if (dy < -1e-6) full = Math.min(full, -y0 / dy); else if (dy > 1e-6) full = Math.min(full, (H - 1 - y0) / dy);
+  full = Math.max(60, full);
+  // 광선별 지형 그림자: k=0 은 부채꼴의 한쪽 끝(화면에서 왼쪽 옆), k=RAYS 는 반대쪽 끝
+  const prof = Array.from({ length: PLASMA_RAYS + 1 }, (_, k) => Math.round(plasmaRay(g, x0, y0, a + PLASMA_HALF - 2 * PLASMA_HALF * k / PLASMA_RAYS)));
+  const hits = [];
   g.players.forEach((q, i) => {
     if (i === shooter || q.hp <= 0 || isAlly(g, shooter, i)) return;
     const qy = tankY(g, q), vx = q.x - x0, vy = qy - y0, along = vx * dx + vy * dy, dist = Math.hypot(vx, vy), perp = Math.abs(vx * dy - vy * dx);
-    if (dist > PLASMA_RANGE + HIT_R || along > reach + HIT_R || (along < 0 && dist > HIT_R)) return;
+    if (dist > PLASMA_RANGE + HIT_R || along > full + HIT_R || (along < 0 && dist > HIT_R)) return;
     if (dist > HIT_R && perp > Math.max(0, along) * tn + HIT_R) return;   // 부채꼴 밖 (탱크 반지름만큼 여유)
-    for (let t = 40; t < dist - HIT_R; t += 16) if (y0 + vy / dist * t >= ty(x0 + vx / dist * t)) return;   // 지형이 시선을 막음
-    hits.push({ i, dist, dmg: plasmaDmg(base, dist), along }); far = Math.max(far, along);
+    for (let t = 40; t < dist - HIT_R; t += 16) if (y0 + vy / dist * t >= ty(x0 + vx / dist * t)) return;   // 지형 그림자 안: 벽에 가려진 적은 맞지 않아요
+    hits.push({ i, dist, dmg: plasmaDmg(base, dist), along });
   });
-  return { x0, y0, dx, dy, reach, len: Math.max(60, Math.min(reach, Math.max(wall, far + HIT_R))), hits };
+  return { x0, y0, dx, dy, reach, len: full, prof, hits };
 }
 function firePlasma(r, shooter, angle) {
   const g = r.game, c = plasmaCone(g, shooter, angle), len = c.len;
@@ -649,7 +662,7 @@ function firePlasma(r, shooter, angle) {
   });
   const ms = n * 1000 / 60 / FMAP.SHOT_SPEED + 900 + 2000;
   if (!checkEnd(r, ms - 2000)) { g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), ms); }
-  return { type: 'shot', by: shooter, angle, kind: 'plasma', dud: false, shells: [{ path, impact: null }], plasma: { half: PLASMA_HALF, len: Math.round(len), range: PLASMA_RANGE, min: PLASMA_MIN, hits }, state: snapshot(r) };
+  return { type: 'shot', by: shooter, angle, kind: 'plasma', dud: false, shells: [{ path, impact: null }], plasma: { half: PLASMA_HALF, len: Math.round(len), range: PLASMA_RANGE, min: PLASMA_MIN, prof: c.prof, hits }, state: snapshot(r) };
 }
 
 // 중력탄: 떨어진 자리(cx, cy)에 블랙홀 → 반경 안의 탱크는 중심으로 끌려오고(서로 간격을 두고 늘어서요), 붕괴 폭발 피해를 받아요. 팀전에서 아군은 끌려오기만 하고 피해는 없어요.
@@ -700,8 +713,15 @@ function zoneRun(g, shooter, impact, vx, kind) {
   return { kind, dir, ms: n * ZONE_STEP, step: ZONE_STEP, h: ELEC_H, r: GRIND_R, path, hits };
 }
 
-function fire(r, shooter, angle, power) {
-  const g = r.game, kind = g.players[shooter].tank;
+function fire(r, shooter, angle, power) {   // 에스컬레이션: 쏠 때마다 포탄 종류를 새로 뽑아요 (플라즈마 말고는 수평 위(0°~180°)로만 쏠 수 있어요)
+  if (r.game.players[shooter].tank !== 'escalation') return fireKind(r, shooter, angle, power, r.game.players[shooter].tank);
+  const kind = ESC_POOL[Math.floor(Math.random() * ESC_POOL.length)];
+  const out = fireKind(r, shooter, kind === 'plasma' ? angle : Math.min(180, Math.max(0, angle)), power, kind);
+  out.esc = true;
+  return out;
+}
+function fireKind(r, shooter, angle, power, kind) {
+  const g = r.game;
   const wet = inWater(g, shooter) && Math.random() < WATER_DUD;   // 물 범위 안에서 쏘면 어떤 탱크든 50% 확률로 불발
   if (!wet && kind === 'carpet') return fireCarpet(r, shooter, angle, power);
   if (!wet && kind === 'rail') return fireRail(r, shooter, angle);
@@ -816,7 +836,7 @@ function doFire(r, i, angle, power) {
   const g = r.game;
   if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== i || g.players[i].hp <= 0) return false;
   if (g.players[i].tank === 'rail' && (g.players[i].charge || 0) < 1) return false;   // 레일건은 최소 1번 충전해야 발사할 수 있어요
-  const railAim = g.players[i].tank === 'rail' || g.players[i].tank === 'plasma';   // 레일건·플라즈마는 수평 아래로도 조준 가능
+  const railAim = g.players[i].tank === 'rail' || g.players[i].tank === 'plasma' || g.players[i].tank === 'escalation';   // 레일건·플라즈마는 수평 아래로도 조준 가능
   toRoom(r, fire(r, i,
     Math.min(railAim ? 180 - RAIL_AIM_MIN : 180, Math.max(railAim ? RAIL_AIM_MIN : 0, +angle || 0)),
     Math.min(100, Math.max(10, +power || 10))));
@@ -896,14 +916,14 @@ wss.on('connection', ws => {
       if (m.op === 'add') { if (r.slots.includes(null)) addBot(r, m.level); }
       else if (sl && sl.bot && m.op === 'del') r.slots[m.slot | 0] = null;
       else if (sl && sl.bot && m.op === 'level' && LEVELS[m.level]) { sl.level = m.level; sl.name = botName(m.slot | 0, m.level); }
-      else if (sl && sl.bot && m.op === 'tank' && (KINDS.includes(m.kind) || m.kind === 'random')) sl.tank = m.kind;
+      else if (sl && sl.bot && m.op === 'tank' && isTank(m.kind)) sl.tank = m.kind;
       else return;
       toRoom(r, roomMsg(r));
     } else if (r && m.type === 'team' && !r.game && !r.solo) {
       // 본인 팀은 누구나, 다른 사람의 팀은 방장만 바꿀 수 있어요
       const target = Number.isInteger(m.slot) && ws.slot === host(r) ? m.slot : ws.slot;
       if (r.mode === 'team' && r.slots[target]) { r.slots[target].team = m.team === 1 ? 1 : 0; toRoom(r, roomMsg(r)); }
-    } else if (r && m.type === 'tank' && !r.game && (KINDS.includes(m.kind) || m.kind === 'random')) {
+    } else if (r && m.type === 'tank' && !r.game && isTank(m.kind)) {
       r.slots[ws.slot].tank = m.kind; toRoom(r, roomMsg(r));
     } else if (r && m.type === 'start' && !r.game && ws.slot === host(r) && count(r) >= 2) {
       if (r.mode === 'team') {
