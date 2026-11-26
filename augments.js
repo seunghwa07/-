@@ -73,8 +73,8 @@
     { id: 'rubber',    tank: 'bumper', rarity: 'rare', icon: '🟢', name: '고무 탄성',   desc: '범퍼탄 피해 ×1.3',                 mods: { kindDmg: { bumper: 1.3 } } },
     { id: 'heavyball', tank: 'bumper', rarity: 'common', icon: '🎱', name: '묵직한 공',   desc: '범퍼탄 폭발 범위 ×1.25',           mods: { rad: 1.25 } },
     // ----- 중력탄 -----
-    { id: 'eventh',   tank: 'gravity', rarity: 'common', icon: '🌀', name: '사건의 지평선', desc: '블랙홀 끌어당김 범위·붕괴 크레이터 ×1.3',  mods: { rad: 1.3 } },
-    { id: 'collapse', tank: 'gravity', rarity: 'rare', icon: '💫', name: '붕괴 촉매',     desc: '중력탄 붕괴 피해 ×1.4 (32 → 45)',          mods: { kindDmg: { gravity: 1.4 } } },
+    { id: 'eventh',   tank: 'gravity', rarity: 'common', icon: '🌀', name: '사건의 지평선', desc: '블랙홀 끌어당김 범위·붕괴 크레이터 ×1.15', mods: { rad: 1.15 } },
+    { id: 'collapse', tank: 'gravity', rarity: 'rare', icon: '💫', name: '붕괴 촉매',     desc: '중력탄 붕괴 피해 ×1.25 (24 → 30)',         mods: { kindDmg: { gravity: 1.25 } } },
     // ----- 냉각탄 -----
     { id: 'coldfront',  tank: 'frost', rarity: 'common', icon: '🥶', name: '한파',         desc: '얼음 바닥 범위 ×1.5',                      mods: { area: 1.5 } },
     { id: 'shard',      tank: 'frost', rarity: 'rare', icon: '🧊', name: '얼음 파편',     desc: '냉각탄 피해 ×1.5 (14 → 21)',               mods: { kindDmg: { frost: 1.5 } } },
