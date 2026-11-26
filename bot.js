@@ -11,6 +11,8 @@ module.exports = function (X) {
     easy:   { label: '쉬움',   sa: 2.6,  sp: .05,  wind: .25, wn: 3, think: [2300, 4300], aug: 0, spots: 0, kill: 0,  human: 1,    moveP: .5 },
     normal: { label: '보통',   sa: 1.1,  sp: .02,  wind: .85, wn: 1, think: [1600, 3200], aug: 1, spots: 2, kill: 0,  human: 1.15, moveP: .8 },
     hard:   { label: '어려움', sa: .28,  sp: .005, wind: 1,   wn: 0, think: [1000, 2200], aug: 2, spots: 5, kill: 14, human: 1.3,  moveP: 1 },
+    // 엑스퍼트: 어려움 + (1) 조준 오차 거의 0 (2) 촘촘한 0.25° 탐색 (3) 이동 후보 10곳 이상 비교 (4) 체력 낮은 적 집중 공격 (5) 내 자리의 '반격 위험'까지 계산 (6) 내 탱크에 맞는 증강만 고름
+    expert: { label: '엑스퍼트', sa: .03, sp: .0005, wind: 1,   wn: 0, think: [600, 1300],   aug: 3, spots: 10, kill: 30, human: 1.5,  moveP: 1, fine: true, focus: .6, danger: .5 },
   };
   const lvOf = k => LEVELS[k] || LEVELS.normal;
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -27,8 +29,9 @@ module.exports = function (X) {
     const { g, i, lv, r } = ctx, q = g.players[k];
     if (dmg <= 0) return 0;
     const d = dmg * q.mods.taken;
-    if (k === i) return -d;
-    return d * (isBot(r, k) ? 1 : lv.human) + (lv.kill && d >= q.hp ? lv.kill : 0);
+    if (k === i) return -d * (lv.focus ? 1.25 : 1);   // 엑스퍼트는 자폭 피해를 더 크게 봐요
+    const focus = lv.focus ? 1 + lv.focus * (1 - Math.max(0, q.hp) / q.maxHp) : 1;   // 이미 다친 적일수록 더 높은 가치
+    return d * focus * (isBot(r, k) ? 1 : lv.human) + (lv.kill && d >= q.hp ? lv.kill : 0);
   }
   // 폭발 한 번: impact 에서 (dmg, rad) 폭발 → 모든 탱크에 대한 가치 합 / near = 가장 가까운 적까지 거리
   function blast(ctx, imp, dmg, rad, direct = DIRECT, reach = rad + 25) {
@@ -127,15 +130,19 @@ module.exports = function (X) {
 
   // ---------- 탐색: 거친 격자 → 가장 유망한 몇 곳을 촘촘하게 ----------
   function search(ev, o = {}) {
-    const aS = o.aStep || 3, pS = o.pStep || 4, tops = [], cands = [];
+    const aS = o.aStep || 3, pS = o.pStep || 4, tops = [], cands = [], fs = o.fine ? .25 : .5;
     for (let a = 8; a <= 172; a += aS) for (let pw = 12; pw <= 100; pw += pS) cands.push(ev(a, pw));
     cands.sort((x, y) => y.key - x.key);
     for (const c of cands) {
-      if (tops.length >= (o.tops || 5)) break;
+      if (tops.length >= (o.tops || (o.fine ? 8 : 5))) break;
       if (tops.every(t => Math.abs(t.a - c.a) >= aS * 3 || Math.abs(t.pw - c.pw) >= pS * 3)) tops.push(c);
     }
     let best = cands[0];
-    if (!o.fast) for (const t of tops) for (let a = t.a - aS; a <= t.a + aS; a += .5) for (let pw = Math.max(10, t.pw - pS); pw <= Math.min(100, t.pw + pS); pw += .5) {
+    if (!o.fast) for (const t of tops) for (let a = t.a - aS; a <= t.a + aS; a += fs) for (let pw = Math.max(10, t.pw - pS); pw <= Math.min(100, t.pw + pS); pw += fs) {
+      if (a < 0 || a > 180) continue;
+      const c = ev(a, pw); if (c.key > best.key) best = c;
+    }
+    if (o.fine && !o.fast) for (let a = best.a - .3; a <= best.a + .3; a += .05) for (let pw = Math.max(10, best.pw - .4); pw <= Math.min(100, best.pw + .4); pw += .05) {   // 최종 미세 조정
       if (a < 0 || a > 180) continue;
       const c = ev(a, pw); if (c.key > best.key) best = c;
     }
@@ -152,7 +159,7 @@ module.exports = function (X) {
     if (kind === 'laser') return planLaser(ctx);
     if (kind === 'plasma') return planPlasma(ctx);
     return perceived(g, lv, () => {
-      const best = search((a, pw) => { const e = evalShot(ctx, a, pw); return { a, pw, s: e.s, key: shaped(e.s, e.near) }; }, fast ? { aStep: 4, pStep: 6, tops: 3, fast: false } : {});
+      const best = search((a, pw) => { const e = evalShot(ctx, a, pw); return { a, pw, s: e.s, key: shaped(e.s, e.near) }; }, fast ? { aStep: 4, pStep: 6, tops: 3, fast: false, fine: false } : { fine: !!lv.fine });
       return { angle: best.a, power: best.pw, score: best.s };
     });
   }
@@ -198,7 +205,19 @@ module.exports = function (X) {
     });
     return { s, kills, near };
   }
+  function planRailExpert(r, g, i, lv) {
+    const p = g.players[i], ch = p.charge || 0, key = e => e.s + e.kills * lv.kill - e.near * .01;
+    if (ch < 1) return { fire: false, angle: 90, power: 100 };
+    let best = null;
+    for (let a = RAIL_AIM_MIN; a <= 180 - RAIL_AIM_MIN; a += 1) { const e = railBeam(g, i, a, ch), k = key(e); if (!best || k > best.k) best = { a, k, e }; }
+    const c0 = best.a;
+    for (let a = c0 - 1; a <= c0 + 1; a += .05) { if (a < RAIL_AIM_MIN || a > 180 - RAIL_AIM_MIN) continue; const e = railBeam(g, i, a, ch), k = key(e); if (k > best.k) best = { a, k, e }; }
+    // 처치 가능 / 최대 충전 / 2단계로 이미 큰 피해(45+)를 줄 수 있으면 발사, 아니면 계속 충전
+    const fire = best.e.kills > 0 || ch >= RAIL_MAX || (ch >= 2 && best.e.s >= 45);
+    return { fire, angle: best.a, power: 100 };
+  }
   function planRail(r, g, i, lv) {
+    if (lv.fine) return planRailExpert(r, g, i, lv);
     const p = g.players[i], ch = p.charge || 0, x0 = p.x, y0 = g.terrain[p.x] - 20 * FMAP.TS, foes = foesOf(g, i);
     const ang = k => { let d = Math.atan2(-(tankY(g, g.players[k]) - y0), g.players[k].x - x0) * 180 / Math.PI; if (d < RAIL_AIM_MIN) d += 360; return d; };
     const dist = k => Math.hypot(g.players[k].x - x0, tankY(g, g.players[k]) - y0);
@@ -241,20 +260,43 @@ module.exports = function (X) {
       const dir = Math.random() < .75 ? toward : -toward, path = paths[dir];
       return path.length ? path[Math.min(path.length - 1, Math.floor(path.length * rnd(.2, .6)))] : null;
     }
-    const cands = [];   // [x] 후보: 양쪽으로 1/3 · 2/3 · 끝
-    [toward, -toward].forEach(dir => { const path = paths[dir]; if (!path.length) return; [.34, .67, 1].forEach(f => cands.push(path[Math.min(path.length - 1, Math.round(path.length * f) - 1 < 0 ? 0 : Math.round(path.length * f) - 1)])); });
+    const cands = [];   // [x] 후보: 양쪽으로 1/3 · 2/3 · 끝 (엑스퍼트는 1/5 간격)
+    [toward, -toward].forEach(dir => { const path = paths[dir]; if (!path.length) return; (lv.fine ? [.2, .4, .6, .8, 1] : [.34, .67, 1]).forEach(f => cands.push(path[Math.min(path.length - 1, Math.round(path.length * f) - 1 < 0 ? 0 : Math.round(path.length * f) - 1)])); });
     const uniq = [...new Set(cands)];
     if (lv === LEVELS.normal) {   // 보통: 후보 중 무작위 두 곳만 훑어봐요
       uniq.sort(() => Math.random() - .5);
     } else uniq.sort((a, b) => Math.abs(a - nearest.x) - Math.abs(b - nearest.x));
     let best = null;
+    const scored = [];
     for (const cx of uniq.slice(0, lv.spots)) {
       const x0 = p.x; p.x = cx;
       let pl; try { pl = planAt(r, g, i, lv, true); } finally { p.x = x0; }
+      scored.push({ x: cx, score: pl.score });
       if (!best || pl.score > best.score) best = { x: cx, score: pl.score };
+    }
+    if (lv.danger && scored.length) {   // 엑스퍼트: 공격 점수가 높은 후보 3곳(+현재 자리)만 '적의 반격 위험'을 빼서 다시 비교해요
+      const risk = x => { const x0 = p.x; p.x = x; try { return threatAt(g, i); } finally { p.x = x0; } };
+      const curTotal = cur.score - lv.danger * risk(p.x);
+      best = null;
+      scored.sort((a, b) => b.score - a.score).slice(0, 3).forEach(c => { const t = c.score - lv.danger * risk(c.x); if (!best || t > best.total) best = { x: c.x, score: c.score, total: t }; });
+      if (best && best.total > curTotal + 3) return best.x;
+      return out ? approach(1) : null;
     }
     if (best && best.score > cur.score + 4) return best.x;
     return out ? approach(lv === LEVELS.hard ? 1 : .85) : null;   // 어느 자리에서도 못 맞히면 적 쪽으로 최대한(보통은 조금 덜) 다가가요
+  }
+  // 내 자리(p.x)가 적에게 얼마나 위험한가: 살아 있는 적마다 '기본탄'으로 나를 가장 가깝게 맞히는 조준을 거친 격자로 찾아 피해량을 어림해요
+  function threatAt(g, i) {
+    const me = g.players[i], my = tankY(g, me); let t = 0;
+    foesOf(g, i).forEach(k => {
+      let bd = Infinity;
+      for (let a = 10; a <= 170; a += 6) for (let pw = 14; pw <= 100; pw += 8) {
+        const f = flight(g, k, a, pw, 'basic'); if (!f.impact) continue;
+        const d = Math.hypot(f.impact[0] - me.x, f.impact[1] - my); if (d < bd) bd = d;
+      }
+      if (isFinite(bd)) t += dmgAt(20 * g.players[k].mods.dmg, bd, 95, DIRECT) * me.mods.taken;
+    });
+    return t;
   }
   const nominal = (g, i) => { const p = g.players[i], k = p.tank === 'escalation' ? 'basic' : p.tank; return Math.max(6, (SHELL[k] && SHELL[k].dmg || 15) * p.mods.dmg * (p.mods.kindDmg[k] || 1)); };
 
@@ -288,7 +330,8 @@ module.exports = function (X) {
     const cur = planAt(r, g, i, lv, false);
     const good = nominal(g, i) * .55;
     let spot = null;
-    if (g.fuel > 0 && p.tank !== 'explosive' && (cur.score < good || lv === LEVELS.hard && cur.score < nominal(g, i) * .9)) spot = chooseSpot(r, g, i, lv, cur);
+    const needMove = cur.score < good || (lv === LEVELS.hard && cur.score < nominal(g, i) * .9) || (lv.fine && cur.score < Math.max(lv.kill, nominal(g, i) * 1.1));   // 엑스퍼트: 처치(점수에 kill 보너스 포함)할 수 있는 샷이 아니면 항상 더 좋은 자리를 찾아봐요
+    if (g.fuel > 0 && p.tank !== 'explosive' && needMove) spot = chooseSpot(r, g, i, lv, cur);
     if (spot == null) { done(); doFire(r, i, ...fireArgs(noisy(cur, lv))); return; }
     // 이동한 뒤 새 자리에서 다시 조준해요
     const dir = Math.sign(spot - p.x) || 1;
@@ -333,7 +376,8 @@ module.exports = function (X) {
     let s = a.tank ? 4 : 0;
     s += (x.hp || 0) / 14 + (x.heal ? Math.min(x.heal, p.maxHp - p.hp) / 12 : 0);
     s += ((x.dmg || 1) - 1) * 30 + (1 - (x.taken || 1)) * 34 + ((x.rad || 1) - 1) * 18;
-    Object.values(x.kindDmg || {}).forEach(v => { s += (v - 1) * 28; });
+    const own = p.tank === 'escalation' ? null : p.tank;
+    Object.entries(x.kindDmg || {}).forEach(([k, v]) => { s += (v - 1) * 28 * (lv.aug >= 3 && own && k !== own ? .08 : 1); });   // 엑스퍼트: 내 탱크 탄에만 붙는 증강을 높게 쳐요
     if (p.tank !== 'explosive') s += ((x.fuel || 1) - 1) * 3;
     s += ((x.shells || 1) - 1) * 4 + (x.bounce || 0) * 2 + ((x.beam || 1) - 1) * 6 + (x.missiles || 0) * 1.5 + (x.drills ? 4 : 0) + (x.dual ? 3 : 0) + (x.jumbo ? 2 : 0) + (x.split > 2 ? 3 : 0);
     return s + (lv.aug === 1 ? rnd(-3, 3) : 0);
@@ -343,7 +387,7 @@ module.exports = function (X) {
       const sl = r.slots[i];
       if (!sl || !sl.bot) return;
       const lv = lvOf(sl.level);
-      later(g, rnd(1200, 3600) * (lv === LEVELS.hard ? .6 : 1), () => {
+      later(g, rnd(1200, 3600) * (lv.fine ? .45 : lv === LEVELS.hard ? .6 : 1), () => {
         if (r.dead || r.game !== g || g.phase !== 'augment' || g.picks[i]) return;
         const offers = g.offers[i] || []; if (!offers.length) return;
         const id = lv.aug === 0 ? offers[Math.floor(Math.random() * offers.length)] : offers.slice().sort((a, b) => augScore(g, i, b, lv) - augScore(g, i, a, lv))[0];

@@ -37,7 +37,7 @@ const SHELL = {
   frost: { dmg: 14, rad: 40 },      // 냉각탄: 약한 피해 + 착탄 주변 바닥이 얼어요 (아래 FROST_* 참고)
   explosive: { dmg: 34, rad: 70 },   // 고폭탄: 기본탄(17)의 2배 피해 + 조금 더 큰 폭발(반지름 70) · 대신 이동 불가 (fuelOf 참고) · 사거리는 SPEED 참고
   intercept: { dmg: 17, rad: CRATER },   // 요격탄: 탄은 기본탄과 완전히 같아요 · 대신 매 차례 요격 티켓이 설치돼요 (아래 ICPT_* 참고)
-  plasma: { dmg: 34, rad: 0 },     // 플라즈마: 가까이서 맞는 최대 피해 (거리에 따라 줄어요 · 아래 PLASMA_* 참고) · 땅은 안 파여요
+  plasma: { dmg: 34, rad: 0 },     // 플라즈마: 가까이서 맞는 최대 피해 (거리에 따라 줄어 맵 맨 끝에서 4 · 아래 PLASMA_* 참고) · 땅은 안 파여요
   grinder: { dmg: 10, rad: 0 },    // 그라인더: 톱니바퀴에 닿은 탱크가 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
 };
 const EXPL_SPEED = 1.35;   // 고폭탄 탄속 배율: 최대 사거리 ≈ 5800px 로 월드 폭(5000px)보다 길어서 맵 어디든 닿아요 (한 걸음 22.5px < 피격 반경 23.4px 라 탱크를 건너뛰지도 않아요) — 클라이언트(index.html)와 같아야 해요
@@ -619,10 +619,10 @@ function fireRail(r, shooter, angle) {
   return { type: 'shot', by: shooter, angle, kind: 'rail', dud: false, shells: [{ path, impact: null }], rail: { lv, wid: Math.round(wid), hits }, state: snapshot(r) };
 }
 
-// ----- 플라즈마: 조준 방향으로 15° 부채꼴(좌우 7.5°) 광역 플라즈마를 뿜어요. 사거리가 길지만 멀리서 맞을수록 피해가 줄어요 (가까이 100% → 최대 사거리 8%) -----
+// ----- 플라즈마: 조준 방향으로 15° 부채꼴(좌우 7.5°) 광역 플라즈마를 뿜어요. 사거리가 길지만 멀리서 맞을수록 피해가 줄어요 (가까이 100% → 맵 맨 끝 피해 4) -----
 // 포탄이 아니라 즉시 판정이라 파워는 무관하고, 지형이 가로막은 탱크(시선이 막힘)는 맞지 않아요. 땅은 안 파여요.
-const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = 3200, PLASMA_MIN = .08, PLASMA_STEP = 80;   // 부채꼴 반각 / 사거리(px) / 최대 사거리에서의 피해 비율 / 화면 연출용 경로 점 간격
-const plasmaDmg = (base, dist) => Math.max(1, Math.round(base * (1 - (1 - PLASMA_MIN) * Math.max(0, Math.min(1, dist / PLASMA_RANGE)))));
+const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = Math.ceil(Math.hypot(W, H)), PLASMA_END_DMG = 4, PLASMA_MIN = PLASMA_END_DMG / SHELL.plasma.dmg, PLASMA_STEP = 80;   // 부채꼴 반각 / 사거리(px, 맵 끝까지 = 맵 대각선) / 맵 맨 끝(가로 길이 W)에서의 피해 4 → 비율 / 화면 연출용 경로 점 간격
+const plasmaDmg = (base, dist) => Math.max(1, Math.round(base * (1 - (1 - PLASMA_MIN) * Math.max(0, Math.min(1, dist / W)))));
 const PLASMA_RAYS = 32;   // 부채꼴을 가르는 광선 수 (광선마다 지형에 막히는 거리를 따로 재요) — 클라이언트 plasmaProf 와 같아야 해요
 function plasmaRay(g, x0, y0, ang) {   // 광선 하나가 지형·맵 경계에 막히는 거리
   const dx = Math.cos(ang), dy = -Math.sin(ang), ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.floor(x)))];
@@ -861,7 +861,7 @@ function pickAug(r, i, id) {   // 증강 선택
   return true;
 }
 
-// ===== 솔로 모드 AI: bot.js (쉬움 · 보통 · 어려움) =====
+// ===== 솔로 모드 AI: bot.js (쉬움 · 보통 · 어려움 · 엑스퍼트) =====
 const BOT = require('./bot.js')({ FMAP, FAUG, SHELL, flight, laserFlight, plasmaCone, bumperFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
   W, STEP, MAX_CLIMB, HIT_R, DIRECT, GRAV_R, GRAV_DMG, SNIPER_HIT, PIERCE_HIT, FIRE_R, FROST_R, WATER_R, CARPET_SPREAD, CARPET_GRAZE, ICE_FUEL, ICE_GAP,
   doMove, doCharge, doFire, orderFire, pickAug, isBot });
