@@ -13,6 +13,8 @@
 //          split   범퍼탄이 튈 때 나오는 탄 수(기본 2)   jumbo  범퍼탄 점보(큰 탄 하나가 3번 튕김, 분열 없음)
 //          grav    스나이퍼탄이 받는 중력 ×N   hitr  스나이퍼탄 피격 범위 ×N   scope  조준 점선(스나이퍼) 길이 ×N
 //          heal    고르는 즉시 체력 +N 회복   rad  폭발 범위 ×N   dud  유도탄 불발 확률 ×N   fireMs  소이탄 불길·일렉트로 전기장·그라인더 톱니바퀴 지속 시간 ×N   spread  융단폭격 미사일 간격 ×N
+//          turns   냉각탄 얼음·물폭탄 물 범위가 남는 차례 +N   drain  흡혈탄 회복 비율 +N(0.3 = +30%p)   charge0  레일건 발사 뒤 충전 시작 단계(기본 0)
+//          icptR   요격탄 요격 범위 ×N   icptP  요격 성공 확률 +N(0.2 = +20%p)   tickets  요격 티켓 최대 보유 수 +N (한 번에 더 많은 탄 요격)
 //   (아래 목록은 틀이 잘 도는지 확인하려고 넣은 샘플이에요. 마음대로 바꾸고 늘리세요)
 (function (root) {
   const POOL = [
@@ -69,13 +71,40 @@
     { id: 'longroll', tank: 'grinder', icon: '🛞', name: '장거리 구동',   desc: '톱니바퀴가 굴러가는 시간 ×1.5 (3초 → 4.5초)',   mods: { fireMs: 1.5 } },
     { id: 'rubber',    tank: 'bumper', icon: '🟢', name: '고무 탄성',   desc: '범퍼탄 피해 ×1.3',                 mods: { kindDmg: { bumper: 1.3 } } },
     { id: 'heavyball', tank: 'bumper', icon: '🎱', name: '묵직한 공',   desc: '범퍼탄 폭발 범위 ×1.25',           mods: { rad: 1.25 } },
+    // ----- 중력탄 -----
+    { id: 'eventh',   tank: 'gravity', icon: '🌀', name: '사건의 지평선', desc: '블랙홀 끌어당김 범위·붕괴 크레이터 ×1.3',  mods: { rad: 1.3 } },
+    { id: 'collapse', tank: 'gravity', icon: '💫', name: '붕괴 촉매',     desc: '중력탄 붕괴 피해 ×1.4 (32 → 45)',          mods: { kindDmg: { gravity: 1.4 } } },
+    // ----- 냉각탄 -----
+    { id: 'coldfront',  tank: 'frost', icon: '🥶', name: '한파',         desc: '얼음 바닥 범위 ×1.5',                      mods: { area: 1.5 } },
+    { id: 'shard',      tank: 'frost', icon: '🧊', name: '얼음 파편',     desc: '냉각탄 피해 ×1.5 (14 → 21)',               mods: { kindDmg: { frost: 1.5 } } },
+    { id: 'permafrost', tank: 'frost', icon: '❄️', name: '영구 동토',     desc: '얼음 바닥이 남는 시간 +2차례 (3 → 5)',      mods: { turns: 2 } },
+    // ----- 흡혈탄 -----
+    { id: 'fang',      tank: 'vampire', icon: '🦷', name: '날카로운 송곳니', desc: '흡혈탄 피해 ×1.3 (17 → 22)',            mods: { kindDmg: { vampire: 1.3 } } },
+    { id: 'bloodlust', tank: 'vampire', icon: '🩸', name: '피의 갈증',       desc: '회복 비율 +30%p (피해의 50% → 80%)',    mods: { drain: .3 } },
+    { id: 'crimson',   tank: 'vampire', icon: '🍷', name: '핏빛 폭발',       desc: '흡혈탄 폭발 범위 ×1.25',                mods: { rad: 1.25 } },
+    // ----- 물폭탄 -----
+    { id: 'flood',     tank: 'water', icon: '🌊', name: '대홍수',     desc: '물 범위 ×1.4',                         mods: { area: 1.4 } },
+    { id: 'highpress', tank: 'water', icon: '🚿', name: '고압 분사',  desc: '물폭탄 피해 ×1.4 (26 → 36)',           mods: { kindDmg: { water: 1.4 } } },
+    { id: 'tide',      tank: 'water', icon: '⏳', name: '만조',       desc: '물 범위가 남는 시간 +2차례 (3 → 5)',   mods: { turns: 2 } },
+    // ----- 고폭탄 -----
+    { id: 'overpressure', tank: 'explosive', icon: '💥', name: '과압 장약',   desc: '고폭탄 피해 ×1.25 (34 → 42)',      mods: { kindDmg: { explosive: 1.25 } } },
+    { id: 'bigcalibre',   tank: 'explosive', icon: '🕳️', name: '초대구경 포신', desc: '고폭탄 폭발 범위 ×1.3',            mods: { rad: 1.3 } },
+    { id: 'bunker',       tank: 'explosive', icon: '🏚️', name: '벙커 보강',    desc: '받는 피해 ×0.8 · 최대 체력 +20 (움직이지 못하니까)', mods: { taken: .8, hp: 20 } },
+    // ----- 레일건 -----
+    { id: 'capacitor', tank: 'rail', icon: '🔋', name: '고용량 축전기', desc: '레일건 피해 ×1.25',                          mods: { kindDmg: { rail: 1.25 } } },
+    { id: 'magnet',    tank: 'rail', icon: '🧲', name: '자기 집속',     desc: '레일 빔 굵기·판정 범위 ×1.4',                mods: { beam: 1.4 } },
+    { id: 'preheat',   tank: 'rail', icon: '♨️', name: '예열 코일',     desc: '쏜 뒤 충전이 0이 아닌 1단계에서 시작 (바로 다시 쏠 수 있어요)', mods: { charge0: 1 } },
+    // ----- 요격탄 -----
+    { id: 'scanner', tank: 'intercept', icon: '📡', name: '광역 레이더',   desc: '요격 범위 ×1.4',                           mods: { icptR: 1.4 } },
+    { id: 'lock',    tank: 'intercept', icon: '🎯', name: '정밀 추적',     desc: '요격 성공 확률 +20%p (50% → 70%)',         mods: { icptP: .2 } },
+    { id: 'twin',    tank: 'intercept', icon: '🛡️', name: '이중 티켓',     desc: '요격 티켓 최대 2장 · 한 번에 탄 2발까지 요격 시도', mods: { tickets: 1 } },
   ];
   const byId = Object.fromEntries(POOL.map(a => [a.id, a]));
   const SPECIFIC_SLOTS = 1;   // 선택지 3개 중 탱크 전용을 최소 몇 개 넣을지 (전용 증강이 있는 탱크만)
   const PICK_MS = 20000;      // 선택 제한 시간 (넘기면 랜덤으로 골라져요)
 
   function calc(ids) {   // 가진 증강들을 합쳐서 최종 능력치 계산
-    const m = { hp: 0, dmg: 1, taken: 1, fuel: 1, kindDmg: {}, shells: 1, bounce: 0, beam: 1, area: 1, dual: false, missiles: 0, drills: false, split: 2, jumbo: false, rad: 1, dud: 1, fireMs: 1, spread: 1, grav: 1, hitr: 1, scope: 1 };
+    const m = { hp: 0, dmg: 1, taken: 1, fuel: 1, kindDmg: {}, shells: 1, bounce: 0, beam: 1, area: 1, dual: false, missiles: 0, drills: false, split: 2, jumbo: false, rad: 1, dud: 1, fireMs: 1, spread: 1, grav: 1, hitr: 1, scope: 1, turns: 0, drain: 0, charge0: 0, icptR: 1, icptP: 0, tickets: 0 };
     ids.forEach(id => {
       const a = byId[id]; if (!a) return;
       const x = a.mods || {};
@@ -83,6 +112,7 @@
       m.shells *= x.shells || 1; m.bounce += x.bounce || 0; m.beam *= x.beam || 1; m.area *= x.area || 1; m.dual = m.dual || !!x.dual;
       m.missiles += x.missiles || 0; m.drills = m.drills || !!x.drills; m.split = Math.max(m.split, x.split || 2); m.jumbo = m.jumbo || !!x.jumbo;
       m.rad *= x.rad || 1; m.grav *= x.grav || 1; m.hitr *= x.hitr || 1; m.scope *= x.scope || 1; m.fireMs *= x.fireMs || 1; m.spread *= x.spread || 1; m.dud *= x.dud === undefined ? 1 : x.dud;
+      m.turns += x.turns || 0; m.drain += x.drain || 0; m.charge0 = Math.max(m.charge0, x.charge0 || 0); m.icptR *= x.icptR || 1; m.icptP += x.icptP || 0; m.tickets += x.tickets || 0;
       Object.entries(x.kindDmg || {}).forEach(([k, v]) => { m.kindDmg[k] = (m.kindDmg[k] || 1) * v; });
     });
     return m;

@@ -17,7 +17,7 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept'];
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
@@ -32,6 +32,7 @@ const SHELL = {
   vampire: { dmg: 17, rad: CRATER },   // 흡혈탄: 기본탄과 같은 피해·폭발 · 실제로 입힌 피해의 절반만큼 쏜 사람이 회복 (VAMP_RATE)
   frost: { dmg: 14, rad: 40 },      // 냉각탄: 약한 피해 + 착탄 주변 바닥이 얼어요 (아래 FROST_* 참고)
   explosive: { dmg: 34, rad: 70 },   // 고폭탄: 기본탄(17)의 2배 피해 + 조금 더 큰 폭발(반지름 70) · 대신 이동 불가 (fuelOf 참고) · 사거리는 SPEED 참고
+  intercept: { dmg: 17, rad: CRATER },   // 요격탄: 탄은 기본탄과 완전히 같아요 · 대신 매 차례 요격 티켓이 설치돼요 (아래 ICPT_* 참고)
   grinder: { dmg: 10, rad: 0 },    // 그라인더: 톱니바퀴에 닿은 탱크가 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
 };
 const EXPL_SPEED = 1.35;   // 고폭탄 탄속 배율: 최대 사거리 ≈ 5800px 로 월드 폭(5000px)보다 길어서 맵 어디든 닿아요 (한 걸음 22.5px < 피격 반경 23.4px 라 탱크를 건너뛰지도 않아요) — 클라이언트(index.html)와 같아야 해요
@@ -77,6 +78,36 @@ const onIce = (g, q) => (g.ice || []).some(f => Math.hypot(q.x - f.x, tankY(g, q
 // 물폭탄: 착탄 주변에 물 범위가 WATER_TURNS 차례 동안 남아요. 그 범위 안의 (적) 탱크가 쏘는 포탄은 WATER_DUD 확률로 불발(날아가다 사라짐)
 const WATER_R = 240, WATER_TURNS = 3, WATER_DUD = .5;   // 물 범위 반경(px) / 남아 있는 차례 수 / 범위 안에서 쏜 포탄이 불발될 확률
 const inWater = (g, i) => { const q = g.players[i]; return (g.water || []).some(z => !isAlly(g, z.by, i) && Math.hypot(q.x - z.x, tankY(g, q) - z.y) < z.r); };
+// 요격탄: 자기 차례가 시작될 때마다 요격 티켓이 1장 설치돼요 (쌓이지 않아요). 티켓은 쓰일 때까지 유지돼요.
+// 적이 쏜 포탄이 범위(ICPT_R) 안에 들어오면 그중 딱 한 발만 요격을 시도하고(티켓은 성공·실패와 관계없이 소모), 성공 확률은 ICPT_P 예요.
+const ICPT_R = 380, ICPT_P = .5;   // (증강: 광역 레이더 icptR · 정밀 추적 icptP · 이중 티켓 tickets)
+const icptCap = q => 1 + q.mods.tickets;   // 티켓 최대 보유 수   // 요격 범위 반경(px) / 요격 성공 확률 — 클라이언트(index.html)와 같아야 해요
+function intercepts(g, shooter, shells) {   // 발사 직후 비행 경로가 나온 뒤 호출 · 요격된 포탄은 경로가 잘리고 착탄·피해가 사라져요
+  const out = [];
+  g.players.forEach((q, i) => {
+    if (q.tank !== 'intercept' || !q.ticket || q.hp <= 0 || !q.on || i === shooter || isAlly(g, shooter, i)) return;
+    const cx = q.x, cy = tankY(g, q), R = ICPT_R * q.mods.icptR, P = Math.min(1, ICPT_P + q.mods.icptP);
+    while (q.ticket > 0) {   // 티켓 1장마다 탄 한 발 (이중 티켓이면 최대 2발)
+      let best = null;   // 범위에 가장 먼저 들어온 포탄 한 발
+      shells.forEach((s, si) => {
+        if (s.icpt || s.dudShell || !s.path || s.path.length < 2 || (s.triedBy || []).includes(i)) return;
+        const k = s.path.findIndex(pt => Math.hypot(pt[0] - cx, pt[1] - cy) < R);
+        if (k >= 0 && (!best || k < best.k)) best = { s, si, k };
+      });
+      if (!best) break;
+      q.ticket--;   // 티켓 소모 (성공·실패 무관)
+      const ok = Math.random() < P, pt = best.s.path[best.k];
+      (best.s.triedBy = best.s.triedBy || []).push(i);
+      out.push({ by: i, si: best.si, idx: best.k, x: pt[0], y: pt[1], ok });
+      if (ok) {   // 요격 성공: 그 지점에서 포탄이 터져 사라져요 (지형 파임·피해·장판 없음)
+        best.s.path = best.s.path.slice(0, best.k + 1);
+        best.s.impact = null; best.s.hit = null; best.s.hd = 0; best.s.icpt = true;
+        if (best.s.splits) best.s.splits = best.s.splits.filter(q2 => q2 <= best.k);   // 범퍼탄: 잘려 나간 경로의 튕김 지점은 버려요
+      }
+    }
+  });
+  return out;
+}
 const VAMP_RATE = .5;                // 흡혈탄: 입힌 피해 대비 회복 비율
 const CLUSTER_N = 8;               // 집속탄 한 번에 나가는 소탄 수
 const ORDER_GO = 3600, ORDER_MS = 15000;   // 순서 정하기: 시작 연출(로딩+등장) 시간 / 조준·발사 제한시간
@@ -113,7 +144,7 @@ function newCode() {
 const fuelOf = (g, i) => g.players[i].tank === 'explosive' ? 0 : Math.round(FUEL * g.players[i].mods.fuel);   // 고폭탄 포대는 바퀴가 없어서 연료 0 = 이동 불가
 const iceList = g => (g.ice || []).map(q => ({ id: q.id, x: q.x, y: q.y, r: q.r, left: q.left }));
 const waterList = g => (g.water || []).map(q => ({ id: q.id, x: q.x, y: q.y, r: q.r, left: q.left, by: q.by }));
-const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn), rings: g.rings, frozen: !!g.frozen, frz: g.players.map(p => p.frz || 0), ice: iceList(g), water: waterList(g) });
+const turnMsg = g => ({ type: 'turn', turn: g.turn, wind: g.wind, fuel: g.fuel, fuelMax: fuelOf(g, g.turn), rings: g.rings, frozen: !!g.frozen, frz: g.players.map(p => p.frz || 0), tk: g.players.map(p => p.ticket || 0), ice: iceList(g), water: waterList(g) });
 
 // ----- 튕김 링: 2~3개가 떠 있다가 2~5턴 뒤에 사라지고, 다른 자리에 새로 나타나요 -----
 function tickRings(g, init) {
@@ -175,6 +206,7 @@ function newGame(r) {
     players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
+  g.players.forEach(q => { q.ticket = q.tank === 'intercept' ? 1 : 0; });   // 요격탄: 첫 차례부터 티켓이 설치돼 있어요
   g.rings = []; g.ringSeq = 0; tickRings(g, true);   // 튕김 링 (2~3개)
   g.turn = g.players.findIndex(p => p.on);
   g.fuel = fuelOf(g, g.turn);
@@ -195,7 +227,7 @@ function snapshot(r) {
     orderGo: Math.max(0, g.orderGoAt - Date.now()), orderLeft: Math.max(0, g.orderEnd - Date.now()),
     teams: g.players.map(p => p.team),
     fires: fireList(g), ice: iceList(g), water: waterList(g), frozen: !!g.frozen,
-    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, maxHp: p.maxHp, aug: p.aug, on: p.on, name: p.name, icon: p.icon, charge: p.charge || 0, frz: p.frz || 0 })),
+    players: g.players.map(p => ({ team: p.team, tank: p.tank, x: p.x, y: g.terrain[p.x], hp: p.hp, maxHp: p.maxHp, aug: p.aug, on: p.on, name: p.name, icon: p.icon, charge: p.charge || 0, frz: p.frz || 0, ticket: p.ticket || 0, icr: Math.round(ICPT_R * p.mods.icptR) })),
   };
 }
 
@@ -346,15 +378,15 @@ function explode(g, shooter, impact, kind, delay = 0, mul = 1) {   // mul: 이 �
     q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, i, kind === 'carpet' ? (d <= direct ? dmg : d < Math.max(reach, direct + 20) ? CARPET_GRAZE : 0) : dmgAt(dmg, d, reach, direct), kind, mul));   // 융단 폭격: 정통 20 / 스치면 일정하게 13
     if (i !== shooter) drained += before - q.hp;
   });
-  if (kind === 'vampire') { const sp = g.players[shooter]; if (sp.hp > 0 && drained > 0) sp.hp = Math.min(sp.maxHp, sp.hp + Math.round(drained * VAMP_RATE)); }   // 입힌 피해의 절반을 회복 (최대 체력까지)
+  if (kind === 'vampire') { const sp = g.players[shooter]; if (sp.hp > 0 && drained > 0) sp.hp = Math.min(sp.maxHp, sp.hp + Math.round(drained * (VAMP_RATE + sp.mods.drain))); }   // 입힌 피해의 절반을 회복 (최대 체력까지)
   if (kind === 'frost') {   // 냉각탄: 착탄 주변 바닥이 얼고, 그 위에 있는 (적) 탱크는 자기 다음 차례에 이동할 수 없어요
     const fx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), fy = g.terrain[fx], fr = Math.round(FROST_R * g.players[shooter].mods.area);
-    g.ice.push({ id: ++g.iceSeq, x: fx, y: fy, r: fr, left: FROST_TURNS + 1 });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
+    g.ice.push({ id: ++g.iceSeq, x: fx, y: fy, r: fr, left: FROST_TURNS + g.players[shooter].mods.turns + 1 });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
     g.players.forEach((q, i) => { if (q.hp > 0 && !isAlly(g, shooter, i) && Math.hypot(q.x - fx, tankY(g, q) - fy) < fr) q.frz = 1; });
   }
   if (kind === 'water') {   // 물폭탄: 착탄 주변에 물 범위 생성 (그 안의 적 탱크가 쏘는 포탄은 50% 불발)
     const wx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), wy = g.terrain[wx], wr = Math.round(WATER_R * g.players[shooter].mods.area);
-    g.water.push({ id: ++g.waterSeq, x: wx, y: wy, r: wr, left: WATER_TURNS + 1, by: shooter });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
+    g.water.push({ id: ++g.waterSeq, x: wx, y: wy, r: wr, left: WATER_TURNS + g.players[shooter].mods.turns + 1, by: shooter });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
   }
   if (kind === 'incendiary') {
     const fx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), t0 = Date.now() + delay;
@@ -492,6 +524,8 @@ function finishAugment(r, g) {
     if (!id) return;
     g.picks[i] = id; p.aug.push(id);
     const before = p.mods.hp; p.mods = FAUG.calc(p.aug);
+    if (p.tank === 'rail') p.charge = Math.max(p.charge || 0, p.mods.charge0);   // 예열 코일: 바로 충전 1단계
+    if (p.tank === 'intercept') p.ticket = Math.max(p.ticket || 0, icptCap(p));   // 이중 티켓: 티켓이 바로 2장
     p.maxHp = 100 + p.mods.hp; p.hp = Math.max(1, p.hp + p.mods.hp - before);   // 체력 증강은 현재 체력도 같이 올려요
     const heal = (FAUG.byId[id].mods || {}).heal || 0;
     if (heal) p.hp = Math.min(p.maxHp, p.hp + heal);                            // 응급 수리: 즉시 회복
@@ -507,10 +541,12 @@ function finishAugment(r, g) {
   toRoom(r, turnMsg(g)); BOT.turn(r, g);
 }
 
+const tp_isIcpt = (g, i) => g.players[i] && g.players[i].tank === 'intercept' && g.players[i].hp > 0;
 function advance(r, from) {   // 다음 차례로 넘겨요
   const g = r.game;
   g.turn = nextTurn(g, from); g.wind = rndWind(); g.fuel = fuelOf(g, g.turn);
   g.frozen = false; const tp = g.players[g.turn];
+  if (tp_isIcpt(g, g.turn)) g.players[g.turn].ticket = icptCap(g.players[g.turn]);   // 요격탄: 차례마다 요격 티켓 설치 (이미 있으면 그대로 1장)
   if (tp.frz > 0) { tp.frz--; g.frozen = true; g.fuel = 0; }   // 얼어붙은 탱크: 이번 차례는 이동 불가 (연료 0)
   g.ice = (g.ice || []).map(q => ({ ...q, left: q.left - 1 })).filter(q => q.left > 0);   // 얼음 바닥은 몇 차례 뒤에 녹아요
   g.water = (g.water || []).map(q => ({ ...q, left: q.left - 1 })).filter(q => q.left > 0);   // 물 범위도 몇 차례 뒤에 마르고 사라져요
@@ -554,7 +590,7 @@ function fireCarpet(r, shooter, angle, power) {
 // 레일건 발사: 포물선 없이 직선. 벽(지형)을 관통하고, 빔 위의 모든 적에게 피해를 줘요. 충전 단계가 클수록 사거리·굵기·피해가 커지고, 쏘면 충전은 0으로 돌아가요.
 const RAIL_STEP = 80;   // 화면 연출용 경로 점 간격(px)
 function fireRail(r, shooter, angle) {
-  const g = r.game, p = g.players[shooter], lv = Math.max(0, Math.min(RAIL_MAX, p.charge || 0)), L = RAIL_LV[lv];
+  const g = r.game, p = g.players[shooter], lv = Math.max(0, Math.min(RAIL_MAX, p.charge || 0)), L = RAIL_LV[lv], wid = L.wid * p.mods.beam;   // 증강: 자기 집속(빔 굵기)
   const a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), x0 = p.x, y0 = g.terrain[p.x] - 20 * TS;
   let len = L.len;   // 맵 경계(좌·우·위)에서 끝나요
   if (dx > 1e-6) len = Math.min(len, (W - 1 - x0) / dx); else if (dx < -1e-6) len = Math.min(len, -x0 / dx);
@@ -566,15 +602,15 @@ function fireRail(r, shooter, angle) {
   g.players.forEach((q, i) => {
     if (i === shooter || q.hp <= 0 || isAlly(g, shooter, i)) return;
     const qy = tankY(g, q), t = Math.max(0, Math.min(len, (q.x - x0) * dx + (qy - y0) * dy));
-    if (Math.hypot(x0 + dx * t - q.x, y0 + dy * t - qy) >= L.wid) return;   // 빔 반폭 안에 들어온 탱크만
+    if (Math.hypot(x0 + dx * t - q.x, y0 + dy * t - qy) >= wid) return;   // 빔 반폭 안에 들어온 탱크만
     const hp0 = q.hp;
     q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, i, L.dmg, 'rail'));
     hits.push({ i, idx: t / step, x: q.x, y: Math.round(qy), d: hp0 - q.hp });
   });
-  p.charge = 0;   // 쏘면 충전 초기화
+  p.charge = p.mods.charge0;   // 쏘면 충전 초기화 (예열 코일이면 1단계에서 시작)
   const ms = n * 1000 / 60 / FMAP.SHOT_SPEED + 800 + 2000;
   if (!checkEnd(r, ms - 2000)) { g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), ms); }
-  return { type: 'shot', by: shooter, angle, kind: 'rail', dud: false, shells: [{ path, impact: null }], rail: { lv, wid: Math.round(L.wid), hits }, state: snapshot(r) };
+  return { type: 'shot', by: shooter, angle, kind: 'rail', dud: false, shells: [{ path, impact: null }], rail: { lv, wid: Math.round(wid), hits }, state: snapshot(r) };
 }
 
 // 중력탄: 떨어진 자리(cx, cy)에 블랙홀 → 반경 안의 탱크는 중심으로 끌려오고(서로 간격을 두고 늘어서요), 붕괴 폭발 피해를 받아요. 팀전에서 아군은 끌려오기만 하고 피해는 없어요.
@@ -635,7 +671,7 @@ function fire(r, shooter, angle, power) {
     const s = flight(g, shooter, angle, power, 'basic');
     s.path = s.path.slice(0, Math.max(3, Math.floor(s.path.length * (.35 + Math.random() * .4)))); s.impact = null; s.hit = null; s.hd = 0; s.dudShell = true;
     shells = [s]; dud = true;
-    if (kind === 'rail') g.players[shooter].charge = 0;   // 레일건은 충전만 날아가요
+    if (kind === 'rail') g.players[shooter].charge = g.players[shooter].mods.charge0;   // 레일건은 충전만 날아가요
   } else if (kind === 'cluster') {
     shells = Array.from({ length: Math.round(CLUSTER_N * g.players[shooter].mods.shells) }, () =>
       flight(g, shooter, Math.min(180, Math.max(0, angle + (Math.random() - .5) * 14)), Math.min(100, power * (.9 + Math.random() * .2)), kind));
@@ -660,7 +696,8 @@ function fire(r, shooter, angle, power) {
   }
   else shells = [flight(g, shooter, angle, power, kind)];
 
-  if (shells.length === 1 && shells[0].fizzled) dud = true;   // 맴돌다 사라진 포탄도 불발로 처리
+  if (shells.length === 1 && shells[0].fizzled) dud = true;
+  const icpt = wet ? [] : intercepts(g, shooter, shells);   // 요격탄 탱크의 티켓이 있으면 범위 안 포탄 한 발을 50%로 요격   // 맴돌다 사라진 포탄도 불발로 처리
   // 클라이언트 애니메이션(약 60프레임/초)이 끝나 폭발이 보일 때쯤 불길이 시작되도록 맞춰요
   shells.forEach(s => { if (kind === 'pierce') { if (s.impact) drill(g, shooter, s, Math.round(s.path.length * 1000 / 60 / FMAP.SHOT_SPEED) + 300, s.mul || 1); } else if (kind === 'laser') { if (s.hit != null) g.players[s.hit].hp = Math.max(0, g.players[s.hit].hp - scaleDmg(g, shooter, s.hit, SHELL.laser.dmg, 'laser')); } else if (kind === 'gravity') { if (s.impact && !grav) grav = gravityWell(g, shooter, s.impact); } else if (kind === 'electro' || kind === 'grinder') { if (s.impact && !zone) zone = zoneRun(g, shooter, s.impact, s.vx, kind); } else if (s.impact) explode(g, shooter, s.impact, kind === 'bumper' ? 'bumper' + s.gen : kind, Math.round(s.path.length * 1000 / 60 / ((SLOW_ANIM[kind] || 1) * FMAP.SHOT_SPEED)) + 300, s.mul || 1); });
   if (g.fires.length) startBurn(r);
@@ -670,7 +707,7 @@ function fire(r, shooter, angle, power) {
     g.busy = true;
     g.busyTimer = setTimeout(() => resolveShot(r, g), ms);
   }
-  return { type: 'shot', by: shooter, angle, kind, dud, wet, grav, zone, beam: kind === 'laser' ? g.players[shooter].mods.beam : 1, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd, small: !!s.small, jumbo: !!s.jumbo })), state: snapshot(r) };
+  return { type: 'shot', by: shooter, angle, kind, dud, wet, grav, zone, icpt, beam: kind === 'laser' ? g.players[shooter].mods.beam : 1, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd, small: !!s.small, jumbo: !!s.jumbo, icpt: !!s.icpt })), state: snapshot(r) };
 }
 
 function join(ws, r, name, icon) {

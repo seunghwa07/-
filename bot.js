@@ -180,7 +180,7 @@ module.exports = function (X) {
       if (k === i || q.hp <= 0 || isAlly(g, i, k)) return;
       const qy = tankY(g, q), t = clamp((q.x - x0) * dx + (qy - y0) * dy, 0, L.len), d = Math.hypot(x0 + dx * t - q.x, y0 + dy * t - qy);
       near = Math.min(near, d);
-      if (d < L.wid && Math.hypot(q.x - x0, qy - y0) <= L.len + L.wid) { const v = L.dmg * p.mods.dmg * (p.mods.kindDmg.rail || 1) * q.mods.taken; s += v; if (v >= q.hp) kills++; }
+      if (d < L.wid * p.mods.beam && Math.hypot(q.x - x0, qy - y0) <= L.len + L.wid * p.mods.beam) { const v = L.dmg * p.mods.dmg * (p.mods.kindDmg.rail || 1) * q.mods.taken; s += v; if (v >= q.hp) kills++; }
     });
     return { s, kills, near };
   }
