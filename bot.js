@@ -191,7 +191,7 @@ module.exports = function (X) {
     const { g, i } = ctx, m = g.players[i].mods, dmg = SHELL.laser.dmg * m.dmg * (m.kindDmg.laser || 1);
     const ev = a => {
       const f = laserFlight(g, i, a);
-      const s = f.hit != null && !isAlly(g, i, f.hit) ? val(ctx, f.hit, dmg) : 0;
+      const s = f.hit != null && !isAlly(g, i, f.hit) ? val(ctx, f.hit, dmg * (1 + 4 / 15 * (f.bounces | 0))) : 0;   // 튕길수록 세져요 (서버 LASER_BONUS 4 / 기본 15)
       let near = Infinity;
       if (!s) foesOf(g, i).forEach(k => f.path.forEach(pt => { near = Math.min(near, Math.hypot(pt[0] - g.players[k].x, pt[1] - tankY(g, g.players[k]))); }));
       return { a, s, key: shaped(s, near) };
