@@ -19,7 +19,8 @@ const rooms = new Map();
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
 const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept', 'plasma', 'echo', 'shadow', 'element', 'splitter'];
 const ESC_POOL = KINDS.filter(k => k !== 'rail' && k !== 'intercept' && k !== 'element');   // 에스컬레이션이 쏠 때마다 뽑는 포탄 후보 (레일건은 충전이 필요해서, 요격탄은 기본탄과 같아서 뺐어요)
-const BO_WIN = 3;   // BO3 모드: 먼저 3세트를 이기면 최종 승리
+const BO_WIN = 3;
+const BO_PICK_MS = 15000, BO_SHOW_MS = 3500;   // BO3: 세트 결과를 보여준 뒤 다음 세트 탱크를 고르는 시간   // BO3 모드: 먼저 3세트를 이기면 최종 승리
 const ZERO_NO = ['hp', 'heal', 'taken', 'drain'];   // 제로 포인트: 체력·방어·회복 증강은 의미가 없어서 선택지에서 빼요
 const FIXED_TANK = { escalation: 'escalation', laser: 'laser', sniper: 'sniper' };   // 이 모드에서는 모두가 같은 탱크예요 (탱크를 고를 수 없어요)
 const LASER_MODE_BOUNCES = 10;   // 레이저 모드: 모두 레이저 탱크 · 반사 횟수는 언제나 10회
@@ -313,15 +314,46 @@ function finishGame(r, g, animMs) {   // 승자가 정해진 뒤: 타이머 정�
   clearTimeout(g.orderTimer); clearTimeout(g.augTimer); clearTimeout(g.introTimer); BOT.clearBots(g);
   if (g.mode === 'bo3' && r.bo && !r.parent) {
     if (g.winner >= 0) r.bo.score[g.winner]++;
+    g.players.forEach((p, i) => { if (p.on && r.slots[i] && !r.bo.used[i].includes(p.tank)) r.bo.used[i].push(p.tank); });   // 이번 세트에 쓴 탱크는 다음 세트부터 못 써요
     const top = Math.max(...r.bo.score);
     g.bo = { score: r.bo.score.slice(), set: r.bo.set, need: BO_WIN, win: g.winner, done: top >= BO_WIN };
     r.bo.wait = !g.bo.done;
   }
   setTimeout(() => {
     if (r.game === g && r.parent) { r.game = null; matchEnd(r, g); }   // 토너먼트 경기: 다음 라운드로
-    else if (r.game === g && g.bo && !g.bo.done && count(r) >= 2) { r.bo.set++; r.bo.wait = false; newGame(r); toRoom(r, snapshot(r)); pushList(); }   // BO3: 다음 세트
-    else if (r.game === g) { r.game = null; if (r.bo) r.bo = null; toRoom(r, roomMsg(r)); pushList(); }
-  }, (g.bo && !g.bo.done ? 4200 : 5000) + animMs);
+    else if (r.game === g && g.bo && !g.bo.done && count(r) >= 2) boPick(r, g);   // BO3: 다음 세트 탱크 고르기
+    else if (r.game === g) { r.game = null; boRestore(r); toRoom(r, roomMsg(r)); pushList(); }
+  }, (g.bo && !g.bo.done ? BO_SHOW_MS : 5000) + animMs);
+}
+// ===== BO3: 세트 사이 탱크 고르기 (이미 쓴 탱크는 잠겨요) =====
+const boFree = (r, i) => { const u = r.bo.used[i] || [], f = KINDS.filter(k => !u.includes(k)); return f.length ? f : KINDS.slice(); };   // 다 써버렸으면 전부 다시 열려요
+function boPick(r, g) {
+  r.bo.pick = { g, picks: {}, end: Date.now() + BO_PICK_MS };
+  const pk = r.bo.pick;
+  r.slots.forEach((sl, i) => { if (sl && sl.bot) pk.picks[i] = boFree(r, i)[Math.floor(Math.random() * boFree(r, i).length)]; });   // AI 는 바로 골라요
+  pk.timer = setTimeout(() => boStart(r), BO_PICK_MS + 600);
+  r.slots.forEach((sl, i) => sl && sl.ws && send(sl.ws, { type: 'bopick', left: BO_PICK_MS, set: r.bo.set + 1, used: r.bo.used[i] || [], kinds: KINDS, cur: g.players[i] ? g.players[i].tank : null, picked: Object.keys(pk.picks).map(Number), who: r.slots.map((s2, k) => (s2 ? k : -1)).filter(k => k >= 0) }));
+  if (boAll(r)) boStart(r);
+}
+const boAll = r => r.slots.every((sl, i) => !sl || r.bo.pick.picks[i]);
+function boChoose(r, i, kind) {
+  const pk = r.bo && r.bo.pick; if (!pk || !r.slots[i] || !boFree(r, i).includes(kind)) return;
+  pk.picks[i] = kind;
+  toRoom(r, { type: 'bopicked', picked: Object.keys(pk.picks).map(Number) });
+  if (boAll(r)) setTimeout(() => boStart(r), 700);
+}
+function boStart(r) {
+  const pk = r.bo && r.bo.pick; if (!pk || r.game !== pk.g) return;
+  clearTimeout(pk.timer); r.bo.pick = null;
+  if (count(r) < 2) { r.game = null; boRestore(r); toRoom(r, roomMsg(r)); pushList(); return; }
+  r.slots.forEach((sl, i) => { if (!sl) return; const f = boFree(r, i); sl.tank = pk.picks[i] || f[Math.floor(Math.random() * f.length)]; });   // 못 고른 사람은 남은 탱크 중 랜덤
+  r.bo.set++; r.bo.wait = false; newGame(r); toRoom(r, snapshot(r)); pushList();
+}
+function boRestore(r) {   // 경기가 끝나면 대기실 탱크 선택을 원래대로
+  if (!r.bo) return;
+  if (r.bo.pick) clearTimeout(r.bo.pick.timer);
+  r.slots.forEach((sl, i) => { if (sl && r.bo.orig && r.bo.orig[i]) sl.tank = r.bo.orig[i]; });
+  r.bo = null;
 }
 
 function crater(g, cx, cy, rad) {
@@ -1327,7 +1359,7 @@ wss.on('connection', ws => {
         if (!t0 || !t1) return send(ws, { type: 'error', msg: '팀전은 양 팀에 최소 1명씩 필요해요' });
       }
       if (r.mode === 'tournament' && count(r) < 3) return send(ws, { type: 'error', msg: '토너먼트는 3명 이상부터 할 수 있어요' });
-      r.bo = r.mode === 'bo3' ? { score: Array(MAX).fill(0), set: 1 } : null;   // BO3: 세트 스코어
+      r.bo = r.mode === 'bo3' ? { score: Array(MAX).fill(0), set: 1, used: Array.from({ length: MAX }, () => []), orig: r.slots.map(sl => sl && sl.tank) } : null;   // BO3: 세트 스코어 · 이미 쓴 탱크 · 끝나면 되돌릴 원래 탱크
       newGame(r); toRoom(r, snapshot(r)); pushList();
     } else if (r && m.type === 'landed') {
       const g = r.game;
@@ -1341,6 +1373,8 @@ wss.on('connection', ws => {
       doMove(r, ws.slot, m.dir > 0 ? 1 : m.dir < 0 ? -1 : 0);
     } else if (r && m.type === 'ofire') {   // 순서 정하기: 각자 동시에 조준을 확정해요 (모두 확정하거나 시간이 끝나면 한꺼번에 발사)
       orderFire(r, ws.slot, m.angle, m.power);
+    } else if (r && m.type === 'botank') {   // BO3: 다음 세트 탱크
+      boChoose(r, ws.slot, m.kind);
     } else if (r && m.type === 'aug') {   // 증강 선택
       pickAug(r, ws.slot, m.id);
     } else if (r && m.type === 'charge') {   // 레일건: 충전하면 이번 턴이 끝나요 (최대 3번)
