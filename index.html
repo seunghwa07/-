@@ -133,19 +133,41 @@
   #lobby .cp{font-family:'Chakra Petch','Noto Sans KR',sans-serif}
   /* 모드 선택 카드: 아이콘 + 이름 + 한 줄 설명 / 선택되면 모드 색으로 빛나요 */
   /* 모드 탭: 7개가 한 줄에 들어가게 세로형 카드 (아이콘 위 · 이름 아래). 설명은 참가자 줄 옆 문구(#psub)와 마우스를 올렸을 때 툴팁으로 */
-  #mtabs{display:flex;flex-wrap:nowrap;gap:5px;margin-left:auto}
-  #mtabs button{--c:#5dffb0;position:relative;box-sizing:border-box;width:80px;height:56px;padding:5px 4px 4px;border-radius:14px;border:2px solid #2a3556;background:#0d1433;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;transition:border-color .15s,background .15s,box-shadow .15s,transform .15s}
-  #mtabs button#mteam{--c:#4dd2ff}#mtabs button#mesc{--c:#ffb347}#mtabs button#mlaser{--c:#7df3ff}#mtabs button#msniper{--c:#c58cff}#mtabs button#mtour{--c:#ffd23a}#mtabs button#mchaos{--c:#ff4d8a}#mtabs button#mzero{--c:#ff6b6b}#mtabs button#mbull{--c:#b6ff4d}#mtabs button#mbo3{--c:#7aa8ff}
-  #mtabs .mi{font-size:21px;line-height:1;flex:none;filter:grayscale(.7);opacity:.7;transition:transform .15s}
-  #mtabs .mt{display:flex;flex-direction:column;align-items:center;min-width:0;max-width:100%;line-height:1.1}
-  #mtabs .mt b{font-size:12px;white-space:nowrap;font-weight:900;color:#c3cdee;letter-spacing:-.02em}
-  #mtabs .mt small{display:none}
-  #mtabs button:hover{border-color:var(--c)}
-  #mtabs button.on{border-color:var(--c);background:linear-gradient(160deg,color-mix(in srgb,var(--c) 22%,transparent),rgba(255,255,255,.03));box-shadow:0 0 0 1px var(--c) inset,0 0 20px -4px var(--c)}
-  #mtabs button.on::after{content:"";position:absolute;left:30%;right:30%;bottom:-2px;height:3px;border-radius:3px;background:var(--c);box-shadow:0 0 8px var(--c)}
-  #mtabs button.on .mi{filter:none;opacity:1;transform:scale(1.12)}
-  #mtabs button.on .mt b{color:var(--c)}
-  #mtabs button.lock{pointer-events:none}#mtabs button.lock:not(.on){opacity:.45}   /* 방장이 아니면 보기만 해요 */
+  /* 모드 선택: 상단엔 지금 모드 버튼 하나 → 누르면 팝업에서 카드로 골라요 */
+  #mtabs{display:flex;margin-left:auto;flex:none}
+  #mbtn{--c:#5dffb0;display:flex;align-items:center;gap:12px;height:58px;padding:0 16px 0 12px;border-radius:16px;border:2px solid var(--c);background:linear-gradient(160deg,color-mix(in srgb,var(--c) 20%,transparent),rgba(255,255,255,.03));box-shadow:0 0 22px -6px var(--c),inset 0 0 0 1px color-mix(in srgb,var(--c) 40%,transparent);text-align:left;transition:transform .15s}
+  #mbtn:hover{transform:translateY(-1px)}
+  #mbtn .mi{font-size:28px;line-height:1}
+  #mbtn .mt{display:flex;flex-direction:column;line-height:1.15}
+  #mbtn .mt small{font-size:11px;font-weight:700;color:#8f9cc8;letter-spacing:.06em}
+  #mbtn .mt b{font-size:19px;font-weight:900;color:var(--c);white-space:nowrap}
+  #mbtn .mt em{font-style:normal;font-size:12px;color:#c3cdee;white-space:nowrap}
+  #mbtn .chev{font-size:14px;color:var(--c);margin-left:6px;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.06)}
+  #mbtn.lock{cursor:default}#mbtn.lock .chev{display:none}
+  #mpop{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(3,5,16,.72);backdrop-filter:blur(4px);animation:mpfade .2s ease both}
+  #mpop[hidden]{display:none}
+  #mpop .mpb{position:relative;width:1060px;padding:22px 24px 24px;border-radius:24px;background:linear-gradient(180deg,#121a40,#0a0f28);border:1px solid #2f3f6e;box-shadow:0 30px 80px #000c,0 0 0 1px rgba(255,255,255,.04) inset;animation:mpin .28s cubic-bezier(.2,1.3,.4,1) both}
+  #mpop h3{margin:0 0 4px;font-size:24px;font-weight:900;display:flex;align-items:center;gap:10px}
+  #mpop .mps{font-size:13px;color:#8f9cc8;margin-bottom:14px}
+  #mpop .mx{position:absolute;right:18px;top:16px;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.06);color:#c3cdee;font-size:20px}
+  #mpop .mg{margin-top:12px}
+  #mpop .mg h4{margin:0 0 8px;font-size:13px;font-weight:800;color:#9fb3e6;display:flex;align-items:center;gap:8px;letter-spacing:.04em}
+  #mpop .mg h4::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#2f3f6e,transparent)}
+  #mpop .mgr{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  #mpop .mgr button{--c:#5dffb0;position:relative;height:92px;padding:10px 12px;border-radius:16px;border:2px solid #2a3556;background:#0d1433;display:flex;align-items:center;gap:12px;text-align:left;transition:border-color .15s,transform .15s,box-shadow .15s}
+  #mpop .mgr button:hover{border-color:var(--c);transform:translateY(-2px);box-shadow:0 8px 20px -8px var(--c)}
+  #mpop button#mteam{--c:#4dd2ff}#mpop button#mesc{--c:#ffb347}#mpop button#mlaser{--c:#7df3ff}#mpop button#msniper{--c:#c58cff}#mpop button#mtour{--c:#ffd23a}#mpop button#mchaos{--c:#ff4d8a}#mpop button#mzero{--c:#ff6b6b}#mpop button#mbull{--c:#b6ff4d}#mpop button#mbo3{--c:#7aa8ff}
+  #mpop .mi{font-size:32px;line-height:1;flex:none;filter:grayscale(.5);opacity:.85;transition:transform .15s}
+  #mpop .mt{display:flex;flex-direction:column;gap:4px;min-width:0;line-height:1.2}
+  #mpop .mt b{font-size:16px;font-weight:900;color:#e4eaff;white-space:nowrap}
+  #mpop .mt small{font-size:12px;color:#8f9cc8;line-height:1.3}
+  #mpop .mgr button.on{border-color:var(--c);background:linear-gradient(160deg,color-mix(in srgb,var(--c) 24%,transparent),rgba(255,255,255,.03));box-shadow:0 0 0 1px var(--c) inset,0 0 24px -6px var(--c)}
+  #mpop .mgr button.on .mi{filter:none;opacity:1;transform:scale(1.1)}
+  #mpop .mgr button.on .mt b{color:var(--c)}
+  #mpop .mgr button.on::after{content:'✓';position:absolute;right:10px;top:8px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:900;color:#06112a;background:var(--c)}
+  #mpop .mgr button.lock{pointer-events:none}#mpop .mgr button.lock:not(.on){opacity:.45}
+  @keyframes mpfade{from{opacity:0}to{opacity:1}}
+  @keyframes mpin{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
   #lobby .bar{width:4px;height:18px;border-radius:2px;flex:none}
   #lobby .sec{font-size:20px;font-weight:900}
   #lobby .ro{pointer-events:none}
@@ -791,6 +813,24 @@
 
 <div id="room" hidden>
 <div id="lobby">
+  <div id="mpop" hidden><div class="mpb"><button class="mx" aria-label="닫기">✕</button><h3>🎮 게임 모드</h3><div class="mps" id="mps">함께 할 규칙을 골라요 · 방장만 바꿀 수 있어요</div>
+      <div class="mg"><h4>🎯 기본</h4><div class="mgr">
+        <button id="mffa" role="tab" title="마지막 한 명이 이겨요"><span class="mi">🎯</span><span class="mt"><b>개인전</b><small>모두가 서로의 적</small></span></button>
+        <button id="mteam" role="tab" title="같은 팀은 맞혀도 피해가 없어요"><span class="mi">⚔️</span><span class="mt"><b>팀전</b><small>A팀 vs B팀</small></span></button>
+        <button id="mbo3" role="tab" title="이기면 1세트 승리 · 먼저 3세트를 이기면 최종 승리"><span class="mi">🏅</span><span class="mt"><b>BO3</b><small>3세트 선승</small></span></button>
+      </div></div>
+      <div class="mg"><h4>⚡ 특수 규칙</h4><div class="mgr">
+        <button id="mesc" role="tab" title="어떤 탄이 나갈지는 발사 순간에 정해져요"><span class="mi">🎲</span><span class="mt"><b>에스컬레이션</b><small>쏠 때마다 랜덤 포탄</small></span></button>
+        <button id="mlaser" role="tab" title="모두 레이저 탱크 · 한 방이면 끝"><span class="mi">🔦</span><span class="mt"><b>레이저</b><small>벽에 튕기는 즉사 빔</small></span></button>
+        <button id="msniper" role="tab" title="모두 스나이퍼 탱크 · 한 방 한 방이 묵직해요"><span class="mi">🔭</span><span class="mt"><b>스나이퍼</b><small>모두 저격탄 탱크</small></span></button>
+        <button id="mzero" role="tab" title="모두 체력 1 · 한 방만 맞아도 파괴"><span class="mi">💀</span><span class="mt"><b>제로 포인트</b><small>한 방이면 끝</small></span></button>
+        <button id="mchaos" role="tab" title="2턴마다 증강 선택 · 저주가 섞여 나와요"><span class="mi">🃏</span><span class="mt"><b>카오스</b><small>무작위 증강 · 저주</small></span></button>
+      </div></div>
+      <div class="mg"><h4>🎉 이벤트</h4><div class="mgr">
+        <button id="mtour" role="tab" title="3~6명 · 목표 맞추기로 대진을 정하고 1:1로 겨뤄요"><span class="mi">🏆</span><span class="mt"><b>토너먼트</b><small>3~6명 · 1:1 대진</small></span></button>
+        <button id="mbull" role="tab" title="모두 같은 조건에서 목표물을 한 발씩 · 가장 가까우면 승리"><span class="mi">🏹</span><span class="mt"><b>불스아이</b><small>목표물 맞추기</small></span></button>
+      </div></div>
+  </div></div>
   <!-- 상단: 나가기 / 방 코드 / 모드 -->
   <div style="height:56px;display:flex;align-items:center;gap:0;flex-shrink:0">
     <button id="leave" style="flex:none;white-space:nowrap;height:48px;padding:0 18px 0 12px;display:flex;align-items:center;gap:6px;border-radius:14px;border:1px solid #3a2a4a;background:#1a1030;color:#ffb3c0;font-size:16px;font-weight:700">
@@ -799,24 +839,13 @@
     </button>
     <div style="flex:none;display:flex;align-items:center;gap:12px;margin-left:20px;white-space:nowrap">
       <span style="font-size:14px;font-weight:700;color:#a9b8de">방 코드</span>
-      <span id="rc" class="cp" style="font-weight:700;font-size:38px;letter-spacing:.18em;line-height:1;color:#fff;text-shadow:0 0 18px rgba(77,210,255,.55);padding-left:.18em"></span>
+      <span id="rc" class="cp" style="font-weight:700;font-size:34px;letter-spacing:.14em;line-height:1;color:#fff;text-shadow:0 0 18px rgba(77,210,255,.55);padding-left:.18em"></span>
       <button id="copy" aria-label="방 코드 복사" style="flex:none;white-space:nowrap;height:42px;padding:0 13px;display:flex;align-items:center;gap:6px;border-radius:12px;border:1px solid #2f5f7f;background:rgba(77,210,255,.1);color:#9fe6ff;font-size:15px;font-weight:700">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h8"></path></svg>
         <span id="copyt">복사</span>
       </button>
     </div>
-    <div id="mtabs" role="tablist" aria-label="게임 모드">
-      <button id="mffa" role="tab" title="마지막 한 명이 이겨요"><span class="mi">🎯</span><span class="mt"><b>개인전</b><small>모두가 서로의 적</small></span></button>
-      <button id="mteam" role="tab" title="같은 팀은 맞혀도 피해가 없어요"><span class="mi">⚔️</span><span class="mt"><b>팀전</b><small>A팀 vs B팀</small></span></button>
-      <button id="mesc" role="tab" title="어떤 탄이 나갈지는 발사 순간에 정해져요"><span class="mi">🎲</span><span class="mt"><b>에스컬레이션</b><small>쏠 때마다 랜덤 포탄</small></span></button>
-      <button id="mlaser" role="tab" title="모두 레이저 탱크 · 한 방이면 끝"><span class="mi">🔦</span><span class="mt"><b>레이저</b><small>벽에 튕기는 즉사 빔</small></span></button>
-      <button id="msniper" role="tab" title="모두 스나이퍼 탱크 · 한 방 한 방이 묵직해요"><span class="mi">🔭</span><span class="mt"><b>스나이퍼</b><small>모두 저격탄 탱크</small></span></button>
-      <button id="mtour" role="tab" title="3~6명 · 목표 맞추기로 대진을 정하고 1:1로 겨뤄요"><span class="mi">🏆</span><span class="mt"><b>토너먼트</b><small>3~6명 · 1:1 대진</small></span></button>
-      <button id="mchaos" role="tab" title="2턴마다 증강 선택 · 저주가 섞여 나와요"><span class="mi">🃏</span><span class="mt"><b>카오스</b><small>무작위 증강 · 저주</small></span></button>
-      <button id="mzero" role="tab" title="모두 체력 1 · 한 방만 맞아도 파괴"><span class="mi">💀</span><span class="mt"><b>제로 포인트</b><small>한 방이면 끝</small></span></button>
-      <button id="mbull" role="tab" title="모두 같은 조건에서 목표물을 한 발씩 · 가장 가까우면 승리"><span class="mi">🏹</span><span class="mt"><b>불스아이</b><small>목표물 맞추기</small></span></button>
-      <button id="mbo3" role="tab" title="이기면 1세트 승리 · 먼저 3세트를 이기면 최종 승리"><span class="mi">🏅</span><span class="mt"><b>BO3</b><small>3세트 선승</small></span></button>
-    </div>
+    <div id="mtabs"><button id="mbtn" aria-haspopup="dialog"><span class="mi">🎯</span><span class="mt"><small>게임 모드</small><b>개인전</b><em>모두가 서로의 적</em></span><span class="chev">변경 ▾</span></button></div>
   </div>
 
   <!-- 본문 -->
@@ -826,7 +855,7 @@
       <div style="display:flex;align-items:baseline;gap:14px">
         <span class="bar" style="background:#5dffb0;align-self:center"></span>
         <span id="ptitle" class="sec" style="white-space:nowrap"></span>
-        <span id="pcount" class="cp" style="font-size:20px;font-weight:700;color:#5dffb0"></span>
+        <span id="pcount" class="cp" style="font-size:20px;font-weight:700;color:#5dffb0;white-space:nowrap;flex:none"></span>
         <span id="psub" style="font-size:14px;color:#a9b8de"></span>
       </div>
       <div id="cards" style="flex:1;min-height:0"></div>
@@ -1250,7 +1279,8 @@ function renderRoom() {
   // 모드 전환
   const fixm = !solo && (st.mode === 'escalation' || st.mode === 'laser' || st.mode === 'sniper') ? st.mode : null, escm = !!fixm, tour = !solo && st.mode === 'tournament', chaos = !solo && st.mode === 'chaos', nm3 = !solo && ['zero', 'bull', 'bo3'].includes(st.mode) ? st.mode : null, mdn = nm3 || (chaos ? 'chaos' : team ? 'team' : fixm === 'escalation' ? 'esc' : fixm === 'laser' ? 'laser' : fixm === 'sniper' ? 'sniper' : tour ? 'tour' : 'ffa');
   const canPick = isHost && !solo;   // 솔로에서는 개인전 고정 · 방장만 바꿀 수 있어요
-  [['mffa', 'ffa'], ['mteam', 'team'], ['mesc', 'esc'], ['mlaser', 'laser'], ['msniper', 'sniper'], ['mtour', 'tour'], ['mchaos', 'chaos'], ['mzero', 'zero'], ['mbull', 'bull'], ['mbo3', 'bo3']].forEach(([id, k]) => { const b = $(id); b.classList.toggle('on', mdn === k); b.classList.toggle('lock', !canPick); b.setAttribute('aria-selected', mdn === k); });
+  [['mffa', 'ffa'], ['mteam', 'team'], ['mesc', 'esc'], ['mlaser', 'laser'], ['msniper', 'sniper'], ['mtour', 'tour'], ['mchaos', 'chaos'], ['mzero', 'zero'], ['mbull', 'bull'], ['mbo3', 'bo3']].forEach(([id, k]) => { const b = $(id); b.classList.toggle('on', mdn === k); b.classList.toggle('lock', !canPick); b.setAttribute('aria-selected', mdn === k); if (mdn === k) paintModeBtn(b); });
+  $('mbtn').classList.toggle('lock', !canPick); $('mps').textContent = canPick ? '함께 할 규칙을 골라요 · 고르면 바로 바뀌어요' : '방장만 모드를 바꿀 수 있어요 · 지금 모드를 확인해요';
   // 참가자 / 팀 구성
   $('ptitle').textContent = team ? '팀 구성' : '참가자';
   $('pcount').textContent = `${cnt} / 6`;
@@ -1304,6 +1334,16 @@ $('msniper').onclick = () => sendMsg({ type: 'mode', mode: 'sniper' });
 $('mtour').onclick = () => sendMsg({ type: 'mode', mode: 'tournament' });
 $('mchaos').onclick = () => sendMsg({ type: 'mode', mode: 'chaos' });
 $('mzero').onclick = () => sendMsg({ type: 'mode', mode: 'zero' });
+function paintModeBtn(src) {   // 상단 버튼: 지금 모드의 아이콘 · 이름 · 한 줄 설명 · 색
+  const b = $('mbtn'); b.querySelector('.mi').textContent = src.querySelector('.mi').textContent;
+  b.querySelector('.mt b').textContent = src.querySelector('.mt b').textContent; b.querySelector('.mt em').textContent = src.querySelector('.mt small').textContent;
+  b.style.setProperty('--c', getComputedStyle(src).getPropertyValue('--c').trim() || '#5dffb0');
+}
+const closeModes = () => { $('mpop').hidden = true; };
+$('mbtn').onclick = () => { if (!$('mbtn').classList.contains('lock')) $('mpop').hidden = false; };
+$('mpop').querySelector('.mx').onclick = closeModes;
+$('mpop').onclick = e => { if (e.target.id === 'mpop') closeModes(); else if (e.target.closest('.mgr button')) setTimeout(closeModes, 160); };
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('mpop').hidden) closeModes(); });
 $('mbull').onclick = () => sendMsg({ type: 'mode', mode: 'bull' });
 $('mbo3').onclick = () => sendMsg({ type: 'mode', mode: 'bo3' });
 $('start').onclick = () => { enterFS(); sendMsg({ type: 'start' }); };
