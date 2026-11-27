@@ -15,7 +15,7 @@
 //          grav    스나이퍼탄이 받는 중력 ×N   hitr  스나이퍼탄 피격 범위 ×N   scope  조준 점선(스나이퍼) 길이 ×N
 //          heal    고르는 즉시 체력 +N 회복   rad  폭발 범위 ×N   dud  유도탄 불발 확률 ×N   fireMs  소이탄 불길·일렉트로 전기장·그라인더 톱니바퀴 지속 시간 ×N   spread  융단폭격 미사일 간격 ×N
 //          turns   냉각탄 얼음·물폭탄 물 범위가 남는 차례 +N   drain  흡혈탄 회복 비율 +N(0.3 = +30%p)   charge0  레일건 발사 뒤 충전 시작 단계(기본 0)
-//          arc     플라즈마 부채꼴 각도 ×N(기본 15°)   fall   플라즈마 거리 감쇠 ×N(1 = 기본, 0.5 = 멀리서도 피해가 절반만 줄어요)
+//          thru    플라즈마가 지형(벽)을 관통(true)   arc     플라즈마 부채꼴 각도 ×N(기본 15°)   fall   플라즈마 거리 감쇠 ×N(1 = 기본, 0.5 = 멀리서도 피해가 절반만 줄어요)
 //          icptR   요격탄 요격 범위 ×N   icptP  요격 성공 확률 +N(0.2 = +20%p)   tickets  요격 터렛이 적이 한 번 쏠 때 요격을 시도하는 포탄 수 +N
 //   (아래 목록은 틀이 잘 도는지 확인하려고 넣은 샘플이에요. 마음대로 바꾸고 늘리세요)
 (function (root) {
@@ -75,7 +75,7 @@
     { id: 'heavyball', tank: 'bumper', rarity: 'common', icon: '🎱', name: '묵직한 공',   desc: '범퍼탄 폭발 범위 ×1.25',           mods: { rad: 1.25 } },
     // ----- 중력탄 -----
     { id: 'eventh',   tank: 'gravity', rarity: 'common', icon: '🌀', name: '사건의 지평선', desc: '블랙홀 끌어당김 범위·붕괴 크레이터 ×1.15', mods: { rad: 1.15 } },
-    { id: 'collapse', tank: 'gravity', rarity: 'rare', icon: '💫', name: '붕괴 촉매',     desc: '중력탄 붕괴 피해 ×1.25 (24 → 30)',         mods: { kindDmg: { gravity: 1.25 } } },
+    { id: 'collapse', tank: 'gravity', rarity: 'rare', icon: '💫', name: '붕괴 촉매',     desc: '중력탄 붕괴 피해 ×1.25 (16 → 20)',         mods: { kindDmg: { gravity: 1.25 } } },
     // ----- 냉각탄 -----
     { id: 'coldfront',  tank: 'frost', rarity: 'common', icon: '🥶', name: '한파',         desc: '얼음 바닥 범위 ×1.5',                      mods: { area: 1.5 } },
     { id: 'shard',      tank: 'frost', rarity: 'rare', icon: '🧊', name: '얼음 파편',     desc: '냉각탄 피해 ×1.5 (14 → 21)',               mods: { kindDmg: { frost: 1.5 } } },
@@ -111,9 +111,9 @@
     { id: 'cleartone',  tank: 'echo', rarity: 'rare',   icon: '🎼', name: '맑은 음색',     desc: '멀리서도 피해가 덜 줄어요 (사거리 끝 6 → 17)',           mods: { fall: .5 } },
     { id: 'sonicboom',  tank: 'echo', rarity: 'epic',   icon: '💥', name: '소닉 붐',       desc: '에코 피해 ×1.3 · 부채꼴 각도 ×1.2 (30° → 36°) · 거리 감쇠 ×0.6', mods: { kindDmg: { echo: 1.3 }, arc: 1.2, fall: .6 } },
     // ----- 섀도우 -----
-    { id: 'dusk',       tank: 'shadow', rarity: 'common', icon: '🌆', name: '땅거미',         desc: '어둠 영역 반경 ×1.3 (150 → 195)',                       mods: { area: 1.3 } },
-    { id: 'shadeblade', tank: 'shadow', rarity: 'common', icon: '🗡️', name: '그림자 칼날',   desc: '섀도우 피해 ×1.4 (15 → 21)',                            mods: { kindDmg: { shadow: 1.4 } } },
-    { id: 'longnight',  tank: 'shadow', rarity: 'rare',   icon: '🌙', name: '긴 밤',          desc: '어둠 영역이 남는 차례 +2 (3턴 → 5턴)',                  mods: { turns: 2 } },
+    { id: 'dusk',       tank: 'shadow', rarity: 'common', icon: '🌆', name: '땅거미',         desc: '어둠 영역 반경 ×1.3 (200 → 260)',                       mods: { area: 1.3 } },
+    { id: 'shadeblade', tank: 'shadow', rarity: 'common', icon: '🗡️', name: '그림자 칼날',   desc: '섀도우 피해 ×1.4 (24 → 34)',                            mods: { kindDmg: { shadow: 1.4 } } },
+    { id: 'longnight',  tank: 'shadow', rarity: 'rare',   icon: '🌙', name: '긴 밤',          desc: '어둠 영역이 남는 차례 +2 (4턴 → 6턴)',                  mods: { turns: 2 } },
     // ----- 에픽 · 전설 (잘 안 나오는 대신 강해요) -----
     { id: 'bastion',   tank: null, rarity: 'epic',      icon: '🏯', name: '철옹성',       desc: '최대 체력 +80 · 받는 피해 ×0.9',                   mods: { hp: 80, taken: .9 } },
     { id: 'warlord',   tank: null, rarity: 'epic',      icon: '🦾', name: '전쟁 군주',     desc: '주는 피해 ×1.25 · 최대 체력 +20',                  mods: { dmg: 1.25, hp: 20 } },
@@ -129,15 +129,15 @@
     { id: 'bloodking', tank: 'vampire', rarity: 'legendary', icon: '🧛', name: '혈족의 왕',   desc: '흡혈탄 피해 ×1.2 · 회복 비율 +50%p (50% → 100%)',  mods: { kindDmg: { vampire: 1.2 }, drain: .5 } },
     { id: 'meltdown',  tank: 'plasma', rarity: 'epic',      icon: '☢️', name: '노심 융해',     desc: '플라즈마 피해 ×1.3 · 부채꼴 각도 ×1.3 (15° → 19.5°) · 거리 감쇠 ×0.6', mods: { kindDmg: { plasma: 1.3 }, arc: 1.3, fall: .6 } },
     { id: 'eclipse',   tank: 'shadow', rarity: 'epic',      icon: '🌑', name: '개기일식',       desc: '어둠 영역 반경 ×1.4 · 남는 차례 +1 · 섀도우 피해 ×1.2',  mods: { area: 1.4, turns: 1, kindDmg: { shadow: 1.2 } } },
-    { id: 'supernova', tank: 'plasma', rarity: 'legendary', icon: '🌠', name: '초신성',         desc: '플라즈마 피해 ×1.5 · 부채꼴 각도 ×1.5 (15° → 22.5°) · 거리 감쇠 ×0.4', mods: { kindDmg: { plasma: 1.5 }, arc: 1.5, fall: .4 } },
-    { id: 'voidlord',  tank: 'shadow', rarity: 'legendary', icon: '🕳️', name: '심연의 군주',    desc: '어둠 영역 반경 ×1.6 · 남는 차례 +2 · 섀도우 피해 ×1.5 (15 → 23)', mods: { area: 1.6, turns: 2, kindDmg: { shadow: 1.5 } } },
+    { id: 'supernova', tank: 'plasma', rarity: 'legendary', icon: '🌠', name: '초신성',         desc: '플라즈마 피해 ×1.5 · 부채꼴 각도 ×1.5 (15° → 22.5°) · 거리 감쇠 ×0.4 · 지형(벽)을 관통해요', mods: { kindDmg: { plasma: 1.5 }, arc: 1.5, fall: .4, thru: true } },
+    { id: 'voidlord',  tank: 'shadow', rarity: 'legendary', icon: '🕳️', name: '심연의 군주',    desc: '어둠 영역 반경 ×1.6 · 남는 차례 +2 · 섀도우 피해 ×1.5 (24 → 36)', mods: { area: 1.6, turns: 2, kindDmg: { shadow: 1.5 } } },
   ];
   const byId = Object.fromEntries(POOL.map(a => [a.id, a]));
   const SPECIFIC_SLOTS = 1;   // 선택지 3개 중 탱크 전용을 최소 몇 개 넣을지 (전용 증강이 있는 탱크만)
   const PICK_MS = 20000;      // 선택 제한 시간 (넘기면 랜덤으로 골라져요)
 
   function calc(ids) {   // 가진 증강들을 합쳐서 최종 능력치 계산
-    const m = { hp: 0, dmg: 1, taken: 1, fuel: 1, kindDmg: {}, shells: 1, bounce: 0, beam: 1, area: 1, dual: false, missiles: 0, drills: false, split: 2, jumbo: false, rad: 1, dud: 1, fireMs: 1, spread: 1, grav: 1, hitr: 1, scope: 1, turns: 0, drain: 0, charge0: 0, icptR: 1, icptP: 0, tickets: 0, arc: 1, fall: 1 };
+    const m = { hp: 0, dmg: 1, taken: 1, fuel: 1, kindDmg: {}, shells: 1, bounce: 0, beam: 1, area: 1, dual: false, missiles: 0, drills: false, split: 2, jumbo: false, rad: 1, dud: 1, fireMs: 1, spread: 1, grav: 1, hitr: 1, scope: 1, turns: 0, drain: 0, charge0: 0, icptR: 1, icptP: 0, tickets: 0, arc: 1, fall: 1, thru: false };
     ids.forEach(id => {
       const a = byId[id]; if (!a) return;
       const x = a.mods || {};
@@ -145,7 +145,7 @@
       m.shells *= x.shells || 1; m.bounce += x.bounce || 0; m.beam *= x.beam || 1; m.area *= x.area || 1; m.dual = m.dual || !!x.dual;
       m.missiles += x.missiles || 0; m.drills = m.drills || !!x.drills; m.split = Math.max(m.split, x.split || 2); m.jumbo = m.jumbo || !!x.jumbo;
       m.rad *= x.rad || 1; m.grav *= x.grav || 1; m.hitr *= x.hitr || 1; m.scope *= x.scope || 1; m.fireMs *= x.fireMs || 1; m.spread *= x.spread || 1; m.dud *= x.dud === undefined ? 1 : x.dud;
-      m.turns += x.turns || 0; m.drain += x.drain || 0; m.charge0 = Math.max(m.charge0, x.charge0 || 0); m.icptR *= x.icptR || 1; m.icptP += x.icptP || 0; m.tickets += x.tickets || 0; m.arc *= x.arc || 1; m.fall *= x.fall === undefined ? 1 : x.fall;
+      m.turns += x.turns || 0; m.drain += x.drain || 0; m.charge0 = Math.max(m.charge0, x.charge0 || 0); m.icptR *= x.icptR || 1; m.icptP += x.icptP || 0; m.tickets += x.tickets || 0; m.arc *= x.arc || 1; m.thru = m.thru || !!x.thru; m.fall *= x.fall === undefined ? 1 : x.fall;
       Object.entries(x.kindDmg || {}).forEach(([k, v]) => { m.kindDmg[k] = (m.kindDmg[k] || 1) * v; });
     });
     return m;

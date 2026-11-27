@@ -704,7 +704,7 @@
       <button id="mesc" role="tab" title="어떤 탄이 나갈지는 발사 순간에 정해져요"><span class="mi">🎲</span><span class="mt"><b>에스컬레이션</b><small>쏠 때마다 랜덤 포탄</small></span></button>
       <button id="mlaser" role="tab" title="모두 레이저 탱크 · 한 방이면 끝"><span class="mi">🔦</span><span class="mt"><b>레이저</b><small>벽에 튕기는 즉사 빔</small></span></button>
       <button id="msniper" role="tab" title="모두 스나이퍼 탱크 · 한 방 한 방이 묵직해요"><span class="mi">🔭</span><span class="mt"><b>스나이퍼</b><small>모두 저격탄 탱크</small></span></button>
-      <button id="mtour" role="tab" title="3~4명 · 목표 맞추기로 대진을 정하고 1:1로 겨뤄요"><span class="mi">🏆</span><span class="mt"><b>토너먼트</b><small>3~4명 · 1:1 대진</small></span></button>
+      <button id="mtour" role="tab" title="3~6명 · 목표 맞추기로 대진을 정하고 1:1로 겨뤄요"><span class="mi">🏆</span><span class="mt"><b>토너먼트</b><small>3~6명 · 1:1 대진</small></span></button>
     </div>
   </div>
 
@@ -783,7 +783,7 @@ document.addEventListener('touchmove', e => { if (e.touches && e.touches.length 
 <script>
 const $ = id => document.getElementById(id);
 const cv = $('c'), ctx = cv.getContext('2d'), W = FMAP.W, H = FMAP.H, K = FMAP.K, TS = FMAP.TS, Z = 1.6, TGS = 1.9, VW = 2000, VH = 1200, MPP = 10;   // VW×VH: 카메라가 비추는 월드 범위, MPP: 1m = 10px
-const COLORS = ['#3d8bff', '#ff3b5c', '#2fe86a', '#ffb41f'];   // 네온 배경에서 잘 보이는 밝은 색
+const COLORS = ['#3d8bff', '#ff3b5c', '#2fe86a', '#ffb41f', '#b86bff', '#2fe0d8'];   // 네온 배경에서 잘 보이는 밝은 색
 const ICONS = [['🪖', '탱크'], ['🐸', '개구리'], ['🚀', '우주선'], ['🐱', '고양이'], ['🤖', '로봇'], ['🦖', '공룡']];
 const MAPS = FMAP.MAPS, RANDOM = MAPS.length;
 let ws = null, wsUrl = '', pending = null, retry = null;
@@ -791,13 +791,13 @@ let me = -1, st = null, anim = null, boom = null, fresh = true, rooms = [], curG
 const aims = [90, 90, 90, 90], my = { angle: 90, power: 50 };
 const TEAMC = ['#3d8bff', '#ff3b5c'], TEAMN = ['A팀', 'B팀'];   // 팀전에서는 팀 색으로 통일해요
 const pc = i => (st && st.mode === 'team' && st.teams && st.teams[i] != null ? TEAMC[st.teams[i]] : COLORS[i]);
-const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최소 1번 충전해야 발사 가능 · 최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 15/28/45/70'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 24'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크는 0.3초 간격으로 8 피해씩 딱 2번(총 16) 맞아요'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿아 있는 동안 0.1초마다 3 피해(탱크당 최대 6번) · 너무 가파른 벽에서는 멈춰요'], ['frost', '냉각탄', '얼음 포탄 · 맞은 자리 주변 바닥이 3턴간 얼어요 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동할 수 없어요(조준·발사는 가능) · 얼음 바닥 위에서는 이동이 느려지고 연료를 2배로 써요 · 피해 14'], ['vampire', '흡혈탄', '기본탄과 같은 피해(17) · 적에게 입힌 피해의 절반만큼 내 체력을 회복해요 · 맞히지 못하면 회복도 없어요'], ['water', '물폭탄', '맞은 자리에 물폭탄이 터져 주변에 반원형 물 범위(반경 200)가 3턴간 남아요 · 물 범위 안의 탱크가 포탄을 쏘면 50% 확률로 불발 · 피해 26'], ['shadow', '섀도우', '까만 포탄 · 착탄 자리에 작은 어둠 영역이 3턴간 남아요 · 영역 안에 들어간 탱크는 시야가 가려져 화면이 까맣게 되고 자기 탱크만 보여요 · 밖에서는 영역 안의 탱크가 테두리만 보여요 · 피해 15'], ['explosive', '고폭탄', '바퀴가 없어 이동 불가(연료 0) · 대신 사거리가 맵 전체를 덮어요 · 피해 34(기본탄의 2배) · 폭발도 더 커요'], ['intercept', '요격탄', '탄은 기본탄과 같아서 평소처럼 쏠 수 있어요 · 2턴마다(첫 차례 · 3번째 · 5번째…) 있는 자리에 요격 터렛을 설치해요 · 터렛은 다음 설치 때까지 남고, 적 포탄이 터렛 범위에 들어오면 50% 확률로 격추해요'], ['plasma', '플라즈마', '조준한 방향으로 15° 부채꼴 광역 플라즈마를 뿜어요 · 파워 무관 · 사거리가 맵 끝까지 닿지만 멀리서 맞을수록 피해가 줄어요 (가까이 34 → 맵 맨 끝 4) · 범위 안의 적을 모두 맞혀요 · 지형에 가려진 적은 맞지 않아요'], ['echo', '에코', '조준한 방향으로 30° 부채꼴 음파를 쏴요 · 파워 무관 · 플라즈마처럼 범위 안의 적을 모두 맞히지만 사거리가 더 짧고(약 2520) 멀수록 약해져요 (가장 가까이 28 → 사거리 끝 6) · 음파라서 벽(지형)을 그대로 통과해요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
+const TANKS = [['basic', '기본탄', '균형 잡힌 포탄 · 정통으로 6발 맞으면 파괴'], ['incendiary', '소이탄', '착탄 지점이 3초간 불타요 · 불 위의 탱크는 0.5초마다 2 피해'], ['cluster', '집속탄', '작은 포탄 8발을 한 번에 · 흩어져 날아가요'], ['homing', '유도탄', '가까운 적을 추적 · 30% 불발 · 약한 피해'], ['heavy', '광폭탄', '크고 무거운 포탄 · 느리고 사거리 70% · 피해 4배(68) · 폭발 면적 6배'], ['pierce', '관통탄', '드릴탄이 땅을 파고 뚫고 지나가 바로 공격 · 피해는 기본탄보다 약간 약함 · 맞은 적은 드릴로 2씩 3번 더 드르륵 갈아요 · 피격 범위가 넓어요'], ['laser', '레이저', '직선으로 날아가며 벽·맵 경계에 4번 반사 · 파워 무관 · 피해 22 · 판정이 넓어요 · 화면을 드래그해 적을 찾을 수 있어요'], ['carpet', '융단 폭격', '가벼운 신호탄을 던져요(피해 없음) · 땅에서 조금 구르며 붉은 연기와 빛이 피어나고 · 잠시 뒤 위에서 미사일 3발이 수직으로 떨어져요 · 미사일 1발당 정통 20 · 스치면 13 피해'], ['bumper', '범퍼', '탱탱볼처럼 2번 튀며 좌우로 2개씩 쪼개져요 · 직격 20 · 한 번 튄 탄 12 · 가장 작은 탄 8'], ['sniper', '스나이퍼', '작고 가벼운 저격탄 · 중력을 거의 안 받아 곧고 빠르게 날아가요 · 탄이 작아 맞추기 어렵지만 · 직격 50(체력의 절반) 피해'], ['rail', '레일건', '최소 1번 충전해야 발사 가능 · 최대 3번 충전(턴 소모)할수록 사거리·범위·피해 UP · 벽을 관통하는 직선 빔 · 쏘면 충전 초기화 · 피해 12/22/36/56'], ['gravity', '중력탄', '광폭탄과 같은 사거리 · 떨어진 곳에 블랙홀 생성 · 범위 안의 탱크는 끌려와 폭파 피해 16'], ['electro', '일렉트로', '포탄이 땅에 닿으면 상·하로 갈라져 전깃줄이 생겨요 · 전깃줄(전기장)이 3초 동안 앞으로 나아가며 · 닿은 탱크는 0.3초 간격으로 8 피해씩 딱 2번(총 16) 맞아요'], ['grinder', '그라인더', '포탄이 땅에 닿으면 톱니바퀴가 3초 동안 땅을 타고 앞으로 굴러가요 · 닿아 있는 동안 0.1초마다 3 피해(탱크당 최대 6번) · 높은 벽도 타고 올라가요'], ['frost', '냉각탄', '얼음 포탄 · 맞은 자리 주변 바닥이 3턴간 얼어요 · 얼음 위에 있던 탱크는 자기 다음 차례에 이동할 수 없어요(조준·발사는 가능) · 얼음 바닥 위에서는 이동이 느려지고 연료를 2배로 써요 · 피해 14'], ['vampire', '흡혈탄', '기본탄과 같은 피해(17) · 적에게 입힌 피해의 절반만큼 내 체력을 회복해요 · 맞히지 못하면 회복도 없어요'], ['water', '물폭탄', '맞은 자리에 물폭탄이 터져 주변에 반원형 물 범위(반경 200)가 3턴간 남아요 · 물 범위 안의 탱크가 포탄을 쏘면 50% 확률로 불발 · 피해 26'], ['shadow', '섀도우', '까만 포탄 · 착탄 자리에 어둠 영역이 4턴간 남아요 · 영역 안에 들어간 탱크는 시야가 가려져 화면이 까맣게 되고 자기 탱크만 보여요 · 밖에서는 영역 안의 탱크가 테두리만 보여요 · 피해 24'], ['explosive', '고폭탄', '바퀴가 없어 이동 불가(연료 0) · 대신 사거리가 맵 전체를 덮어요 · 피해 34(기본탄의 2배) · 폭발도 더 커요'], ['intercept', '요격탄', '탄은 기본탄과 같아서 평소처럼 쏠 수 있어요 · 2턴마다(첫 차례 · 3번째 · 5번째…) 있는 자리에 요격 터렛을 설치해요 · 터렛은 다음 설치 때까지 남고, 적 포탄이 터렛 범위에 들어오면 50% 확률로 격추해요'], ['plasma', '플라즈마', '조준한 방향으로 15° 부채꼴 광역 플라즈마를 뿜어요 · 파워 무관 · 사거리가 맵 끝까지 닿지만 멀리서 맞을수록 피해가 줄어요 (가까이 34 → 맵 맨 끝 4) · 범위 안의 적을 모두 맞혀요 · 지형에 가려진 적은 맞지 않아요'], ['echo', '에코', '조준한 방향으로 30° 부채꼴 음파를 쏴요 · 파워 무관 · 플라즈마처럼 범위 안의 적을 모두 맞히지만 사거리가 더 짧고(약 2520) 멀수록 약해져요 (가장 가까이 28 → 사거리 끝 6) · 음파라서 벽(지형)을 그대로 통과해요'], ['random', '랜덤', '게임이 시작될 때 탱크 종류가 무작위로 정해져요 · 누가 뭘 골랐는지는 그때까지 비밀']];
 const TN = Object.fromEntries(TANKS.map(t => [t[0], t[1]]));
 TN.escalation = '에스컬레이션';
 const ESC_DESC = '에스컬레이션 모드 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 어떤 탄이 나갈지는 발사하는 순간 정해져요(레일건·요격탄 제외) · 탱크는 고를 수 없고 조준 점선도 없어요';
 const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = Math.ceil(Math.hypot(FMAP.W, FMAP.H)), PLASMA_MIN = 4 / 34;   // 플라즈마: 부채꼴 반각(총 15°) / 사거리(px) / 최대 사거리에서의 피해 비율 (서버 PLASMA_* 와 같은 값)
 const ECHO_HALF = 15 * Math.PI / 180, ECHO_RANGE = 2520, ECHO_MIN = 6 / 28;   // 에코: 부채꼴 반각(총 30°) / 사거리(px) / 사거리 끝에서의 피해 비율 (서버 ECHO_* 와 같은 값)
-const RAIL_LEN = [1500, 2300, 3200, 4600], RAIL_WF = [1, 1.5, 2.1, 3], RAIL_MAX = 3, RAIL_AIM_MIN = -45;   // 레일건 충전 단계별 사거리(px) / 빔 반폭 배율(×탱크 피격 반경) — 서버(server.js RAIL_LV)와 같아야 해요
+const RAIL_LEN = [1500, 2200, 3000, 4200], RAIL_WF = [1, 1.4, 1.9, 2.6], RAIL_MAX = 3, RAIL_AIM_MIN = -45;   // 레일건 충전 단계별 사거리(px) / 빔 반폭 배율(×탱크 피격 반경) — 서버(server.js RAIL_LV)와 같아야 해요
 
 const ls = {
   get: k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
@@ -876,6 +876,19 @@ function toWs(u) {
 }
 function setConn(level, text) { $('conn').textContent = ['🔴 ', '🟡 ', '🟢 '][level] + text; }
 
+// ---------- 연결 점검: iPad 가 절전·백그라운드에 갔다 오면 소켓이 조용히 죽어 있는 경우가 많아요 ----------
+let lastRx = Date.now();
+function probe() {   // 지금 연결이 살아 있는지 확인: 응답이 없으면 끊고 다시 연결해요
+  if (!ws) return;
+  if (ws.readyState > 1) { try { ws.onclose && ws.onclose(); } catch (e) {} return; }
+  if (ws.readyState !== 1) return;
+  const s = ws, t0 = Date.now(); try { s.send('{"type":"ping"}'); } catch (e) {}
+  setTimeout(() => { if (ws === s && lastRx < t0) { try { s.close(); } catch (e) {} if (ws === s && s.onclose) s.onclose(); } }, 4000);   // 4초 안에 아무 응답도 없으면 죽은 연결이에요
+}
+setInterval(() => { if (document.visibilityState === 'visible' && ws && ws.readyState === 1) { if (Date.now() - lastRx > 12000) probe(); else try { ws.send('{"type":"ping"}'); } catch (e) {} } }, 8000);   // 주기적인 점검 겸 유휴 종료 방지
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { lastT = 0; probe(); } });
+addEventListener('pageshow', e => { if (e.persisted) probe(); });
+addEventListener('online', () => probe());
 function connect() {
   clearTimeout(retry);
   const u = toWs($('url').value);
@@ -891,7 +904,7 @@ function connect() {
     setConn(2, '서버에 연결됨'); $('msg').textContent = '';
     if (pending) { const p = pending; pending = null; sendMsg(p); }
   };
-  s.onmessage = e => { if (ws === s) onMsg(JSON.parse(e.data)); };
+  s.onmessage = e => { if (ws !== s) return; lastRx = Date.now(); let m; try { m = JSON.parse(e.data); } catch (er) { return; } try { onMsg(m); } catch (er) { console.error('onMsg', m && m.type, er); } };   // 메시지 하나를 처리하다 에러가 나도 다음 메시지는 계속 받아요
   s.onclose = () => {
     if (ws !== s) return;
     ws = null; show('menu'); me = -1; st = null; anim = null;
@@ -968,11 +981,11 @@ function onMsg(m) {
 $('create').onclick = () => act({ type: 'create', ...profile() });
 // ---------- 솔로 모드 ----------
 const LV = { easy: ['쉬움', '#5dffb0', '조준이 거칠고 바람을 잘 못 읽어요 · 처음 해보거나 연습할 때'], normal: ['보통', '#ffd23a', '꽤 정확하게 쏘고 위치도 잡아요 · 바람을 대체로 읽어요'], hard: ['어려움', '#ff5a6a', '거의 정확한 조준 · 바람까지 계산하고 좋은 자리를 찾아 약한 적부터 노려요'], expert: ['엑스퍼트', '#c04dff', '오차 거의 0 · 촘촘한 탐색 · 반격 위험까지 따져 자리를 잡고 다친 적을 끝까지 물고 늘어져요'], impossible: ['임파서블', '#ff2d55', '엑스퍼트와 같은 실력 · 대신 스나이퍼나 레이저만 써서 맵 어디서든 정확하게 꽂아요'] };
-let soloLv = LV[ls.get('soloLv')] ? ls.get('soloLv') : 'normal', soloN = Math.min(3, Math.max(1, +ls.get('soloN') || 1));
+let soloLv = LV[ls.get('soloLv')] ? ls.get('soloLv') : 'normal', soloN = Math.min(5, Math.max(1, +ls.get('soloN') || 1));
 function paintSolo() {
   $('sdiff').innerHTML = ''; $('scnt').innerHTML = '';
   Object.entries(LV).forEach(([k, [n, c, d]]) => { const b = el('button', null, $('sdiff')); b.className = 'opt' + (k === soloLv ? ' on' : ''); b.style.setProperty('--c', c); b.innerHTML = `<b style="color:${c}">${n}</b><span>${d}</span>`; b.onclick = () => { soloLv = k; ls.set('soloLv', k); paintSolo(); }; });
-  [1, 2, 3].forEach(n => { const b = el('button', n + '명', $('scnt')); b.className = n === soloN ? 'on' : ''; b.onclick = () => { soloN = n; ls.set('soloN', String(n)); paintSolo(); }; });
+  [1, 2, 3, 4, 5].forEach(n => { const b = el('button', n + '명', $('scnt')); b.className = n === soloN ? 'on' : ''; b.onclick = () => { soloN = n; ls.set('soloN', String(n)); paintSolo(); }; });
 }
 $('solo').onclick = () => { paintSolo(); $('sdlg').hidden = false; };
 $('sx').onclick = () => { $('sdlg').hidden = true; };
@@ -985,10 +998,10 @@ function renderRooms() {
   const box = $('rooms'); box.textContent = ''; $('rcnt').textContent = rooms.length ? rooms.length + '개' : '';
   if (!rooms.length) (box.innerHTML = '<div class="rempty"><div><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#5a6aa0" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M8 12h8"></path></svg><span style="font-size:22px;font-weight:700;color:#cfd9f5">열린 방이 없어요</span><span style="font-size:15px">오른쪽 아래 방 만들기로 첫 방을 열어 보세요</span></div></div>');
   rooms.forEach(r => {
-    const b = el('button', null, box), full = r.count >= 4, dead = r.playing || full, col = dead ? '#ff8a6a' : r.mode === 'team' ? '#4dd2ff' : r.mode === 'escalation' ? '#ffb347' : r.mode === 'laser' ? '#7df3ff' : r.mode === 'sniper' ? '#c58cff' : r.mode === 'tournament' ? '#ffd23a' : '#5dffb0';
+    const b = el('button', null, box), full = r.count >= 6, dead = r.playing || full, col = dead ? '#ff8a6a' : r.mode === 'team' ? '#4dd2ff' : r.mode === 'escalation' ? '#ffb347' : r.mode === 'laser' ? '#7df3ff' : r.mode === 'sniper' ? '#c58cff' : r.mode === 'tournament' ? '#ffd23a' : '#5dffb0';
     b.className = 'rc'; b.style.setProperty('--c', col);
-    b.innerHTML = `<span class="blob"></span><span class="rt"><span class="cp pp">${r.mode === 'team' ? '팀전' : r.mode === 'escalation' ? '에스컬레이션' : r.mode === 'laser' ? '레이저' : r.mode === 'sniper' ? '스나이퍼' : r.mode === 'tournament' ? '토너먼트' : '개인전'}</span><span class="st">${r.playing ? '게임 중' : full ? '가득 참' : r.count + ' / 4'}</span></span><span class="rcode">${esc(r.code)}</span><span class="rb"><span class="rh">${esc(r.host)}의 방</span><span class="chp"><i></i>${r.map === RANDOM ? '랜덤 맵' : esc(MAPS[r.map].name)}</span></span>`;
-    b.disabled = r.playing || r.count >= 4;
+    b.innerHTML = `<span class="blob"></span><span class="rt"><span class="cp pp">${r.mode === 'team' ? '팀전' : r.mode === 'escalation' ? '에스컬레이션' : r.mode === 'laser' ? '레이저' : r.mode === 'sniper' ? '스나이퍼' : r.mode === 'tournament' ? '토너먼트' : '개인전'}</span><span class="st">${r.playing ? '게임 중' : full ? '가득 참' : r.count + ' / 6'}</span></span><span class="rcode">${esc(r.code)}</span><span class="rb"><span class="rh">${esc(r.host)}의 방</span><span class="chp"><i></i>${r.map === RANDOM ? '랜덤 맵' : esc(MAPS[r.map].name)}</span></span>`;
+    b.disabled = r.playing || r.count >= 6;
     b.onclick = () => joinRoom(r.code);
   });
 }
@@ -1075,12 +1088,12 @@ function slotCard(i, col, team) {   // 개인전(큰 카드) / 팀전(가로 카
   const nm = `${ico ? ico + ' ' : ''}${esc(n)}`;
   if (!team) return `<div style="position:relative;overflow:hidden;box-sizing:border-box;border-radius:20px;background:#0d1433;border:1px solid #2a3556;border-top:5px solid ${col};padding:16px 20px;display:flex;flex-direction:column">
     <div style="position:absolute;right:-50px;top:-70px;width:260px;height:260px;border-radius:50%;background:${col};opacity:.2;filter:blur(46px)"></div>
-    <div style="position:relative;display:flex;align-items:center;gap:8px">
+    <div style="position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px">
       <span class="cp" style="font-weight:700;font-size:15px;color:${col};padding:3px 10px;border-radius:8px;border:1px solid ${col}">P${i + 1}</span>
       ${host ? `<span style="display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:#ffd23a">${CROWN(16)}방장</span>` : ''}
-      ${bl ? `<span style="font-size:14px;font-weight:900;color:#04061a;background:${LV[bl][1]};padding:3px 12px;border-radius:999px">🤖 AI · ${LV[bl][0]}</span>` : ''}
+      ${bl ? `<span style="font-size:13px;font-weight:900;color:#04061a;background:${LV[bl][1]};padding:3px 10px;border-radius:999px;white-space:nowrap">🤖 AI · ${LV[bl][0]}</span>` : ''}
       ${mine ? `<span style="margin-left:auto;font-size:14px;font-weight:900;color:#04061a;background:${col};padding:3px 12px;border-radius:999px">나</span>` : ''}
-      ${ctl ? `<span style="margin-left:auto;display:flex;gap:6px"><button class="bt" data-bl="${i}" title="난이도 바꾸기">난이도 ▸ ${LV[({ easy: 'normal', normal: 'hard', hard: 'expert', expert: 'impossible', impossible: 'easy' })[bl]][0]}</button><button class="bt x" data-bd="${i}" title="AI 내보내기" aria-label="AI 내보내기">✕</button></span>` : ''}
+      ${ctl ? `<span style="margin-left:auto;display:flex;gap:6px;flex:none"><button class="bt" data-bl="${i}" title="난이도 바꾸기">난이도 ▸ ${LV[({ easy: 'normal', normal: 'hard', hard: 'expert', expert: 'impossible', impossible: 'easy' })[bl]][0]}</button><button class="bt x" data-bd="${i}" title="AI 내보내기" aria-label="AI 내보내기">✕</button></span>` : ''}
     </div>
     <div style="position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center">${tankSvg(170, 116, col, k)}</div>
     <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -1121,12 +1134,12 @@ function renderRoom() {
   [['mffa', 'ffa'], ['mteam', 'team'], ['mesc', 'esc'], ['mlaser', 'laser'], ['msniper', 'sniper'], ['mtour', 'tour']].forEach(([id, k]) => { const b = $(id); b.classList.toggle('on', mdn === k); b.classList.toggle('lock', !canPick); b.setAttribute('aria-selected', mdn === k); });
   // 참가자 / 팀 구성
   $('ptitle').textContent = team ? '팀 구성' : '참가자';
-  $('pcount').textContent = `${cnt} / 4`;
-  $('psub').textContent = tour ? '목표 맞추기로 대진 결정 · 1:1로 이기면 다음 라운드 · 3명이면 1등 부전승' : team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : fixm === 'laser' ? '각자 싸워요 · 모두 레이저 탱크 · 레이저가 벽에 10번 튕겨요 · 한 방 맞으면 즉사 · 마지막까지 살아남은 1명이 승리해요' : escm ? '각자 싸워요 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 마지막까지 살아남은 1명이 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
+  $('pcount').textContent = `${cnt} / 6`;
+  $('psub').textContent = tour ? '목표 맞추기로 대진 결정 · 1:1로 이기면 다음 라운드 · 상위 시드는 부전승(3명은 1등 · 5~6명은 8강 면제)' : team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : fixm === 'laser' ? '각자 싸워요 · 모두 레이저 탱크 · 레이저가 벽에 10번 튕겨요 · 한 방 맞으면 즉사 · 마지막까지 살아남은 1명이 승리해요' : escm ? '각자 싸워요 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 마지막까지 살아남은 1명이 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
   $('vs').hidden = !team;
   const box = $('cards'), tc = [0, 1].map(k => filled.filter(i => st.teams[i] === k));
   if (!team) {
-    box.style.cssText = 'flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:16px';
+    box.style.cssText = 'flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:12px';
     box.innerHTML = st.names.map((n, i) => n ? slotCard(i, COLORS[i], 0) : emptyCard(0)).join('');
   } else {
     const rows = Math.max(2, tc[0].length, tc[1].length), dense = rows > 2 ? 2 : 1;
@@ -2451,7 +2464,7 @@ function dotSprite(col) {   // 점 주변 빛: 그라데이션을 점마다 만�
   const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
   gr.addColorStop(0, rgba(col, .8)); gr.addColorStop(1, rgba(col, 0)); g.fillStyle = gr; g.fillRect(0, 0, 32, 32); return (_ds[col] = c);
 }
-function plasmaProf(x0, y0, aDeg, M, half = PLASMA_HALF) {   // 플라즈마 부채꼴을 가르는 광선별로 지형(벽)에 막히는 거리 (서버 plasmaRay 와 같은 계산)
+function plasmaProf(x0, y0, aDeg, M, half = PLASMA_HALF, thru = false) {   // 플라즈마 부채꼴을 가르는 광선별로 지형(벽)에 막히는 거리 (서버 plasmaRay 와 같은 계산)
   const T = st.terrain, ty = x => T[Math.max(0, Math.min(W - 1, Math.floor(x)))], out = [];
   for (let k = 0; k <= M; k++) {
     const ang = aDeg * Math.PI / 180 + half - 2 * half * k / M, dx = Math.cos(ang), dy = -Math.sin(ang);
@@ -2459,7 +2472,7 @@ function plasmaProf(x0, y0, aDeg, M, half = PLASMA_HALF) {   // 플라즈마 부
     if (dx > 1e-6) reach = Math.min(reach, (W - 1 - x0) / dx); else if (dx < -1e-6) reach = Math.min(reach, -x0 / dx);
     if (dy < -1e-6) reach = Math.min(reach, -y0 / dy); else if (dy > 1e-6) reach = Math.min(reach, (H - 1 - y0) / dy);
     reach = Math.max(20, reach); let r = reach;
-    for (let t = 40; t < reach; t += 16) if (y0 + dy * t >= ty(x0 + dx * t)) { r = t; break; }
+    if (!thru) for (let t = 40; t < reach; t += 16) if (y0 + dy * t >= ty(x0 + dx * t)) { r = t; break; }
     out.push(r);
   }
   return out;
@@ -2498,7 +2511,7 @@ function drawPreview(p, col) {
   }
   if (p.tank === 'plasma') {   // 플라즈마: 15° 부채꼴. 멀어질수록 옅어져요 (피해도 그만큼 줄어요) · 파워 무관 · 지형(벽)에 가려지는 부분만 잘려요
     const a = pv.a * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), nx = -dy, ny = dx, x0 = p.x, y0 = st.terrain[Math.floor(p.x)] - 20 * TS, START = 30 * K, SEG = 32;
-    const half = PLASMA_HALF * FAUG.calc(p.aug || []).arc, prof = plasmaProf(x0, y0, pv.a, SEG, half), pt = (k, r) => { const th = (-1 + 2 * k / SEG) * half, c = Math.cos(th) * r, s = Math.sin(th) * r; return [x0 + dx * c + nx * s, y0 + dy * c + ny * s]; };
+    const pm = FAUG.calc(p.aug || []), half = PLASMA_HALF * pm.arc, prof = plasmaProf(x0, y0, pv.a, SEG, half, pm.thru), pt = (k, r) => { const th = (-1 + 2 * k / SEG) * half, c = Math.cos(th) * r, s = Math.sin(th) * r; return [x0 + dx * c + nx * s, y0 + dy * c + ny * s]; };
     const R = Math.max(START + 1, ...prof), ex = x0 + dx * R, ey = y0 + dy * R;
     const outline = () => { ctx.beginPath(); ctx.moveTo(x0 + dx * START, y0 + dy * START); for (let k = 0; k <= SEG; k++) { const [x, y] = pt(k, Math.max(START, prof[k])); ctx.lineTo(x, y); } ctx.closePath(); };
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -3036,7 +3049,7 @@ function checkEndFx(m) {   // 게임이 끝난 상태를 처음 받았을 때: �
   endShown = true;
   if (m.tm && m.tm.final && m.winner >= 0) return showChampion(m.winner, m);   // 토너먼트 결승: 보는 사람 모두에게 CHAMPION 연출
   const won = m.winner >= 0 && (m.mode === 'team' ? m.winTeam === m.teams[me] : m.winner === me);
-  if (won) showVictory(m.tm && !m.tm.seed ? (m.tm.final ? '토너먼트 우승!' : '결승 진출!') : m.mode === 'team' ? '우리 팀이 이겼어요!' : '마지막까지 살아남았어요!');
+  if (won) showVictory(m.tm && !m.tm.seed ? (m.tm.final ? '토너먼트 우승!' : m.tm.sf ? '결승 진출!' : '다음 라운드 진출!') : m.mode === 'team' ? '우리 팀이 이겼어요!' : '마지막까지 살아남았어요!');
 }
 function hideDefeat() { const d = $('defeat'); if (d) d.hidden = true; if (cv) cv.classList.remove('dead'); }
 function showDefeat(sub) {
@@ -3207,7 +3220,7 @@ function introBanner() {   // 시작 연출 뒤에 뜨는 배너: 토너먼트�
   if (tm && tm.seed) return ['🏆 대진 정하기', '목표물에 가까운 순서대로 시드가 정해져요 · 시드 순서로 1:1 대진 · 모두 동시에 발사!'];
   if (tm) {
     const [a, b] = tm.p.map(i => st.players[i] ? st.players[i].name : '?'), mine = tm.p.includes(me);
-    return [`🏆 ${tm.label}`, `${a} vs ${b} · ${mine ? (tm.final ? '이기면 우승!' : '이기면 결승 진출!') : '👀 관전 중'} · 시드가 높은 ${a}부터 쏴요`];
+    return [`🏆 ${tm.label}`, `${a} vs ${b} · ${mine ? (tm.final ? '이기면 우승!' : tm.sf ? '이기면 결승 진출!' : '이기면 다음 라운드 진출!') : '👀 관전 중'} · 시드가 높은 ${a}부터 쏴요`];
   }
   return ['🎯 순서 정하기', '목표물에 가장 가깝게 쏜 순서대로 차례가 정해져요 · 모두 동시에 발사!'];
 }
@@ -3222,6 +3235,8 @@ let tourAutoT = 0;
 const tName = i => { const f = tourSt && tourSt.info && tourSt.info[i]; return f ? `${f.icon || ''} ${f.name}` : '?'; };
 // 세로형 대진표: 아래(준결승) → 가운데(결승) → 위(우승). 좌표는 560×340 무대 기준이에요.
 const TSTG = { W: 640, H: 356, leaf: 286, fin: 174, top: 72, lx: [76, 240, 400, 564], fx: [158, 482], cx: 320 };
+const TSTG6 = { W: 760, H: 466, q: 412, leaf: 296, fin: 180, top: 72, lx: [90, 262, 438, 610], fx: [176, 524], cx: 350 };   // 5~6명: 8강까지 4단 대진표
+let curStage = TSTG;
 const tourSeen = new Map();   // 이미 보여준 경기 결과 (처음 볼 때만 승리/패배 애니메이션)
 function tourAd(key) {   // 결과를 처음 본 시각 → 다시 그려도 애니메이션이 이어지게 음수 지연값
   if (!tourSeen.has(key)) return null;
@@ -3232,7 +3247,8 @@ function renderTour() {
   const T = tourSt, box = $('tour');
   $('tbtn').hidden = !T || !st || st.type !== 'state';
   if (!T) { box.hidden = true; return; }
-  const visible = !box.hidden, S = TSTG, seedOf = i => T.seeds.indexOf(i) + 1;
+  const big = T.matches.length >= 4, visible = !box.hidden, S = big ? TSTG6 : TSTG, seedOf = i => T.seeds.indexOf(i) + 1;
+  curStage = S;
   const inLive = T.matches.some(mt => mt.state === 'live' && mt.p.includes(me));
   const fin = T.matches.find(mt => mt.final), semis = T.matches.filter(mt => !mt.final);
   // 결과를 처음 보는 경기는 지금 시각을 기록 (보이는 상태일 때만 → 닫혀 있었다면 열 때 애니메이션)
@@ -3248,7 +3264,7 @@ function renderTour() {
     const adv = ad != null && res ? ad : opt.up;
     return `<div class="${cls}" style="left:${x}px;top:${y}px;--c:${pc(i)};--i:${opt.i || 0}s${adv != null ? `;--ad:${adv}s` : ''}">
       <div class="av">${esc(f.icon || '🪖')}</div><div class="tx"><span class="nm">${esc(f.name)}</span><span class="sd">#${seedOf(i)} 시드${i === me ? '<u>나</u>' : ''}</span></div>
-      ${res === 'win' ? `<span class="bd">${mt.final ? 'CHAMP' : 'WIN'}</span>` : res === 'lose' ? '<span class="stp">LOSE</span>' : ''}</div>`;
+      ${res === 'win' ? `<span class="bd">${mt.final ? 'CHAMP' : 'WIN'}</span>` : res === 'lose' ? '<span class="stp">LOSE</span>' : opt.tag ? `<span class="bd" style="top:-18px;color:#04210f;background:linear-gradient(180deg,#b8ffe0,#5dffb0)">${opt.tag}</span>` : ''}</div>`;
   };
   const vsTag = (mt, x, y) => `<div class="vs${mt.state === 'live' ? ' lv' : ''}" style="left:${x}px;top:${y}px">VS</div>`;
   const label = (mt, x, y) => `<div class="ml" style="left:${x}px;top:${y}px"><b>${esc(mt.label)}</b> · ${mt.state === 'live' ? '<span style="color:#5dffb0">● LIVE 진행 중</span>' : mt.state === 'done' ? '종료' : mt.state === 'ready' ? '곧 시작' : '대기'}</div>`;
@@ -3261,7 +3277,7 @@ function renderTour() {
   let html = '';
   // 맨 위: 우승
   const champ = T.champ >= 0 ? T.champ : -1, fad = adOf(fin);
-  html += `<div class="tier" style="top:${S.top - 34}px">CHAMPION</div><div class="tier" style="top:${S.fin - 46}px">FINAL</div>${semis.length || T.bye >= 0 ? `<div class="tier" style="top:${S.leaf - 46}px">SEMI-FINAL</div>` : ''}`;
+  html += `<div class="tier" style="top:${S.top - 34}px">CHAMPION</div><div class="tier" style="top:${S.fin - 46}px">FINAL</div>${semis.length || T.bye >= 0 ? `<div class="tier" style="top:${S.leaf - 46}px">SEMI-FINAL</div>` : ''}${big ? `<div class="tier" style="top:${S.q - 46}px">QUARTER-FINAL</div>` : ''}`;
   html += `<div class="tchp${champ >= 0 ? ' on' : ''}" style="left:${S.cx}px;top:${S.top}px"><div class="rays"></div><div class="tro">🏆</div>${card(champ, 75, 44, null, { tbd: '우승자는?', up: champ >= 0 && fad != null ? fad : null })}</div>`;
   if (champ >= 0 && fad != null) for (let k = 0; k < 26; k++) {   // 우승 확정 순간 색종이
     const a = Math.random() * Math.PI * 2, r = 70 + Math.random() * 120, c = ['#ffd23a', '#5dffb0', '#4dd2ff', '#ff3df2', '#fff'][k % 5];
@@ -3273,6 +3289,29 @@ function renderTour() {
   html += label(fin, S.cx, S.fin - 44) + vsTag(fin, S.cx, S.fin);
   S.fx.forEach((x, k) => { const src = finSrc(k), sad = adOf(src); html += card(finP[k], x, S.fin, fin, { i: .08, tbd: '준결승 승자', up: src && src.state === 'done' && sad != null ? sad : null }); });
   // 아래: 준결승 (3명이면 왼쪽은 부전승)
+  if (big) {   // 5~6명: 8강 → 준결승 → 결승. 부전승 시드는 8강 없이 준결승에서 합류해요
+    const sfs = T.matches.filter(mt => mt.sf), qfs = T.matches.filter(mt => !mt.final && !mt.sf);
+    const pOf = (mt, k) => { const q = mt.p[k]; if (q >= 0) return q; const f = mt.from && mt.from[k]; return f != null && T.matches[f].state === 'done' ? T.matches[f].winner : -1; };
+    sfs.forEach((mt, j) => {
+      const ad = adOf(mt);
+      [0, 1].forEach(k => {
+        const x = S.lx[j * 2 + k], q = pOf(mt, k), src = mt.from && mt.from[k] != null ? T.matches[mt.from[k]] : null, sad = adOf(src);
+        seg(x, S.leaf - 29, S.fx[j], S.fin + 29, S.fin + 58, mt.state === 'done' && q >= 0 && mt.winner === q, q >= 0 ? pc(q) : null, ad, .45);
+        html += card(q, x, S.leaf, mt, { i: .16, tbd: '8강 승자', tag: mt.from && mt.from[k] == null ? '부전승' : null, up: src && src.state === 'done' && sad != null ? sad : null });
+      });
+      html += vsTag(mt, S.fx[j], S.leaf) + label(mt, S.fx[j], S.leaf + 36);
+    });
+    qfs.forEach(mt => {
+      const sfm = sfs.find(s => s.from && s.from.includes(mt.id)); if (!sfm) return;
+      const j = sfs.indexOf(sfm), k = sfm.from.indexOf(mt.id), sx = S.lx[j * 2 + k], ad = adOf(mt);
+      [-1, 1].forEach((d, n) => {
+        const x = sx + d * 68, q = mt.p[n];
+        seg(x, S.q - 29, sx, S.leaf + 29, S.leaf + 58, mt.state === 'done' && mt.winner === q, pc(q), ad, .45);
+        html += card(q, x, S.q, mt, { i: .24 });
+      });
+      html += vsTag(mt, sx, S.q) + label(mt, sx, S.q + 36);
+    });
+  } else {
   const leafMatches = semis.length === 2 ? [[semis[0], 0], [semis[1], 1]] : semis.length === 1 ? [[semis[0], 1]] : [];
   leafMatches.forEach(([mt, side]) => {
     const xs = S.lx.slice(side * 2, side * 2 + 2), ad = adOf(mt);
@@ -3286,12 +3325,13 @@ function renderTour() {
     seg(S.fx[0], S.leaf - 29, S.fx[0], S.fin + 29, S.fin + 58, true, pc(T.bye), null);
     html += card(T.bye, S.fx[0], S.leaf, null, { i: .16 }) + `<div class="ml" style="left:${S.fx[0]}px;top:${S.leaf + 36}px"><b>부전승</b> · 결승 직행</div>`;
   }
+  }
   // 아래 버튼: 경기가 없는 사람은 진행 중인 경기를 관전할 수 있어요
   const watching = mt => st && st.tm && !st.tm.seed && st.tm.id === mt.id && !mt.p.includes(me);
   const foot = inLive ? '' : T.matches.filter(mt => mt.state === 'live').map(mt => watching(mt) ? `<span class="wn">👀 ${esc(mt.label)} 관전 중</span>` : `<button class="wb" data-w="${mt.id}">👀 ${esc(mt.label)} 관전하기</button>`).join('');
   const sub = T.champ >= 0 ? (T.champ === me ? '🎉 우승했어요! 잠시 후 대기실로 돌아가요' : `${esc((T.info[T.champ] || {}).name || '')} 우승! 잠시 후 대기실로 돌아가요`) : inLive ? '경기 중이에요 · 이기면 다음 라운드로!' : '경기가 없는 동안 진행 중인 경기를 관전할 수 있어요';
   box.innerHTML = `<div class="tp"><button class="x" aria-label="닫기">✕</button><h4>🏆 토너먼트 대진표</h4><div class="ts">${sub}</div>
-    <div class="tw"><div class="stg"><svg viewBox="0 0 ${S.W} ${S.H}" width="${S.W}" height="${S.H}">${lines.join('')}</svg>${html}</div></div>
+    <div class="tw"><div class="stg" style="width:${S.W}px;height:${S.H}px"><svg viewBox="0 0 ${S.W} ${S.H}" width="${S.W}" height="${S.H}">${lines.join('')}</svg>${html}</div></div>
     ${foot ? `<div class="ft">${foot}</div>` : ''}</div>`;
   fitTour();
   box.querySelector('.x').onclick = closeTour;
@@ -3300,8 +3340,8 @@ function renderTour() {
 }
 function fitTour() {   // 무대(560×340)를 화면에 맞게 키우고 줄여요
   const tw = $('tour').querySelector('.tw'); if (!tw) return;
-  const k = Math.min((innerWidth * .96 - 40) / TSTG.W, (innerHeight * .96 - 92) / TSTG.H, 1.35);
-  tw.style.width = TSTG.W * k + 'px'; tw.style.height = TSTG.H * k + 'px';
+  const bx = $('tour'), bw = bx.clientWidth || innerWidth, bh = bx.clientHeight || innerHeight, k = Math.min((bw * .96 - 40) / curStage.W, (bh * .96 - 92) / curStage.H, 1.35);
+  tw.style.width = curStage.W * k + 'px'; tw.style.height = curStage.H * k + 'px';
   tw.firstChild.style.transform = `scale(${k})`;
 }
 addEventListener('resize', () => { if (!$('tour').hidden) fitTour(); });
@@ -3635,7 +3675,7 @@ function hpHud() {
   const sig = [me, st.mode, idx.map(i => i + ':' + ps[i].name + '|' + (ps[i].icon || '') + '|' + (team ? st.teams[i] : '')).join(',')].join('#');
   if (sig !== hpUI.sig) {   // 참가자가 바뀔 때만 다시 만들어요
     hpUI.sig = sig; hpUI.cards = [];
-    const mineSide = i => me >= 0 ? (i === me || (team && st.teams[i] === st.teams[me])) : idx.indexOf(i) < Math.ceil(idx.length / 2);
+    const half = Math.ceil(idx.length / 2), others = idx.filter(i => i !== me), mineSide = i => me >= 0 ? (team ? (i === me || st.teams[i] === st.teams[me]) : (i === me || others.indexOf(i) < half - 1)) : idx.indexOf(i) < half;
     const left = idx.filter(mineSide).sort((a, b) => (b === me) - (a === me)), right = idx.filter(i => !mineSide(i));
     const mk = (box, list) => { box.textContent = ''; list.forEach(i => {
       const d = document.createElement('div'); d.className = 'hc' + (i === me ? ' me' : ''); d.style.setProperty('--c', pc(i));
@@ -4174,18 +4214,34 @@ function draw() {
   drawOffscreen();
 }
 // 프레임 시간을 재서 애니메이션 속도를 맞추고, 계속 느리면 화면 해상도를 한 단계씩 낮춰요
-let lastT = 0, slow = 0, qLock = 0;
+let lastT = 0, slow = 0, qLock = 0, drawErr = 0, wdA = null, wdT = 0, lastErrMsg = '';
+function forceFinishAnim(why) {   // 연출이 끝나지 않고 멈췄을 때: 연출을 버리고 서버가 보낸 최신 상태로 바로 넘어가요 (게임이 멈춘 채로 남지 않게)
+  const A = anim; if (!A) return;
+  console.error('forceFinishAnim', why);
+  const next = A.pending; anim = null; wdA = null; drawErr = 0;
+  if (next) { try { apply(next); } catch (e) { console.error('apply', e); } }
+  if (A.order) { try { showRank(A.ranks, A.seed); } catch (e) {} }
+  else if (A.by === me || (next && next.solo)) sendMsg({ type: 'landed' });
+}
 (function loop(t) {
+  requestAnimationFrame(loop);   // 먼저 다음 프레임을 예약해요: 이 프레임에서 에러가 나도 화면이 영영 멈추지 않게
   const dt = lastT ? Math.min(100, t - lastT) : 16.667; lastT = t;
   FS = Math.min(4, Math.max(.25, dt / 16.667));
-  draw();
+  try { draw(); drawErr = 0; }
+  catch (e) {
+    if (String(e) !== lastErrMsg) { lastErrMsg = String(e); console.error('draw', e); }
+    if (++drawErr >= 20 && anim) forceFinishAnim('draw error: ' + e);   // 연출 도중 계속 에러가 나면 연출 종료 처리가 영영 실행되지 못해요
+  }
+  if (anim) {   // 안전장치: 같은 연출이 너무 오래 끝나지 않으면 강제로 넘겨요
+    if (anim !== wdA) { wdA = anim; wdT = performance.now(); }
+    else if (document.visibilityState === 'visible' && performance.now() - wdT > 30000) forceFinishAnim('anim timeout');
+  } else wdA = null;
   try { hpHud(); } catch (e) { console.error('hpHud', e); }   // 체력 카드에 문제가 생겨도 게임은 계속 돌아가요
   if (!$('game').hidden && document.visibilityState === 'visible') {
     slow = dt > 26 ? slow + 1 : Math.max(0, slow - 1);
     if (qLock > 0) qLock--;
     if (slow > 45 && !qLock && SV > .75) { slow = 0; qLock = 180; QCAP = Math.max(.75, SV - .25); layout(); }
   }
-  requestAnimationFrame(loop);
 })(0);
 
 drawTanks($('home'));

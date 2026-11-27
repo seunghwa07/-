@@ -14,7 +14,7 @@ module.exports = function (X) {
     // 엑스퍼트: 어려움 + (1) 조준 오차 거의 0 (2) 촘촘한 0.25° 탐색 (3) 이동 후보 10곳 이상 비교 (4) 체력 낮은 적 집중 공격 (5) 내 자리의 '반격 위험'까지 계산 (6) 내 탱크에 맞는 증강만 고름
     expert: { label: '엑스퍼트', sa: .03, sp: .0005, wind: 1,   wn: 0, think: [600, 1300],   aug: 3, spots: 10, kill: 30, human: 1.5,  moveP: 1, fine: true, focus: .6, danger: .5 },
     // 임파서블: 엑스퍼트와 똑같은 실력 · 대신 탱크는 스나이퍼나 레이저만 써요 (서버 IMPOSSIBLE_TANKS)
-    impossible: { label: '임파서블', sa: .03, sp: .0005, wind: 1, wn: 0, think: [600, 1300], aug: 3, spots: 10, kill: 30, human: 1.5, moveP: 1, fine: true, focus: .6, danger: .5 },
+    impossible: { label: '임파서블', sa: .03, sp: .0005, wind: 1, wn: 0, think: [600, 1300], aug: 3, spots: 10, kill: 30, human: 1.5, moveP: 1, fine: true, focus: .6, danger: .5, sharp: true },
   };
   const lvOf = k => LEVELS[k] || LEVELS.normal;
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -157,7 +157,7 @@ module.exports = function (X) {
 
   // 한 자리에서의 최선의 포격 계획
   function planAt(r, g, i, lv, fast) {
-    const ctx = { r, g, i, lv }, p = g.players[i], kind = p.tank === 'escalation' ? 'basic' : p.tank;
+    const ctx = { r, g, i, lv, fast }, p = g.players[i], kind = p.tank === 'escalation' ? 'basic' : p.tank;
     if (kind === 'laser') return planLaser(ctx);
     if (kind === 'plasma' || kind === 'echo') return planPlasma(ctx, kind);
     return perceived(g, lv, () => {
@@ -187,13 +187,16 @@ module.exports = function (X) {
       if (!s) foesOf(g, i).forEach(k => f.path.forEach(pt => { near = Math.min(near, Math.hypot(pt[0] - g.players[k].x, pt[1] - tankY(g, g.players[k]))); }));
       return { a, s, key: shaped(s, near) };
     };
+    const sharp = !!ctx.lv.sharp && !ctx.fast;   // 임파서블(실제로 쏠 때만 · 자리를 비교하는 동안은 가볍게): 더 촘촘히 훑고(1° → ±1° 를 0.05° 간격으로) 조준 오차도 0 — 반사를 거쳐도 빗나가지 않게
     let best = null; const all = [];
-    for (let a = 2; a <= 178; a += 2) all.push(ev(a));
+    for (let a = sharp ? 1 : 2; a <= (sharp ? 179 : 178); a += sharp ? 1 : 2) all.push(ev(a));
     all.sort((x, y) => y.key - x.key); best = all[0];
-    for (const t of all.slice(0, 4)) for (let a = t.a - 2; a <= t.a + 2; a += .25) { if (a < 0 || a > 180) continue; const c = ev(a); if (c.key > best.key) best = c; }
-    return { angle: best.a, power: 100, score: best.s };
+    const rs = sharp ? 1 : 2, st = sharp ? .05 : .25;
+    for (const t of all.slice(0, sharp ? 8 : 4)) for (let a = t.a - rs; a <= t.a + rs; a += st) { if (a < 0 || a > 180) continue; const c = ev(a); if (c.key > best.key) best = c; }
+    if (sharp) for (let a = best.a - .06; a <= best.a + .06; a += .005) { if (a < 0 || a > 180) continue; const c = ev(a); if (c.key > best.key) best = c; }   // 마지막으로 한 번 더 아주 촘촘히 (0.005°)
+    return { angle: best.a, power: 100, score: best.s, exact: sharp };
   }
-  const noisy = (pl, lv) => ({ ...pl, angle: clamp(pl.angle + gauss() * lv.sa, pl.wide ? RAIL_AIM_MIN : 0, pl.wide ? 180 - RAIL_AIM_MIN : 180), power: clamp(pl.power * (1 + gauss() * lv.sp), 10, 100) });
+  const noisy = (pl, lv) => ({ ...pl, angle: clamp(pl.angle + (pl.exact ? 0 : gauss() * lv.sa), pl.wide ? RAIL_AIM_MIN : 0, pl.wide ? 180 - RAIL_AIM_MIN : 180), power: clamp(pl.power * (1 + gauss() * lv.sp), 10, 100) });
 
   // ---------- 레일건: 충전(턴 소모) → 직선 관통 빔. 몇 번 충전할지, 어디를 겨눌지 ----------
   function railBeam(g, i, angle, lv) {   // 이 각도·충전 단계로 쏘면 맞는 (적) 가치

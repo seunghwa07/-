@@ -10,8 +10,8 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const { K, W, H, TS, FUEL, STEP } = FMAP;
-const G = 500 * K, CRATER = 60, HIT_R = 20 * TS, MAX = 4, RANDOM_MAP = FMAP.MAPS.length;
-const SPAWN = [100, 366, 633, 900].map(x => Math.round(x * W / 1000));   // 월드 폭에 비례해서 흩어 놓아요
+const G = 500 * K, CRATER = 60, HIT_R = 20 * TS, MAX = 6, RANDOM_MAP = FMAP.MAPS.length;
+const SPAWN = [100, 260, 420, 580, 740, 900].map(x => Math.round(x * W / 1000));   // 월드 폭에 비례해서 흩어 놓아요
 const ICONS = ['🪖', '🐸', '🚀', '🐱', '🤖', '🦖'];
 const rooms = new Map();
 
@@ -30,10 +30,10 @@ const SHELL = {
   pierce: { dmg: 14, rad: 30 }, laser: { dmg: 22, rad: 0 },   // 관통탄(기본탄보다 약함 · 맞은 탱크는 드릴로 2×3 추가 피해) / 레이저(직격만, 기본탄 17보다 센 22)
   sniper: { dmg: 50, rad: 16 },   // 스나이퍼: 작고 가벼운 탄 · 직격 50 = 체력 100의 절반 · 폭발은 아주 작아요
   heavy: { dmg: 68, rad: Math.round(CRATER * Math.sqrt(6)) },   // 광폭탄: 피해 4배(기본탄 17의 4배), 폭발 면적 6배(반지름 √6배)
-  gravity: { dmg: 24, rad: 75 },   // 중력탄: 블랙홀에 끌려온 탱크가 받는 붕괴 폭발 피해 / 붕괴 크레이터 (아래 GRAV_* 와 같은 값)
+  gravity: { dmg: 16, rad: 75 },   // 중력탄: 블랙홀에 끌려온 탱크가 받는 붕괴 폭발 피해 / 붕괴 크레이터 (아래 GRAV_* 와 같은 값)
   rail: { dmg: 0, rad: 0 },        // 레일건: 단계별 값은 RAIL_LV 에 있어요
   electro: { dmg: 8, rad: 0 },     // 일렉트로: 전깃줄에 닿은 탱크가 틱마다 받는 피해 (아래 ELEC_* 와 같은 값) · 땅은 안 파여요
-  shadow: { dmg: 15, rad: 45 },    // 섀도우: 약한 피해 + 착탄 자리에 작은 어둠 영역 (아래 SHADOW_* 참고)
+  shadow: { dmg: 24, rad: 60 },    // 섀도우: 피해 24(기존 15) · 폭발 반경 60(기존 45) + 착탄 자리에 어둠 영역 (아래 SHADOW_* 참고)
   water: { dmg: 26, rad: CRATER },   // 물폭탄: 기본탄(17)보다 센 피해 26 + 착탄 주변에 물 범위가 생겨요 (아래 WATER_* 참고)
   vampire: { dmg: 17, rad: CRATER },   // 흡혈탄: 기본탄과 같은 피해·폭발 · 실제로 입힌 피해의 절반만큼 쏜 사람이 회복 (VAMP_RATE)
   frost: { dmg: 14, rad: 40 },      // 냉각탄: 약한 피해 + 착탄 주변 바닥이 얼어요 (아래 FROST_* 참고)
@@ -50,16 +50,16 @@ const SLOW_ANIM = { heavy: .6, gravity: .6, explosive: EXPL_SPEED };   // 고폭
 // ----- 레일건: 충전(턴 소모) → 직선 관통 빔. 충전 단계(0~3)가 클수록 사거리·굵기(범위)·피해가 커져요. 쏘면 충전은 0으로 초기화 -----
 const RAIL_MAX = 3;
 const RAIL_LV = [   // 단계별: dmg 피해 / len 사거리(px) / wid 빔 반폭=피격 범위(px)
-  { dmg: 15, len: 1500, wid: HIT_R * 1.0 },
-  { dmg: 28, len: 2300, wid: HIT_R * 1.5 },
-  { dmg: 45, len: 3200, wid: HIT_R * 2.1 },
-  { dmg: 70, len: 4600, wid: HIT_R * 3.0 },
+  { dmg: 12, len: 1500, wid: HIT_R * 1.0 },
+  { dmg: 22, len: 2200, wid: HIT_R * 1.4 },
+  { dmg: 36, len: 3000, wid: HIT_R * 1.9 },
+  { dmg: 56, len: 4200, wid: HIT_R * 2.6 },
 ];
 const RAIL_AIM_MIN = -45;       // 레일건은 수평보다 아래(-45°~225°)로도 조준할 수 있어요: 낮은 골짜기의 적도 곧은 빔으로 맞춰야 하니까요
 const RAIL_CHARGE_MS = 1300;   // 충전 연출 시간 (이 뒤에 턴이 넘어가요)
 
 // ----- 중력탄: 광폭탄과 같은 사거리. 떨어진 곳에 블랙홀이 생겨 범위 안의 탱크를 중심으로 끌어당긴 뒤 붕괴 폭발 -----
-const GRAV_R = 210, GRAV_DMG = 24, GRAV_CRATER = 75, GRAV_GAP = 46;   // 끌어당기는 반경 / 폭파 피해 / 붕괴 크레이터 / 끌려온 탱크끼리 간격
+const GRAV_R = 210, GRAV_DMG = 16, GRAV_CRATER = 75, GRAV_GAP = 46;   // 끌어당기는 반경 / 폭파 피해 / 붕괴 크레이터 / 끌려온 탱크끼리 간격
 const GRAV_FRAMES = 150;           // 블랙홀 연출 길이 (화면 프레임) — 클라이언트와 같아야 해요
 const GRAV_MS = GRAV_FRAMES * 1000 / 60 + 200;
 // ----- 일렉트로 · 그라인더: 땅에 닿으면 장판이 생겨 3초 동안 '앞으로(포탄이 날아오던 방향)' 나아가요 -----
@@ -85,7 +85,7 @@ const ICE_GAP = 70, ICE_FUEL = 2;   // 얼음 바닥 위: 이동 간격 70ms(기
 const onIce = (g, q) => (g.ice || []).some(f => Math.hypot(q.x - f.x, tankY(g, q) - f.y) < f.r);
 // 물폭탄: 착탄 주변에 물 범위가 WATER_TURNS 차례 동안 남아요. 그 범위 안의 (적) 탱크가 쏘는 포탄은 WATER_DUD 확률로 불발(날아가다 사라짐)
 const SHADOW_LIFT = 0.6;   // 어둠 영역 중심을 땅에서 반경의 60% 만큼 위로 올려요 (땅속에 박혀 보이지 않게)
-const SHADOW_R = 150, SHADOW_TURNS = 3;   // 섀도우: 어둠 영역 반경(px) / 남아 있는 차례 수 — 영역 안은 지형과 다른 탱크가 안 보이고 자기 탱크만 보여요 (화면 연출이라 서버는 위치만 기억해요)
+const SHADOW_R = 200, SHADOW_TURNS = 4;   // 섀도우: 어둠 영역 반경(px) / 남아 있는 차례 수 — 영역 안은 지형과 다른 탱크가 안 보이고 자기 탱크만 보여요 (화면 연출이라 서버는 위치만 기억해요)
 const WATER_R = 200, WATER_TURNS = 3, WATER_DUD = .5;   // 물 범위 반경(px) / 남아 있는 차례 수 / 범위 안에서 쏜 포탄이 불발될 확률
 const inWater = (g, i) => { const q = g.players[i]; return (g.water || []).some(z => !isAlly(g, z.by, i) && Math.hypot(q.x - z.x, tankY(g, q) - z.y) < z.r); };
 // 요격탄: 자기 차례를 ICPT_EVERY 번 맞을 때마다(첫 차례 · 3번째 · 5번째…) 그 자리에 요격 터렛을 설치해요. 터렛은 다음 설치 때까지 필드에 남고, 새로 설치하면 이전 것은 사라져요. 탄은 기본탄과 같아서 평소처럼 쏠 수 있어요.
@@ -172,7 +172,7 @@ function scaleDmg(g, from, to, amt, kind, mul = 1) {   // 주는 쪽 · 받는 �
 const alive = g => g.players.map((p, i) => (p.on && p.hp > 0 ? i : -1)).filter(i => i >= 0);
 
 function nextTurn(g, from) {   // 순서 정하기로 정해진 차례(g.order)를 따라 돌아요
-  const o = g.order && g.order.length ? g.order : [0, 1, 2, 3], pos = o.indexOf(from);
+  const o = g.order && g.order.length ? g.order : [0, 1, 2, 3, 4, 5], pos = o.indexOf(from);
   for (let k = 1; k <= o.length; k++) {
     const i = o[(pos + k + o.length) % o.length];
     if (g.players[i].on && g.players[i].hp > 0) return i;
@@ -180,7 +180,7 @@ function nextTurn(g, from) {   // 순서 정하기로 정해진 차례(g.order)�
   return from;
 }
 
-// 시작 위치: 2명이면 맵 양 끝에 마주 보게, 3~4명이면 맵 전체에 같은 간격으로 흩어 놓아요 (한쪽 끝에 둘씩 몰려서 싸움이 짧아지지 않게).
+// 시작 위치: 2명이면 맵 양 끝에 마주 보게, 3~6명이면 맵 전체에 같은 간격으로 흩어 놓아요 (한쪽 끝에 둘씩 몰려서 싸움이 짧아지지 않게).
 // 개인전은 자리를 랜덤으로 섞고, 팀전은 팀이 번갈아 서도록(A B A B) 배치한 뒤 좌우를 랜덤으로 뒤집어요.
 const EDGE = [300, 800, 1300];   // 맵 끝에서 안쪽으로 떨어진 거리 (EDGE[0] = 가장자리 여백)
 function spawnXs(r) {
@@ -640,32 +640,33 @@ function fireRail(r, shooter, angle) {
 const PLASMA_HALF = 7.5 * Math.PI / 180, PLASMA_RANGE = Math.ceil(Math.hypot(W, H)), PLASMA_END_DMG = 4, PLASMA_MIN = PLASMA_END_DMG / SHELL.plasma.dmg, PLASMA_STEP = 80;   // 부채꼴 반각 / 사거리(px, 맵 끝까지 = 맵 대각선) / 맵 맨 끝(가로 길이 W)에서의 피해 4 → 비율 / 화면 연출용 경로 점 간격
 const plasmaDmg = (base, dist, fall = 1) => Math.max(1, Math.round(base * (1 - (1 - PLASMA_MIN) * fall * Math.max(0, Math.min(1, dist / W)))));   // fall: 거리 감쇠 배수 (증강 · 1 = 기본)
 const PLASMA_RAYS = 32;   // 부채꼴을 가르는 광선 수 (광선마다 지형에 막히는 거리를 따로 재요) — 클라이언트 plasmaProf 와 같아야 해요
-function plasmaRay(g, x0, y0, ang) {   // 광선 하나가 지형·맵 경계에 막히는 거리
+function plasmaRay(g, x0, y0, ang, thru) {   // 광선 하나가 지형·맵 경계에 막히는 거리
   const dx = Math.cos(ang), dy = -Math.sin(ang), ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.floor(x)))];
   let reach = PLASMA_RANGE;   // 맵 경계(좌·우·위)에서 끝나요
   if (dx > 1e-6) reach = Math.min(reach, (W - 1 - x0) / dx); else if (dx < -1e-6) reach = Math.min(reach, -x0 / dx);
   if (dy < -1e-6) reach = Math.min(reach, -y0 / dy); else if (dy > 1e-6) reach = Math.min(reach, (H - 1 - y0) / dy);
   reach = Math.max(20, reach);
+  if (thru) return reach;   // 증강(초신성): 지형을 관통해서 맵 경계까지 가요
   for (let t = 40; t < reach; t += 16) if (y0 + dy * t >= ty(x0 + dx * t)) return t;   // 지형(벽)에 닿으면 그 광선은 거기서 멈춰요
   return reach;
 }
 function plasmaCone(g, shooter, angle) {   // 쏘지 않고 판정만 계산 (봇 조준도 같이 써요)
   const p = g.players[shooter], a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), x0 = p.x, y0 = g.terrain[p.x] - 20 * TS, half = PLASMA_HALF * p.mods.arc, tn = Math.tan(half), base = SHELL.plasma.dmg;   // half: 증강(부채꼴 각도)을 반영한 반각
   const ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.floor(x)))];
-  const reach = plasmaRay(g, x0, y0, a);   // 가운데 줄기가 맵 경계·최대 사거리까지 가는 거리 (지형은 상관없이 — 벽에 막힌 광선만 따로 잘려요)
+  const thru = !!p.mods.thru, reach = plasmaRay(g, x0, y0, a, thru);   // 가운데 줄기가 맵 경계·최대 사거리까지 가는 거리 (지형은 상관없이 — 벽에 막힌 광선만 따로 잘려요)
   let full = PLASMA_RANGE;   // 지형을 무시하고 맵 경계까지 가는 거리 (연출용 경로 길이)
   if (dx > 1e-6) full = Math.min(full, (W - 1 - x0) / dx); else if (dx < -1e-6) full = Math.min(full, -x0 / dx);
   if (dy < -1e-6) full = Math.min(full, -y0 / dy); else if (dy > 1e-6) full = Math.min(full, (H - 1 - y0) / dy);
   full = Math.max(60, full);
   // 광선별 지형 그림자: k=0 은 부채꼴의 한쪽 끝(화면에서 왼쪽 옆), k=RAYS 는 반대쪽 끝
-  const prof = Array.from({ length: PLASMA_RAYS + 1 }, (_, k) => Math.round(plasmaRay(g, x0, y0, a + half - 2 * half * k / PLASMA_RAYS)));
+  const prof = Array.from({ length: PLASMA_RAYS + 1 }, (_, k) => Math.round(plasmaRay(g, x0, y0, a + half - 2 * half * k / PLASMA_RAYS, thru)));
   const hits = [];
   g.players.forEach((q, i) => {
     if (i === shooter || q.hp <= 0 || isAlly(g, shooter, i)) return;
     const qy = tankY(g, q), vx = q.x - x0, vy = qy - y0, along = vx * dx + vy * dy, dist = Math.hypot(vx, vy), perp = Math.abs(vx * dy - vy * dx);
     if (dist > PLASMA_RANGE + HIT_R || along > full + HIT_R || (along < 0 && dist > HIT_R)) return;
     if (dist > HIT_R && perp > Math.max(0, along) * tn + HIT_R) return;   // 부채꼴 밖 (탱크 반지름만큼 여유)
-    for (let t = 40; t < dist - HIT_R; t += 16) if (y0 + vy / dist * t >= ty(x0 + vx / dist * t)) return;   // 지형 그림자 안: 벽에 가려진 적은 맞지 않아요
+    if (!thru) for (let t = 40; t < dist - HIT_R; t += 16) if (y0 + vy / dist * t >= ty(x0 + vx / dist * t)) return;   // 지형 그림자 안: 벽에 가려진 적은 맞지 않아요
     hits.push({ i, dist, dmg: plasmaDmg(base, dist, p.mods.fall), along });
   });
   return { x0, y0, dx, dy, reach, len: full, prof, hits, half };
@@ -739,12 +740,11 @@ function zoneRun(g, shooter, impact, vx, kind) {
   const el = kind === 'electro', ms = Math.round((el ? ELEC_MS : GRIND_MS) * g.players[shooter].mods.fireMs), n = Math.max(1, Math.floor(ms / ZONE_STEP));
   const dir = vx >= 0 ? 1 : -1, sp = (el ? ELEC_SPEED : GRIND_SPEED) * ZONE_STEP / 1000;
   const ty = x => g.terrain[Math.max(0, Math.min(W - 1, Math.round(x)))];
-  let x = Math.max(20, Math.min(W - 20, impact[0]));
+  let x = Math.max(20, Math.min(W - 20, impact[0])), wy = ty(x) - 2;   // wy: 톱날의 현재 높이 (벽을 만나면 속도만큼씩 타고 올라가요)
   const path = [], hits = [], next = g.players.map(() => 0), cnt = g.players.map(() => 0);
   for (let k = 0; k <= n; k++) {
     const t = k * ZONE_STEP;
-    let y = ty(x);
-    if (!el) y -= 2;   // 톱날은 중심이 땅 높이에 오도록 반쯤 박혀서 굴러가요
+    const y = el ? ty(x) : wy;   // 톱날은 중심이 땅 높이에 오도록 반쯤 박혀서 굴러가요
     path.push([Math.round(x), Math.round(y)]);
     g.players.forEach((q, i) => {
       if (q.hp <= 0 || isAlly(g, shooter, i) || t < next[i]) return;
@@ -756,10 +756,21 @@ function zoneRun(g, shooter, impact, vx, kind) {
       hits.push({ i, t, x: q.x, y: Math.round(qy), d: hp0 - q.hp });
     });
     if (k < n) {
-      const nx = x + dir * sp;
-      if (nx < 20 || nx > W - 20) continue;                                      // 맵 끝에서 멈춰요
-      if (!el && ty(x) - ty(nx) > GRIND_CLIMB * Math.abs(nx - x)) continue;      // 톱니바퀴는 너무 가파른 벽을 못 올라가요
-      x = nx;
+      if (el) {
+        const nx = x + dir * sp;
+        if (nx < 20 || nx > W - 20) continue;                                    // 맵 끝에서 멈춰요
+        x = nx;
+      } else {   // 톱니바퀴: 1px 씩 땅을 따라 굴러가요. 가파른 벽을 만나면 이동 속도(sp)만큼씩 벽을 타고 올라간 뒤 계속 가요 (벽 높이 제한 없음)
+        let B = sp;
+        while (B > 0) {
+          const nx = x + dir;
+          if (nx < 20 || nx > W - 20) break;                                     // 맵 끝에서 멈춰요
+          const gy = ty(nx) - 2, rise = wy - gy;                                 // rise > 0 이면 앞이 더 높아요
+          if (rise > GRIND_CLIMB) { const c = Math.min(rise, B); wy -= c; B -= c; if (wy - gy > 1e-6) break; }   // 아직 벽 아래: 이번 틱은 올라가기만 해요
+          if (B <= 0) break;
+          x = nx; wy = gy; B -= 1;                                               // 한 칸 전진 (내리막은 그대로 떨어져요)
+        }
+      }
     }
   }
   const lastOf = {}; hits.forEach((h, j) => { lastOf[h.i] = j; }); hits.forEach((h, j) => { h.last = lastOf[h.i] === j; });   // 탱크별 마지막 타격 (쓰러지는 연출용)
@@ -859,17 +870,18 @@ function leave(ws) {
   pushList();
 }
 
-// ===== 토너먼트 모드 (3~4명) =====
+// ===== 토너먼트 모드 (3~6명) =====
 // 1) 모두 목표 맞추기 → 가까운 순서가 시드(1~4번)
 // 2) 4명: 1번 vs 4번 · 2번 vs 3번 준결승을 '동시에' / 3명: 1번은 부전승, 2번 vs 3번 준결승
+// 5~6명: 8강(5명은 4·5번, 6명은 3·6 / 4·5번)을 먼저 치르고 1·2번 시드는 준결승에서 합류 (1번 vs 4·5번 승자 · 2번 vs 3번 또는 3·6번 승자)
 // 3) 준결승 승자끼리 결승 → 우승. 경기가 없는 사람(이긴 사람 · 진 사람 · 부전승)은 진행 중인 다른 경기를 관전해요
 // 경기 하나 = 작은 방(match room): 두 사람 자리만 채운 slots 로 기존 게임 코드를 그대로 써요 (r.parent = 원래 방)
 let TID = 0;   // 토너먼트 번호 (클라이언트가 결과 애니메이션을 한 번만 보여주는 데 써요)
-const MATCH_INTRO = 3200, FINAL_DELAY = 4200, TOUR_END_MS = 9000;   // 우승 뒤 대진표를 보여주는 시간
+const MATCH_INTRO = 3200, FINAL_DELAY = 4200, NEXT_DELAY = 3200, TOUR_END_MS = 9000;   // 우승 뒤 대진표를 보여주는 시간
 const tourMsg = (r, show = true) => {
   const T = r.tour;
   return { type: 'tour', show, key: 't' + T.id + '_', seeds: T.seeds, bye: T.bye, champ: T.champ, info: T.info,
-    matches: T.matches.map(mt => ({ id: mt.id, label: mt.label, final: !!mt.final, p: mt.p, winner: mt.winner, state: mt.state, from: mt.from || null })) };
+    matches: T.matches.map(mt => ({ id: mt.id, label: mt.label, final: !!mt.final, sf: !!mt.sf, p: mt.p, winner: mt.winner, state: mt.state, from: mt.from || null })) };
 };
 const liveMatchOf = (r, i) => r.tour && r.tour.matches.find(mt => mt.state === 'live' && mt.room && mt.p.includes(i));
 function startTournament(r, g) {
@@ -877,16 +889,25 @@ function startTournament(r, g) {
   r.game = null;
   const T = r.tour = { id: ++TID, seeds, bye: -1, champ: -1, matches: [], info: r.slots.map(s => s && { name: s.name, icon: s.icon }) };
   const n = seeds.length;
-  if (n >= 4) {
-    T.matches.push({ id: 0, label: '준결승 1', p: [seeds[0], seeds[3]] }, { id: 1, label: '준결승 2', p: [seeds[1], seeds[2]] });
+  if (n >= 5) {   // 5~6명: 8강 → 준결승 → 결승. 상위 시드는 8강을 건너뛰어요
+    if (n >= 6) {
+      T.matches.push({ id: 0, label: '8강 1', p: [seeds[2], seeds[5]] }, { id: 1, label: '8강 2', p: [seeds[3], seeds[4]] });
+      T.matches.push({ id: 2, label: '준결승 1', sf: true, p: [seeds[0], -1], from: [null, 1] }, { id: 3, label: '준결승 2', sf: true, p: [seeds[1], -1], from: [null, 0] });
+    } else {
+      T.matches.push({ id: 0, label: '8강', p: [seeds[3], seeds[4]] });
+      T.matches.push({ id: 1, label: '준결승 1', sf: true, p: [seeds[0], -1], from: [null, 0] }, { id: 2, label: '준결승 2', sf: true, p: [seeds[1], seeds[2]] });
+    }
+    T.matches.push({ id: T.matches.length, label: '결승', final: true, p: [-1, -1], from: [T.matches.length - 2, T.matches.length - 1] });
+  } else if (n >= 4) {
+    T.matches.push({ id: 0, label: '준결승 1', sf: true, p: [seeds[0], seeds[3]] }, { id: 1, label: '준결승 2', sf: true, p: [seeds[1], seeds[2]] });
     T.matches.push({ id: 2, label: '결승', final: true, p: [-1, -1], from: [0, 1] });
   } else if (n === 3) {
     T.bye = seeds[0];
-    T.matches.push({ id: 0, label: '준결승', p: [seeds[1], seeds[2]] });
+    T.matches.push({ id: 0, label: '준결승', sf: true, p: [seeds[1], seeds[2]] });
     T.matches.push({ id: 1, label: '결승', final: true, p: [seeds[0], -1], from: [null, 0] });
   } else T.matches.push({ id: 0, label: '결승', final: true, p: seeds.slice(0, 2).concat([-1, -1]).slice(0, 2) });
   T.matches.forEach(mt => { mt.winner = -1; mt.state = 'wait'; mt.room = null; });
-  T.matches.filter(mt => !mt.final).forEach(mt => startMatch(r, mt));
+  T.matches.filter(mt => !mt.final && !mt.from).forEach(mt => startMatch(r, mt));
   if (n <= 2) startMatch(r, T.matches[0]);
   toRoom(r, tourMsg(r));
   freeWatch(r);
@@ -905,12 +926,13 @@ function startMatch(r, mt) {
   newGame(m);
   const g = m.game;
   clearTimeout(g.orderTimer);   // 경기에서는 목표 맞추기 없이 시드가 높은 쪽이 먼저 쏴요
-  g.tm = { id: mt.id, label: mt.label, final: !!mt.final, p: mt.p.slice() };
+  g.tm = { id: mt.id, label: mt.label, final: !!mt.final, sf: !!mt.sf, p: mt.p.slice() };
   g.phase = 'intro'; g.order = mt.p.slice(); g.turn = mt.p[0]; g.fuel = fuelOf(g, g.turn); g.busy = true; g.target = null;
   g.introTimer = setTimeout(() => { if (m.game === g && g.winner === -1) { g.phase = 'play'; endBusy(g); startAugment(m, g); } }, MATCH_INTRO);   // 시작 연출 → 증강 고르기 → 경기
   mt.p.forEach(i => { const w = r.slots[i] && r.slots[i].ws; if (w) r.tour.matches.forEach(x => x !== mt && x.room && x.room.watch.delete(w)); });   // 경기에 나가는 사람은 관전을 그만둬요
   toRoom(m, snapshot(m));
   if (mt.final) { toRoom(r, tourMsg(r, false)); freeWatch(r); }   // 결승: 나머지는 모두 결승을 관전
+  else { toRoom(r, tourMsg(r, false)); freeWatch(r); }   // 준결승 등: 대진표 상태(LIVE)를 갱신하고, 경기가 없는 사람은 진행 중인 경기를 관전해요
 }
 function matchEnd(m, g) {
   const r = m.parent, T = r.tour;
@@ -929,15 +951,16 @@ function progress(r) {   // 경기가 끝날 때마다: 다음 경기 준비 / �
     setTimeout(() => { if (r.tour === T && !r.dead) { r.tour = null; toRoom(r, roomMsg(r)); pushList(); } }, TOUR_END_MS);
     return;
   }
-  if (fin.state === 'wait' && fin.from && fin.from.every(k => k == null || T.matches[k].state === 'done')) {   // 준결승이 모두 끝났어요 → 결승
-    fin.p = fin.p.map((q, k) => fin.from[k] == null ? q : T.matches[fin.from[k]].winner);
-    fin.state = 'ready';
-    toRoom(r, tourMsg(r));
-    setTimeout(() => startMatch(r, fin), FINAL_DELAY);
-    return;
-  }
+  let finReady = false;
+  T.matches.forEach(mt => {   // 앞 경기가 모두 끝난 경기는 승자를 채우고 곧 시작해요 (8강 → 준결승 → 결승)
+    if (mt.state !== 'wait' || !mt.from || !mt.from.every(k => k == null || T.matches[k].state === 'done')) return;
+    mt.p = mt.p.map((q, k) => mt.from[k] == null ? q : T.matches[mt.from[k]].winner);
+    mt.state = 'ready';
+    if (mt.final) finReady = true;
+    setTimeout(() => startMatch(r, mt), mt.final ? FINAL_DELAY : NEXT_DELAY);
+  });
   toRoom(r, tourMsg(r));
-  freeWatch(r);
+  if (!finReady) freeWatch(r);
 }
 function setWatch(r, ws, mt) {   // ws 가 경기 mt 를 관전해요 (다른 경기 관전은 그만둬요)
   r.tour.matches.forEach(x => x.room && x.room.watch.delete(ws));
@@ -1035,12 +1058,18 @@ function addBot(r, level) {   // 빈 자리에 AI 를 앉혀요 (난이도를 �
   r.slots[i] = { ws: null, bot: true, level: lv, name: botName(i, lv), icon: (pool.length ? pool : ICONS)[Math.floor(Math.random() * (pool.length || ICONS.length))], team: t0 <= t1 ? 0 : 1, tank: 'random' };
 }
 
+// 연결 점검: 잠든 기기·끊긴 와이파이처럼 조용히 죽은 소켓을 찾아 정리해요 (그대로 두면 그 사람 차례에서 모두가 멈춰 있어요). 프록시의 유휴 연결 종료도 막아줘요.
+const HEARTBEAT_MS = 20000;
+setInterval(() => wss.clients.forEach(c => { if (c.isAlive === false) return c.terminate(); c.isAlive = false; try { c.ping(); } catch (e) {} }), HEARTBEAT_MS);
 wss.on('connection', ws => {
+  ws.isAlive = true; ws.on('pong', () => { ws.isAlive = true; });
   ws.room = null;
   send(ws, listMsg());
 
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
+    ws.isAlive = true;
+    if (m.type === 'ping') return send(ws, { type: 'pong' });   // 클라이언트 연결 점검 (iPad 등 절전에서 돌아왔을 때 소켓이 살아 있는지 확인해요)
     const r0 = ws.room;
     if (r0 && r0.tour) {   // 토너먼트 진행 중: 대기실 조작은 막고, 게임 조작은 내가 뛰는 경기방으로 보내요
       if (['start', 'mode', 'map', 'tank', 'team', 'bot'].includes(m.type)) return;
@@ -1057,7 +1086,7 @@ wss.on('connection', ws => {
       const nr = { code, slots: Array(MAX).fill(null), mapId: 0, mode: 'ffa', game: null };
       rooms.set(code, nr);
       join(ws, nr, name, icon);
-    } else if (m.type === 'solo' && !r) {   // 솔로 모드: 나 + AI 1~3명 (개인전)
+    } else if (m.type === 'solo' && !r) {   // 솔로 모드: 나 + AI 1~5명 (개인전)
       const code = newCode();
       const nr = { code, slots: Array(MAX).fill(null), mapId: 0, mode: 'ffa', game: null, solo: true };
       rooms.set(code, nr);
@@ -1080,7 +1109,7 @@ wss.on('connection', ws => {
       r.mapId = Math.max(0, Math.min(RANDOM_MAP, (+m.id) | 0));
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'mode' && !r.game && !r.solo && ws.slot === host(r)) {
-      r.mode = ['team', 'escalation', 'laser', 'sniper', 'tournament'].includes(m.mode) ? m.mode : 'ffa';   // tournament: 3~4명 1:1 대진   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
+      r.mode = ['team', 'escalation', 'laser', 'sniper', 'tournament'].includes(m.mode) ? m.mode : 'ffa';   // tournament: 3~6명 1:1 대진   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'bot' && r.solo && !r.game && ws.slot === host(r)) {   // AI 추가 / 제거 / 난이도 / 탱크
       const sl = r.slots[m.slot | 0];
