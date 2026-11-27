@@ -266,7 +266,23 @@
     return b ? b.id : null;
   }
 
-  const api = { POOL, byId, calc, offer, chaosPick, RARITY, SPECIFIC_SLOTS, PICK_MS };
+  // 카오스 서든데스 선택지 3장: ALL_CURSE 확률로 전부 저주, 아니면 칸마다 CURSE_SLOT 확률로 저주 (이로운 카드는 최소 1장)
+  function chaosOffer(tank, have = [], allCurse = .2, curseSlot = .34) {
+    const curses = POOL.filter(a => a.curse && !have.includes(a.id)).sort(() => Math.random() - .5);
+    if (curses.length >= 3 && Math.random() < allCurse) return curses.slice(0, 3).map(a => a.id);
+    const good = offer(tank, have);
+    if (!good.length) return curses.slice(0, 3).map(a => a.id);
+    let bad = 0;
+    const out = good.map((id, k) => {
+      if (k === good.length - 1 && bad === good.length - 1) return id;   // 이로운 카드는 최소 1장
+      if (curses.length > bad && Math.random() < curseSlot) return curses[bad++].id;
+      return id;
+    });
+    while (out.length < 3 && curses.length > bad) out.push(curses[bad++].id);
+    return out.sort(() => Math.random() - .5);
+  }
+
+  const api = { POOL, byId, calc, offer, chaosPick, chaosOffer, RARITY, SPECIFIC_SLOTS, PICK_MS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FAUG = api;
 })(this);

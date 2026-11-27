@@ -394,6 +394,7 @@ module.exports = function (X) {
     Object.entries(x.kindDmg || {}).forEach(([k, v]) => { s += (v - 1) * 28 * (lv.aug >= 3 && own && k !== own ? .08 : 1); });   // 엑스퍼트: 내 탱크 탄에만 붙는 증강을 높게 쳐요
     if (p.tank !== 'explosive') s += ((x.fuel || 1) - 1) * 3;
     s += ((x.shells || 1) - 1) * 4 + (x.bounce || 0) * 2 + ((x.beam || 1) - 1) * 6 + (x.missiles || 0) * 1.5 + (x.drills ? 4 : 0) + (x.dual ? 3 : 0) + (x.jumbo ? 2 : 0) + (x.split > 2 ? 3 : 0);
+    if (a.curse) s -= 8 + (x.hiAngle ? 6 : 0) + (x.size ? 5 : 0) + (x.vmul ? 5 : 0) + (x.shaky ? 4 : 0) + (x.rev ? 3 : 0) + (x.windx ? 3 : 0);   // 카오스: 저주는 피하고, 다 저주면 그나마 덜 아픈 걸로
     return s + (lv.aug === 1 ? rnd(-3, 3) : 0);
   }
   function augment(r, g) {

@@ -55,8 +55,8 @@ const EL_PUSH_R = 210, EL_PUSH_MAX = 170;          // 💧 반경 210px 안의 �
 const EL_MOUND_R = 110, EL_MOUND_H = 95;           // 🪨 반경 110px · 높이 95px 흙더미
 const EL_WIND = 10;                                // 🌪️ 다음 차례 바람 세기 (최대)
 const EL_POST_MS = 900;                            // 밀어내기·흙더미가 솟는 연출 시간 (화면)
-// ----- 카오스 서든데스: CHAOS_EVERY 턴마다 살아 있는 모두에게 무작위 증강 1개 강제 (CHAOS_CURSE 확률로 저주) -----
-const CHAOS_EVERY = 3, CHAOS_CURSE = .5, CHAOS_MS = 4200;   // 몇 턴마다 / 저주 확률 / 룰렛 연출 시간
+// ----- 카오스 서든데스: CHAOS_EVERY 턴마다 살아 있는 모두가 증강을 골라요. 선택지에 저주가 섞이고, 가끔은 3장 모두 저주예요 -----
+const CHAOS_EVERY = 2, CHAOS_ALL_CURSE = .2, CHAOS_CURSE_SLOT = .34;   // 몇 턴마다 증강 선택 / 선택지 3장이 전부 저주일 확률 / 그 외에 카드 한 장이 저주일 확률
 const SHAKY = .12;                                           // 저주 '떨리는 손': 파워 ±12%
 // ----- 분열탄: 쏘고 화면 기준 3초 뒤에 터지며 작은 탄들이 주변으로 흩어져요. 3초 전에 땅에 닿으면 터지지 않고 튕기고, 적 탱크에 닿으면 그 자리에서 바로 터져요 -----
 const SPLIT_SEC = 3;                                                     // 화면에서 터지기까지 걸리는 시간(초)
@@ -352,7 +352,7 @@ function flight(g, shooter, angle, power, kind, free = false, pick = 0) {   // f
         (kind === 'sniper' ? segDist(px, py, x, y, q.x, tankY(g, q)) < SNIPER_HIT * p.mods.hitr * q.mods.size : Math.hypot(x - q.x, y - tankY(g, q)) < (kind === 'pierce' ? PIERCE_HIT : HIT_R) * q.mods.size))) { impact = [x, y]; break; }
   }
   if (impact) path.push(impact);
-  return { path, impact, fizzled: !impact && !out, vx, vy };   // fizzled: 30초 넘게 날다 소멸
+  return { path, impact, fizzled: !impact && !out, vx, vy, tgt: target ? g.players.indexOf(target) : null };   // fizzled: 30초 넘게 날다 소멸 · tgt: 유도탄이 노린 탱크 (화면에서 그 탱크 색 테두리)
 }
 
 // 분열탄 비행: 원래 탄은 SPLIT_STEPS 동안 날아요 (땅에 닿으면 튕기고, 느려지면 땅에 멈춰요) → 그 자리에서 터지고 작은 탄들이 부채꼴로 퍼져요
@@ -613,7 +613,7 @@ function burnTick(r, g) {
 // 쏜 사람의 화면에서 포탄이 끝나면 'landed'를 보내고, 안 오면 예상 시간 뒤에 서버가 넘겨요.
 function endBusy(g) { g.busy = false; g.orderBusy = false; clearTimeout(g.busyTimer); }
 function resolveShot(r, g) {
-  if (r.game !== g || !g.busy || g.phase === 'augment' || g.chaosHold) return;
+  if (r.game !== g || !g.busy || g.phase === 'augment') return;
   endBusy(g);
   if (g.winner !== -1) return;
   advance(r, g.turn);
@@ -664,11 +664,11 @@ function startAugment(r, g, who, why = 'start') {
   if (r.game !== g || g.winner !== -1) return;
   const ps = who || g.players.map((p, i) => (p.on && p.hp > 0 ? i : -1)).filter(i => i >= 0);
   g.phase = 'augment'; g.busy = true; g.picks = {}; g.augWhy = why;
-  g.offers = g.players.map((p, i) => (ps.includes(i) ? offerFor(g, p) : []));
+  g.offers = g.players.map((p, i) => (ps.includes(i) ? (why === 'chaos' ? FAUG.chaosOffer(p.tank, p.aug, CHAOS_ALL_CURSE, CHAOS_CURSE_SLOT) : offerFor(g, p)) : []));
   g.pickers = ps.filter(i => g.offers[i].length);
   if (!g.pickers.length) return finishAugment(r, g);
   g.augTimer = setTimeout(() => finishAugment(r, g), FAUG.PICK_MS + 800);   // 시간이 지나면 못 고른 사람은 랜덤
-  r.slots.forEach((sl, i) => sl && send(sl.ws, { type: 'augment', offers: g.offers[i], left: FAUG.PICK_MS, why, n: g.pickers.length, who: g.pickers }));
+  r.slots.forEach((sl, i) => sl && send(sl.ws, { type: 'augment', offers: g.offers[i], left: FAUG.PICK_MS, why, round: g.chaosRound || 0, n: g.pickers.length, who: g.pickers }));
   BOT.augment(r, g);   // AI 는 알아서 골라요
 }
 // 체력바 한 칸(최대 체력의 25%)이 깎일 때마다 그 플레이어에게 증강 선택권이 생겨요 (한 번에 여러 번 깎였으면 차례로 여러 번)
@@ -696,30 +696,13 @@ function applyAug(p, id) {   // 증강 하나를 붙이고 능력치·체력을 
   if (heal) p.hp = Math.min(p.maxHp, p.hp + heal);                            // 응급 수리: 즉시 회복
   p.lastHp = p.hp;                                                           // 증강으로 바뀐 체력은 '피해'로 세지 않아요
 }
-// 카오스 서든데스: 턴이 넘어갈 때마다 세다가 CHAOS_EVERY 번째마다 모두에게 무작위 증강 (true 면 룰렛 연출 뒤에 차례를 알려요)
+// 카오스 서든데스: 턴이 넘어갈 때마다 세다가 CHAOS_EVERY 번째마다 살아 있는 모두가 증강을 골라요 (저주 섞인 선택지)
 function chaosTick(r, g) {
   if (g.mode !== 'chaos' || g.winner !== -1) return false;
   g.chaosN = (g.chaosN || 0) + 1;
   if (g.chaosN % CHAOS_EVERY) return false;
-  const picks = {};
-  g.players.forEach((p, i) => {
-    if (!p.on || p.hp <= 0) return;
-    const id = FAUG.chaosPick(p.tank, p.aug, CHAOS_CURSE);
-    if (id) { picks[i] = id; applyAug(p, id); }
-  });
   g.chaosRound = (g.chaosRound || 0) + 1;
-  g.busy = true; g.chaosHold = true;
-  g.fuel = fuelOf(g, g.turn);
-  toRoom(r, { type: 'chaos', picks, round: g.chaosRound, ms: CHAOS_MS });
-  toRoom(r, snapshot(r));
-  g.busyTimer = setTimeout(() => {
-    if (r.game !== g) return;
-    g.chaosHold = false; endBusy(g);
-    if (g.winner !== -1) return;
-    if (!g.players[g.turn].on || g.players[g.turn].hp <= 0) advance(r, g.turn);
-    g.fuel = fuelOf(g, g.turn);
-    toRoom(r, turnMsg(g)); BOT.turn(r, g);
-  }, CHAOS_MS);
+  startAugment(r, g, null, 'chaos');
   return true;
 }
 function finishAugment(r, g) {
@@ -1018,7 +1001,7 @@ function fireKind(r, shooter, angle, power, kind) {
     g.busy = true;
     g.busyTimer = setTimeout(() => resolveShot(r, g), ms);
   }
-  return { type: 'shot', by: shooter, angle, kind, dud, wet, grav, zone, icpt, el, beam: kind === 'laser' ? g.players[shooter].mods.beam : 1, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd, small: !!s.small, jumbo: !!s.jumbo, icpt: !!s.icpt, frag: !!s.frag, sub: !!s.sub, n0: s.n0 || 0, bnc: s.bnc || null })), state: snapshot(r) };
+  return { type: 'shot', by: shooter, angle, kind, dud, wet, grav, zone, icpt, el, beam: kind === 'laser' ? g.players[shooter].mods.beam : 1, shells: shells.map(s => ({ path: s.path, impact: s.impact, gen: s.gen, splits: s.splits, hit: s.hit, hd: s.hd, small: !!s.small, jumbo: !!s.jumbo, icpt: !!s.icpt, frag: !!s.frag, tgt: s.tgt ?? null, dual: kind === 'homing' && shells.length > 1, k: shells.indexOf(s), sub: !!s.sub, n0: s.n0 || 0, bnc: s.bnc || null })), state: snapshot(r) };
 }
 
 function join(ws, r, name, icon) {

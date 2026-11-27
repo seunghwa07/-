@@ -351,7 +351,8 @@
   @media (max-width:640px){#charge,#elem{right:calc(var(--m) + var(--aw) + 10px + var(--fw) + 12px)}}
 
   /* ---------- 상태 표시 ---------- */
-  #rd{position:absolute;left:50%;transform:translateX(-50%);top:84px;max-width:calc(100% - 2 * (clamp(128px,21vw,214px) + 24px));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;color:#d8ffe9;background:#050a08ee;border:1px solid var(--g);padding:3px 10px;border-radius:10px;font-size:13px;font-weight:bold;z-index:5;box-shadow:0 0 8px #00bf6355}
+  #rd{display:none !important}   /* 화면 위 가운데 정보칸은 시야를 가려서 없앴어요 (각도·파워는 조이스틱, 증강은 🎒 팝업) */
+  #rd0{position:absolute;left:50%;transform:translateX(-50%);top:84px;max-width:calc(100% - 2 * (clamp(128px,21vw,214px) + 24px));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;color:#d8ffe9;background:#050a08ee;border:1px solid var(--g);padding:3px 10px;border-radius:10px;font-size:13px;font-weight:bold;z-index:5;box-shadow:0 0 8px #00bf6355}
   /* ---------- 시작 연출: 로딩 화면 → 문이 열리며 전장이 나타나요 ---------- */
   #intro{position:absolute;inset:0;z-index:30;overflow:hidden;pointer-events:auto}
   #intro[hidden]{display:none}
@@ -415,6 +416,10 @@
   .acard.r1{--rc:#4dd2ff;--rg:77,210,255;background:linear-gradient(160deg,rgba(14,52,84,.9),rgba(10,16,42,.92))}
   .acard.r2{--rc:#c06bff;--rg:192,107,255;background:linear-gradient(160deg,rgba(62,26,100,.92),rgba(18,10,46,.94))}
   .acard.r3{--rc:#ffb62e;--rg:255,182,46;background:linear-gradient(160deg,rgba(104,64,10,.94),rgba(40,20,8,.95))}
+  .acard.r4{--rc:#ff4d8a;--rg:255,77,138;background:repeating-linear-gradient(135deg,rgba(255,77,138,.06) 0 10px,transparent 10px 20px),linear-gradient(160deg,rgba(80,10,46,.95),rgba(26,4,20,.96))}   /* 저주 (카오스 모드) */
+  .acard.r4 .ic{filter:drop-shadow(0 0 8px rgba(255,77,138,.8))}
+  .acard.r4 .rk::before{content:'😈 '}
+  #aglow[data-r="4"]{animation:aglow 1.2s ease-in-out infinite}
   .acard .rk{flex:none;font:900 clamp(9px,1.8vh,12px)/1 'Chakra Petch','Noto Sans KR',sans-serif;letter-spacing:.1em;padding:2px 8px;border-radius:99px;color:#0b0f26;background:var(--rc)}
   .acard .atr{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px}
   .acard>*{position:relative;z-index:1}   /* 글씨·아이콘은 항상 빛 효과 위에 */
@@ -593,7 +598,36 @@
   #ol .oc.cur{opacity:1;box-shadow:0 0 10px var(--c);transform:scale(1.08)}
   #ol .oc.dead{opacity:.25;text-decoration:line-through}
   /* ---------- 토너먼트 대진표 ---------- */
-  #tbtn{position:absolute;top:calc(env(safe-area-inset-top,0px) + 62px);left:max(10px,env(safe-area-inset-left,0px));z-index:6;height:28px;padding:0 12px;border-radius:14px;border:1.5px solid #ffd23a;background:#0a0d1ee6;color:#ffd23a;font:700 13px 'Noto Sans KR',system-ui,sans-serif;box-shadow:0 0 10px rgba(255,210,58,.35)}
+  /* 왼쪽 위 체력 카드 아래 작은 버튼 줄: 🎒 증강 · 🏆 대진표 (위치는 ui() 에서 체력 카드 높이에 맞춰요) */
+  #hb{position:absolute;top:calc(env(safe-area-inset-top,0px) + 62px);left:max(10px,env(safe-area-inset-left,0px));z-index:6;display:flex;gap:6px;align-items:center}
+  #hb[hidden]{display:none}
+  #augbtn{height:28px;padding:0 11px;border-radius:14px;border:1.5px solid #8fa8ff;background:#0a0d1ee6;color:#cfd9ff;font:700 13px 'Noto Sans KR',system-ui,sans-serif;box-shadow:0 0 10px rgba(143,168,255,.3);display:flex;align-items:center;gap:5px;white-space:nowrap}
+  #augbtn .ac{min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#8fa8ff;color:#06081a;font:900 11px/16px 'Chakra Petch',sans-serif;text-align:center}
+  #augbtn .cz{color:#ff8ab4;font-weight:900}
+  #augbtn.curse{border-color:#ff4d8a;box-shadow:0 0 10px rgba(255,77,138,.4)}
+  #augp{position:absolute;inset:0;z-index:14;display:flex;align-items:center;justify-content:center;background:rgba(3,6,18,.6);font-family:'Noto Sans KR',system-ui,sans-serif;color:#fff}
+  #augp[hidden]{display:none}
+  #augp .tp{position:relative;box-sizing:border-box;width:min(640px,94vw);max-height:92vh;overflow:auto;padding:14px 18px 16px;border-radius:22px;background:radial-gradient(420px 220px at 50% 0%,rgba(143,168,255,.16),rgba(143,168,255,0) 70%),#050a18;border:2px solid #8fa8ff;box-shadow:0 0 30px rgba(143,168,255,.3);animation:tpin .3s ease both}
+  #augp h4{margin:0 34px 2px;text-align:center;font-size:clamp(15px,3.2vh,20px);color:#cfd9ff}
+  #augp .sub{margin:0 0 10px;text-align:center;font-size:12px;color:#a9b8de}
+  #augp .x{position:absolute;right:10px;top:8px;width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid #3a4770;background:#0d1433;color:#cfd9f5;font-size:15px;line-height:1}
+  #augp .me{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:#0d1433;border:1px solid #2a3556;margin-bottom:8px}
+  #augp .me canvas{flex:none}
+  #augp .me b{font-size:16px}
+  #augp .me small{display:block;font-size:12px;color:#a9b8de;margin-top:2px}
+  #augp .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:7px}
+  #augp .ag{--rc:#9aa4c8;display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-radius:12px;border:1.5px solid color-mix(in srgb,var(--rc) 55%,#1a2140);background:linear-gradient(160deg,color-mix(in srgb,var(--rc) 14%,#0b1130),#0a0e24)}
+  #augp .ag .i{flex:none;width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:19px;background:#050818;border:1px solid var(--rc)}
+  #augp .ag b{display:block;font-size:13px;line-height:1.2}
+  #augp .ag em{font-style:normal;font-size:10px;font-weight:900;color:var(--rc);margin-left:4px}
+  #augp .ag span{display:block;font-size:11px;line-height:1.35;color:#b9c3e6;margin-top:2px}
+  #augp .ag.cu{background:linear-gradient(160deg,#3a0f2a,#14061a)}
+  #augp .none{padding:14px;text-align:center;color:#7f8db8;font-size:13px}
+  #augp h5{margin:12px 0 6px;font-size:12px;color:#8e9bc4;letter-spacing:.06em}
+  #augp .op{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:10px;background:#0b1130;margin-bottom:4px;font-size:13px;flex-wrap:wrap}
+  #augp .op i{font-style:normal;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid var(--rc);background:#050818;font-size:13px}
+  #augp .op .dt{width:9px;height:9px;border-radius:50%;background:var(--pc);box-shadow:0 0 6px var(--pc)}
+  #tbtn{position:static;height:28px;padding:0 12px;border-radius:14px;border:1.5px solid #ffd23a;background:#0a0d1ee6;color:#ffd23a;font:700 13px 'Noto Sans KR',system-ui,sans-serif;box-shadow:0 0 10px rgba(255,210,58,.35)}
   #tbtn[hidden]{display:none}
   #tour{position:absolute;inset:0;z-index:14;display:flex;align-items:center;justify-content:center;background:rgba(3,6,18,.62);font-family:'Noto Sans KR',system-ui,sans-serif;color:#fff}
   #tour[hidden]{display:none}
@@ -756,7 +790,7 @@
       <button id="mlaser" role="tab" title="모두 레이저 탱크 · 한 방이면 끝"><span class="mi">🔦</span><span class="mt"><b>레이저</b><small>벽에 튕기는 즉사 빔</small></span></button>
       <button id="msniper" role="tab" title="모두 스나이퍼 탱크 · 한 방 한 방이 묵직해요"><span class="mi">🔭</span><span class="mt"><b>스나이퍼</b><small>모두 저격탄 탱크</small></span></button>
       <button id="mtour" role="tab" title="3~6명 · 목표 맞추기로 대진을 정하고 1:1로 겨뤄요"><span class="mi">🏆</span><span class="mt"><b>토너먼트</b><small>3~6명 · 1:1 대진</small></span></button>
-      <button id="mchaos" role="tab" title="몇 턴마다 모두에게 무작위 증강 · 저주도 나와요"><span class="mi">🃏</span><span class="mt"><b>카오스</b><small>무작위 증강 · 저주</small></span></button>
+      <button id="mchaos" role="tab" title="2턴마다 증강 선택 · 저주가 섞여 나와요"><span class="mi">🃏</span><span class="mt"><b>카오스</b><small>무작위 증강 · 저주</small></span></button>
     </div>
   </div>
 
@@ -812,7 +846,8 @@
   <div id="banner"><b></b><span></span></div>
   <div id="rank" hidden></div>
   <div id="chaos" hidden><div class="cbk"></div><div class="cp"><h3><em>🃏</em> CHAOS TIME!</h3><div class="cs"></div><div class="cg"></div></div></div>
-  <button id="tbtn" hidden>🏆 대진표</button>
+  <div id="hb"><button id="augbtn" title="내 증강 보기">🎒 증강 <span class="ac">0</span></button><button id="tbtn" hidden>🏆 대진표</button></div>
+  <div id="augp" hidden></div>
   <div id="tour" hidden></div>
   <div id="aug" hidden><div id="aglow"></div>
     <div class="ahead"><div class="ah"><span>증강 선택</span></div><div id="atm"><svg viewBox="0 0 36 36"><circle class="tr" cx="18" cy="18" r="15"/><circle id="aring" class="rg" cx="18" cy="18" r="15" pathLength="100"/></svg><b id="aleft"></b></div></div>
@@ -1032,7 +1067,7 @@ function onMsg(m) {
     const p = (st && st.players && st.players[m.by]);
     if (p) { (FX.charges = FX.charges || []).push({ i: m.by, lv: m.charge, t: 0 }); FX.floats.push({ x: p.x, y: p.y - 130, t: 0, txt: `⚡ 충전 ${m.charge}/${RAIL_MAX}`, big: m.charge >= RAIL_MAX }); }
   }
-  else if (m.type === 'shot') { aims[m.by] = m.angle; fireFx(m.by, m.angle); if (m.esc && st && st.players && st.players[m.by]) { const q = st.players[m.by]; FX.floats.push({ x: q.x, y: q.y - 130, t: 0, txt: '🎲 ' + (TN[m.kind] || m.kind), big: false }); } anim = { shells: m.shells.map(s => ({ path: s.path, impact: s.impact, hit: s.hit ?? null, hd: s.hd || 0, boomed: false, gen: s.gen || 0, splits: s.splits || [], small: !!s.small, jumbo: !!s.jumbo, icpt: !!s.icpt, frag: !!s.frag, sub: !!s.sub, n0: s.n0 || 0, bnc: s.bnc || null })), i: 0, pending: m.state, el: m.el || null, by: m.by, kind: m.kind, dud: m.dud, wet: !!m.wet, carpet: m.carpet, beam: m.beam || 1, rail: m.rail || null, plasma: m.plasma || null, echo: m.echo || null, grav: m.grav || null, zone: m.zone || null, icpt: (m.icpt || []).map(e => ({ ...e, done: false })) }; ui(); }
+  else if (m.type === 'shot') { aims[m.by] = m.angle; fireFx(m.by, m.angle); if (m.esc && st && st.players && st.players[m.by]) { const q = st.players[m.by]; FX.floats.push({ x: q.x, y: q.y - 130, t: 0, txt: '🎲 ' + (TN[m.kind] || m.kind), big: false }); } anim = { shells: m.shells.map(s => ({ path: s.path, impact: s.impact, hit: s.hit ?? null, hd: s.hd || 0, boomed: false, gen: s.gen || 0, splits: s.splits || [], small: !!s.small, jumbo: !!s.jumbo, icpt: !!s.icpt, frag: !!s.frag, tgt: s.tgt ?? null, dual: !!s.dual, hk: s.k | 0, sub: !!s.sub, n0: s.n0 || 0, bnc: s.bnc || null })), i: 0, pending: m.state, el: m.el || null, by: m.by, kind: m.kind, dud: m.dud, wet: !!m.wet, carpet: m.carpet, beam: m.beam || 1, rail: m.rail || null, plasma: m.plasma || null, echo: m.echo || null, grav: m.grav || null, zone: m.zone || null, icpt: (m.icpt || []).map(e => ({ ...e, done: false })) }; ui(); }
 }
 
 // ---------- 메뉴 ----------
@@ -1193,7 +1228,7 @@ function renderRoom() {
   // 참가자 / 팀 구성
   $('ptitle').textContent = team ? '팀 구성' : '참가자';
   $('pcount').textContent = `${cnt} / 6`;
-  $('psub').textContent = chaos ? '🃏 3턴마다 모두에게 무작위 증강 1개 강제 · 절반은 저주! · 마지막까지 살아남으면 승리' : tour ? '목표 맞추기로 대진 결정 · 1:1로 이기면 다음 라운드 · 상위 시드는 부전승(3명은 1등 · 5~6명은 8강 면제)' : team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : fixm === 'laser' ? '각자 싸워요 · 모두 레이저 탱크 · 레이저가 벽에 10번 튕겨요 · 한 방 맞으면 즉사 · 마지막까지 살아남은 1명이 승리해요' : escm ? '각자 싸워요 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 마지막까지 살아남은 1명이 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
+  $('psub').textContent = chaos ? '🃏 2턴마다 모두 증강을 골라요 · 선택지에 저주가 섞이고, 가끔은 전부 저주! · 마지막까지 살아남으면 승리' : tour ? '목표 맞추기로 대진 결정 · 1:1로 이기면 다음 라운드 · 상위 시드는 부전승(3명은 1등 · 5~6명은 8강 면제)' : team ? '아군에게는 피해가 없고, 상대 팀이 전멸하면 승리해요' : fixm === 'laser' ? '각자 싸워요 · 모두 레이저 탱크 · 레이저가 벽에 10번 튕겨요 · 한 방 맞으면 즉사 · 마지막까지 살아남은 1명이 승리해요' : escm ? '각자 싸워요 · 모두 쏠 때마다 포탄 종류가 무작위로 바뀌어요 · 마지막까지 살아남은 1명이 승리해요' : solo ? 'AI들과 싸워서 마지막까지 살아남으면 승리해요 · AI 카드에서 난이도와 탱크를 바꿔요' : '각자 싸워서 마지막까지 살아남은 1명이 승리해요';
   $('vs').hidden = !team;
   const box = $('cards'), tc = [0, 1].map(k => filled.filter(i => st.teams[i] === k));
   if (!team) {
@@ -1319,6 +1354,7 @@ function ui() {
   if (mine && !ordering && myMods().hiAngle && (my.angle < 70 || my.angle > 110)) { my.angle = Math.min(110, Math.max(70, my.angle)); aims[me] = my.angle; placeAim(); }   // 저주 '강제 고각'
   $('rd').textContent = mine ? `${ordering ? '순서 정하기' : (TN[st.players[me].tank] || '') + (st.players[me].tank === 'element' ? ' ' + ELEM[elemOf(me)].e + ELEM[elemOf(me)].n : '')}${rail ? ' ⚡' + rc + '/' + RAIL_MAX : ''}${myAug ? ' ' + myAug : ''} · 각도 ${my.angle}° · 파워 ${my.power}` : '관전 중';
   if (mine && !ordering && st.players[me].tank === 'escalation') $('rd').textContent += ' · 점선은 기본탄 기준';
+  updAugBtn();
   if (st.mode === 'chaos' && st.chaosLeft != null && !ordering && st.winner === -1) $('rd').textContent += ` · 🃏 ${st.chaosLeft <= 1 ? '다음 차례에 카오스!' : st.chaosLeft + '턴 뒤 카오스'}`;   // 다음 강제 증강까지
   const fp = !ordering && st.turn === me && st.winner === -1 ? Math.max(0, st.fuel) / (st.fuelMax || FMAP.FUEL) * 100 : 0;
   $('fuelf').setAttribute('stroke-dasharray', `${fp} 100`); $('fuelf').style.opacity = fp > 0 ? 1 : 0; $('fuelsvg').classList.toggle('low', fp > 0 && fp <= 20);
@@ -2938,6 +2974,7 @@ function drawShell(an) {   // an: { path, i, by, kind, small, big }
   if (an.kind === 'plasma' && an.plasma) { drawPlasma(an); return; }   // 불발(물 범위)일 땐 평범한 포탄처럼 날아가요
   if (an.kind === 'explosive') { drawHEShell(an); return; }   // 고폭탄: 길쭉한 포병 포탄
   if (an.kind === 'splitter') { drawSplitShell(an); return; }   // 분열탄: 시한폭탄 + 작은 탄
+  if (an.kind === 'homing' && !an.dud) { drawHomingShell(an); return; }   // 유도탄: 삼각형 두 개를 붙인 다트 (노린 탱크 색 테두리)
   const idx = Math.min(an.i, an.path.length - 1), pt = ptAt(an.path, idx), L = an.small ? 18 : 34;
   if (an.kind === 'shadow') {   // 섀도우: 까만 포탄 — 검은 연기 꼬리 + 또렷한 네온 보라 테두리·후광 (어두운 하늘에서도 확 보이게)
     ctx.save(); ctx.lineCap = 'round';
@@ -3074,6 +3111,47 @@ function drawTunnel(path, upto, al) {   // 드릴이 지나간 땅속 굴: 어�
 }
 
 // ----- 효과: 폭발 / 포구 섬광 / 피해 숫자 -----
+// 유도탄: 삼각형 두 개를 나란히 붙인 다트 — 테두리·꼬리는 노리는 탱크의 색. 듀얼이면 위·아래 삼각형이 한 발씩 나눠져 날아가요
+// 날아가는 동안 노린 탱크 둘레에 같은 색 조준 링이 돌아요
+const HTRI = [new Path2D('M13 -0.7L-9 -8.5L-5.5 -0.7Z'), new Path2D('M13 0.7L-9 8.5L-5.5 0.7Z')];   // 위 · 아래 삼각형 (가운데 틈으로 '두 개'인 게 보여요)
+function drawHomingShell(an) {
+  const L = an.path.length, idx = Math.min(an.i, L - 1), pt = ptAt(an.path, idx), q = ptAt(an.path, Math.max(0, idx - 1.2));
+  const ang = Math.atan2(pt[1] - q[1], pt[0] - q[0]), now = performance.now();
+  const col = an.tgt != null && st && st.players[an.tgt] ? pc(an.tgt) : '#9aa4c8', tris = an.dual ? [HTRI[an.hk ? 1 : 0]] : HTRI;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.globalCompositeOperation = 'lighter';
+  for (let j = 12; j >= 1; j--) {   // 노린 탱크 색 꼬리
+    const p0 = ptAt(an.path, Math.max(0, idx - j - 1)), p1 = ptAt(an.path, Math.max(0, idx - j)), f = 1 - j / 13;
+    ctx.strokeStyle = rgba(col, .55 * f); ctx.lineWidth = (1.5 + 4 * f) * Z * (an.dual ? .7 : 1); ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+  }
+  ctx.translate(pt[0], pt[1]); ctx.rotate(ang); ctx.scale(Z * 1.25, Z * 1.25);
+  const gl = ctx.createRadialGradient(0, 0, 0, 0, 0, 20); gl.addColorStop(0, rgba(col, .45)); gl.addColorStop(1, rgba(col, 0));
+  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, an.dual ? (an.hk ? 4 : -4) : 0, 20, 0, 7); ctx.fill();
+  const fl = .6 + Math.random() * .5;   // 꽁무니 분사 불꽃
+  tris.forEach((t, n) => { const yy = (an.dual ? (an.hk ? 1 : -1) : (n ? 1 : -1)) * 4.2; ctx.fillStyle = 'rgba(255,230,160,.85)'; ctx.beginPath(); ctx.moveTo(-6.5, yy - 1.6); ctx.lineTo(-6.5 - 7 * fl, yy); ctx.lineTo(-6.5, yy + 1.6); ctx.closePath(); ctx.fill(); });
+  ctx.globalCompositeOperation = 'source-over';
+  tris.forEach(t => {
+    const g = ctx.createLinearGradient(-9, 0, 13, 0); g.addColorStop(0, '#2a3048'); g.addColorStop(.6, '#e8eeff'); g.addColorStop(1, '#ffffff');
+    ctx.fillStyle = g; ctx.fill(t);
+    ctx.lineWidth = 3.2; ctx.strokeStyle = rgba(col, .35); ctx.stroke(t);   // 바깥 번짐
+    ctx.lineWidth = 1.5; ctx.strokeStyle = col; ctx.stroke(t);              // 노린 탱크 색 테두리
+  });
+  ctx.restore();
+}
+function drawLockOn() {   // 유도탄이 날아가는 동안 노린 탱크에 조준 링
+  const A = anim; if (!A || A.kind !== 'homing' || A.order) return;
+  const seen = new Set(), now = performance.now();
+  A.shells.forEach(s => {
+    if (s.tgt == null || seen.has(s.tgt) || s.boomed || A.i >= s.path.length || !vis[s.tgt]) return;
+    seen.add(s.tgt);
+    const v = vis[s.tgt], col = pc(s.tgt), r = 26 * Z, a0 = now / 400;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = col; ctx.lineWidth = 2 * Z; ctx.lineCap = 'round';
+    for (let k = 0; k < 4; k++) { const a = a0 + k * Math.PI / 2; ctx.beginPath(); ctx.arc(v.x, v.y - 12 * Z, r, a, a + .9); ctx.stroke(); }
+    ctx.globalAlpha = .55 + .45 * Math.sin(now / 120); ctx.beginPath(); ctx.arc(v.x, v.y - 12 * Z, 3 * Z, 0, 7); ctx.fillStyle = col; ctx.fill();
+    ctx.restore();
+  });
+}
+
 // 분열탄: 둥근 시한폭탄 — 남은 시간만큼 줄어드는 링 + 숫자 + 빨라지는 깜빡임 / 작은 탄은 터진 뒤부터 보여요
 function drawSplitShell(an) {
   const L = an.path.length, idx = Math.min(an.i, L - 1), pt = ptAt(an.path, idx), now = performance.now();
@@ -3278,7 +3356,8 @@ function openAug(m) {
   if (anim) return setTimeout(() => openAug(m), 200);   // 순서 정하기 연출이 끝난 뒤에 띄워요
   hideRank();
   augState = { offers: m.offers, picked: null, end: performance.now() + m.left, total: m.left, n: m.n || 0, who: m.who || [], why: m.why };
-  $('aug').querySelector('.ah span').textContent = m.why === 'hit' ? '피해 보상 · 증강 선택' : '증강 선택';
+  const allCurse = m.why === 'chaos' && m.offers.length && m.offers.every(id => FAUG.byId[id] && FAUG.byId[id].curse);
+  $('aug').querySelector('.ah span').textContent = m.why === 'chaos' ? (allCurse ? `😈 ${m.round || ''}번째 카오스 · 전부 저주! 그나마 나은 걸 골라요` : `🃏 ${m.round || ''}번째 카오스 · 증강 선택 (저주 주의!)`) : m.why === 'hit' ? '피해 보상 · 증강 선택' : '증강 선택';
   $('aug').hidden = false; renderAug(); renderOwn();
   clearInterval(augTick); augTick = setInterval(tickAug, 100); tickAug();
 }
@@ -3288,7 +3367,7 @@ function renderAug() {   // 카드는 한 번만 만들어요 (고른 뒤에 다
   $('acards').innerHTML = augState.offers.map((id, n) => {
     const a = FAUG.byId[id] || { icon: '❔', name: id, desc: '', tank: null }, sp = a.tank !== null;
     const ri = Math.max(0, R.findIndex(r => r.id === (a.rarity || 'common'))); top = Math.max(top, ri);
-    const sparks = ri >= 2 ? Array.from({ length: ri === 3 ? 8 : 4 }, () => `<u class="sp" style="--x:${(8 + Math.random() * 84).toFixed(0)}%;--s:${(2 + Math.random() * 3).toFixed(1)}px;--d:${(1.8 + Math.random() * 1.8).toFixed(1)}s;--dl:${(Math.random() * 2).toFixed(1)}s;--h:${(50 + Math.random() * 70).toFixed(0)}px"></u>`).join('') : '';
+    const sparks = ri >= 2 && ri <= 3 ? Array.from({ length: ri === 3 ? 8 : 4 }, () => `<u class="sp" style="--x:${(8 + Math.random() * 84).toFixed(0)}%;--s:${(2 + Math.random() * 3).toFixed(1)}px;--d:${(1.8 + Math.random() * 1.8).toFixed(1)}s;--dl:${(Math.random() * 2).toFixed(1)}s;--h:${(50 + Math.random() * 70).toFixed(0)}px"></u>`).join('') : '';
     return `<button class="acard r${ri}${sp ? ' sp' : ''}" data-id="${id}" style="--i:${n}">${sparks}<span class="ak">${n + 1}</span><span class="rk">${R[ri].name}</span><span class="ic"><span>${a.icon}</span></span><span class="an">${esc(a.name)}</span><span class="at">${sp ? esc((TN[a.tank] || a.tank) + ' 전용') : '공통'}</span><ul class="ad">${String(a.desc).split(' · ').map(t => '<li>' + augHl(t) + '</li>').join('')}</ul><em class="pk">✔ 선택!</em></button>`;
   }).join('');
   $('acards').querySelectorAll('.acard').forEach(b => { b.onclick = () => pickAug(b.dataset.id); });
@@ -3362,6 +3441,46 @@ function showChaos(m) {
   chaosT.push(setTimeout(() => box.classList.add('out'), ms - 350));
   chaosT.push(setTimeout(() => { box.hidden = true; box.classList.remove('out'); }, ms));
 }
+// ----- 🎒 내 증강 팝업 (화면 위 가운데 정보칸 대신) -----
+function updAugBtn() {
+  const hb = $('hb'), b = $('augbtn'); if (!st || !st.players) return;
+  const p = me >= 0 ? st.players[me] : null, n = p && p.aug ? p.aug.length : 0, cur = p && p.aug ? p.aug.filter(id => FAUG.byId[id] && FAUG.byId[id].curse).length : 0;
+  b.style.display = p && p.on ? '' : 'none';
+  const cz = st.mode === 'chaos' && st.chaosLeft != null && st.phase !== 'order' && st.winner === -1 ? `<span class="cz">🃏${st.chaosLeft <= 1 ? '!' : st.chaosLeft}</span>` : '';
+  const html = `🎒 증강 <span class="ac">${n}</span>${cz}`;
+  if (b.innerHTML !== html) b.innerHTML = html;
+  b.classList.toggle('curse', cur > 0);
+  placeHB();
+  if (!$('augp').hidden) renderAugPop();
+}
+function placeHB() {   // 🎒·🏆 버튼 줄을 왼쪽 체력 카드 바로 아래에 (카드 수가 바뀌면 다시)
+  const hp = $('hpl').getBoundingClientRect(), gm = $('game').getBoundingClientRect();
+  if (hp.height) $('hb').style.top = Math.round(hp.bottom - gm.top + 6) + 'px';
+}
+addEventListener('resize', () => setTimeout(placeHB, 50));
+function augCard(id) {
+  const a = FAUG.byId[id]; if (!a) return '';
+  const R = FAUG.RARITY.find(r => r.id === (a.rarity || 'common')) || FAUG.RARITY[0];
+  return `<div class="ag${a.curse ? ' cu' : ''}" style="--rc:${a.curse ? '#ff4d8a' : R.color}"><div class="i">${a.icon}</div><div><b>${esc(a.name)}<em>${a.curse ? '😈 저주' : R.name}${a.tank ? ' · ' + esc(TN[a.tank] || '') + ' 전용' : ''}</em></b><span>${esc(a.desc)}</span></div></div>`;
+}
+function renderAugPop() {
+  const box = $('augp'), p = st && st.players && me >= 0 ? st.players[me] : null;
+  if (!p) { box.hidden = true; return; }
+  const tn = TN[p.tank] || '', extra = p.tank === 'element' ? ` · 지금 원소 ${ELEM[elemOf(me)].e}${ELEM[elemOf(me)].n}` : p.tank === 'rail' ? ` · 충전 ${p.charge | 0}/${RAIL_MAX}` : p.tank === 'escalation' ? ' · 조준 점선은 기본탄 기준' : '';
+  const chaos = st.mode === 'chaos' && st.chaosLeft != null ? ` · 🃏 ${st.chaosLeft <= 1 ? '다음 차례에 카오스 증강!' : st.chaosLeft + '턴 뒤 카오스 증강'}` : '';
+  const mine = (p.aug || []).map(augCard).join('');
+  const others = st.players.map((q, i) => ({ q, i })).filter(({ q, i }) => q.on && i !== me).map(({ q, i }) =>
+    `<div class="op" style="--pc:${pc(i)}"><span class="dt"></span><b>${esc(q.name)}</b> <small style="color:#8e9bc4">${esc(TN[q.tank] || '')}</small>${(q.aug || []).map(id => { const a = FAUG.byId[id]; if (!a) return ''; const R = FAUG.RARITY.find(r => r.id === (a.rarity || 'common')) || FAUG.RARITY[0]; return `<i style="--rc:${a.curse ? '#ff4d8a' : R.color}" title="${esc(a.name + ' · ' + a.desc)}">${a.icon}</i>`; }).join('') || '<small style="color:#5a6aa0">증강 없음</small>'}</div>`).join('');
+  box.innerHTML = `<div class="tp"><button class="x" aria-label="닫기">✕</button><h4>🎒 내 증강</h4><div class="sub">${esc(tn)}${extra}${chaos}</div>
+    <div class="me"><canvas width="96" height="60" data-k="${p.tank}" data-c="${pc(me)}"></canvas><div><b>${esc(p.name)}</b><small>${esc(tn)} · 증강 ${(p.aug || []).length}개</small></div></div>
+    ${mine ? `<div class="grid">${mine}</div>` : '<div class="none">아직 고른 증강이 없어요</div>'}
+    ${others ? `<h5>다른 플레이어</h5>${others}` : ''}</div>`;
+  const cv = box.querySelector('canvas'); try { tankThumb(cv, p.tank, pc(me), 1.6); } catch (e) {}
+  box.querySelector('.x').onclick = () => { box.hidden = true; };
+  box.onclick = e => { if (e.target === box) box.hidden = true; };
+}
+$('augbtn').onclick = () => { $('augp').hidden = false; renderAugPop(); };
+
 function hideVictory() { const v = $('victory'); if (v) v.hidden = true; }
 function showVictory(sub) {
   hideDefeat();
@@ -4064,6 +4183,7 @@ function hpHud() {
       box.appendChild(d); hpUI.cards[i] = { d, num: d.querySelector('i'), em: d.querySelector('em'), ht: d.querySelector('.ht'), hf: d.querySelector('.hf'), hp: -1, cls: '' };
     }); };
     mk(L, left); mk(R, right);
+    placeHB();
   }
   idx.forEach(i => {
     const c = hpUI.cards[i], p = ps[i]; if (!c) return;
@@ -4522,7 +4642,7 @@ function draw() {
       const tl = tail + (A.kind === 'pierce' && s.hit != null ? GR : 0);
       maxLen = Math.max(maxLen, s.path.length + tl);
       if (A.i >= s.path.length + tl) return;
-      const an = { sub: s.sub, sn0: s.n0, frag: s.frag, n0: A.el && A.el.n0 || 0, path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy' || A.kind === 'gravity', lv: A.rail ? A.rail.lv : 0, plasma: A.plasma, echo: A.echo, wmul: A.rail ? A.rail.wid / (RAIL_WF[A.rail.lv] * 20 * TS) : 1, z: s.jumbo ? 1.7 : s.small ? .65 : A.kind === 'bumper' ? [1.7, 1.3, 1][s.splits.filter(q => q <= A.i).length] : A.kind === 'sniper' ? .5 : A.kind === 'explosive' ? 1.25 : 0 };
+      const an = { tgt: s.tgt, dual: s.dual, hk: s.hk, sub: s.sub, sn0: s.n0, frag: s.frag, n0: A.el && A.el.n0 || 0, path: s.path, i: A.i, by: s.by ?? A.by, kind: A.kind, dud: A.dud, small: A.kind === 'cluster', big: A.kind === 'heavy' || A.kind === 'gravity', lv: A.rail ? A.rail.lv : 0, plasma: A.plasma, echo: A.echo, wmul: A.rail ? A.rail.wid / (RAIL_WF[A.rail.lv] * 20 * TS) : 1, z: s.jumbo ? 1.7 : s.small ? .65 : A.kind === 'bumper' ? [1.7, 1.3, 1][s.splits.filter(q => q <= A.i).length] : A.kind === 'sniper' ? .5 : A.kind === 'explosive' ? 1.25 : 0 };
       if (A.kind === 'pierce') pierceFx(A, s, an);
       drawShell(an);
     });
@@ -4595,6 +4715,7 @@ function draw() {
   drawFrostFx();
   drawWaterFx();
   drawElemFx();
+  drawLockOn();
   drawDrainFx();
   if (FX.flash > .01) { ctx.fillStyle = `rgba(255,255,255,${FX.flash})`; ctx.fillRect(-20, -20, W + 40, H + 40); FX.flash *= Math.pow(.78, FS); }
   drawOffscreen();
