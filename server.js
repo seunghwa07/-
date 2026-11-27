@@ -45,7 +45,7 @@ const SHELL = {
   ewater: { dmg: 16, rad: CRATER },   // 엘리먼트 💧 해일탄: 직격 16 + 주변 적을 밀어내요 (EL_PUSH_*)
   eearth: { dmg: 18, rad: 46 },       // 엘리먼트 🪨 대지탄: 직격 18 · 땅을 파지 않고 흙더미가 솟아요 (EL_MOUND_*) · rad 는 피해 범위만
   ewind: { dmg: 22, rad: CRATER },    // 엘리먼트 🌪️ 돌풍탄: 직격 22 · 바람을 안 받고, 착탄하면 다음 차례 바람이 날아간 방향으로 최대
-  splitter: { dmg: 12, rad: 46 }, splitter2: { dmg: 8, rad: 30 },   // 분열탄: 3초 뒤 공중 폭발 12 + 작은 탄 6발 각 8 (흩어져 떨어지며 터져요)
+  splitter: { dmg: 16, rad: 70 }, splitter2: { dmg: 8, rad: 30 },   // 분열탄: 분열될 때 폭발 16 (반경 70) + 작은 탄 6발 각 8 (흩어져 떨어지며 터져요)
   grinder: { dmg: 3, rad: 0 },     // 그라인더: 톱니바퀴에 닿은 탱크가 틱마다 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
 };
 // ----- 엘리먼트: 버튼 하나로 불→물→흙→바람을 돌려 고르고 쏴요 (players[i].elem: 0~3) -----
@@ -58,7 +58,7 @@ const EL_POST_MS = 900;                            // 밀어내기·흙더미가
 // ----- 카오스 서든데스: CHAOS_EVERY 턴마다 살아 있는 모두에게 무작위 증강 1개 강제 (CHAOS_CURSE 확률로 저주) -----
 const CHAOS_EVERY = 3, CHAOS_CURSE = .5, CHAOS_MS = 4200;   // 몇 턴마다 / 저주 확률 / 룰렛 연출 시간
 const SHAKY = .12;                                           // 저주 '떨리는 손': 파워 ±12%
-// ----- 분열탄: 쏘고 화면 기준 3초 뒤에 터지며 작은 탄들이 주변으로 흩어져요. 3초 전에 땅에 닿으면 터지지 않고 튕겨요 (탱크는 그냥 지나가요) -----
+// ----- 분열탄: 쏘고 화면 기준 3초 뒤에 터지며 작은 탄들이 주변으로 흩어져요. 3초 전에 땅에 닿으면 터지지 않고 튕기고, 적 탱크에 닿으면 그 자리에서 바로 터져요 -----
 const SPLIT_SEC = 3;                                                     // 화면에서 터지기까지 걸리는 시간(초)
 const SPLIT_STEPS = Math.round(SPLIT_SEC * 60 * FMAP.SHOT_SPEED) * 4;     // 서버 비행 계산 걸음 수 (경로 한 점 = 4걸음, 화면은 1프레임에 SHOT_SPEED 점)
 const SPLIT_N = 6, SPLIT_BOUNCE = .5, SPLIT_FRICTION = .8;                // 작은 탄 수 / 튕길 때 남는 속도 / 땅을 따라 미끄러질 때 남는 속도
@@ -361,6 +361,7 @@ function splitFlight(g, shooter, angle, power) {
   const p = g.players[shooter], a = angle * Math.PI / 180, v = power * 8 * K * p.mods.vmul, dt = 1 / 120;
   let x = p.x, y = g.terrain[p.x] - 14 * TS, vx = v * Math.cos(a), vy = -v * Math.sin(a), rest = false;
   const path = [[x, y]], bnc = [];
+  let hit = null;
   for (let t = 1; t <= SPLIT_STEPS; t++) {
     if (!rest) {
       vx += g.wind * 3 * K * dt * p.mods.windx; vy += G * dt;
@@ -377,11 +378,13 @@ function splitFlight(g, shooter, angle, power) {
         if (Math.hypot(vx, vy) < 40 * K) { rest = true; vx = 0; vy = 0; }   // 거의 멈췄으면 그 자리에 놓여요
         if (!bnc.length || path.length - 1 - bnc[bnc.length - 1] > 3) bnc.push(path.length);
       }
+      const hi = g.players.findIndex((q, i) => q.hp > 0 && (i !== shooter || t > 40) && !isAlly(g, shooter, i) && Math.hypot(x - q.x, y - tankY(g, q)) < HIT_R * q.mods.size);
+      if (hi >= 0) { hit = hi; break; }   // 적 탱크에 닿으면 3초를 기다리지 않고 바로 터져요
     }
     if (t % 4 === 0) path.push([x, y]);
   }
   if (path[path.length - 1][0] !== x || path[path.length - 1][1] !== y) path.push([x, y]);
-  const main = { path, impact: [x, y], bnc, vx, vy }, out = [main], n = Math.round(SPLIT_N * p.mods.shells);
+  const main = { path, impact: [x, y], bnc, vx, vy, hit, early: hit != null }, out = [main], n = Math.round(SPLIT_N * p.mods.shells);
   for (let k = 0; k < n; k++) {   // 작은 탄: 위쪽 부채꼴로 고르게 퍼져요 (속도는 번갈아 빠르고 느리게)
     const ang = (-90 + (n > 1 ? -SPLIT_FAN + 2 * SPLIT_FAN * k / (n - 1) : 0)) * Math.PI / 180, sp = (k % 2 ? SPLIT_V[1] : SPLIT_V[0]) * K;
     let bx = x, by = y - 6, bvx = sp * Math.cos(ang), bvy = sp * Math.sin(ang), imp = null;
@@ -476,7 +479,7 @@ function laserFlight(g, shooter, angle) {
 // 착탄: 땅 파임 + 피해(팀전에서는 아군 제외) + 소이탄이면 불길 생성 (delay: 클라이언트 화면에서 폭발이 보일 때까지의 시간)
 function explode(g, shooter, impact, kind, delay = 0, mul = 1) {   // mul: 이 포탄의 피해 배율 (듀얼 0.7)
   const { dmg } = SHELL[kind], rad = SHELL[kind].rad * g.players[shooter].mods.rad, direct = kind === 'pierce' ? PIERCE_HIT + 8 : kind === 'sniper' ? SNIPER_HIT * g.players[shooter].mods.hitr + 8 : DIRECT, reach = kind === 'pierce' ? Math.max(rad + 25, direct + 20) : kind === 'sniper' ? direct + 16 : rad + 25;
-  crater(g, impact[0], impact[1], rad);
+  crater(g, impact[0], impact[1], kind === 'splitter' ? Math.min(rad, 40 * g.players[shooter].mods.rad) : rad);   // 분열탄의 분열 폭발: 피해 범위는 넓게(70), 땅은 조금만 파요 (탱크가 구덩이로 꺼져 피해가 줄지 않게)
   let drained = 0;   // 흡혈탄: 다른 탱크에게 실제로 깎은 체력 합계
   g.players.forEach((q, i) => {
     if (q.hp <= 0 || isAlly(g, shooter, i)) return;
