@@ -36,10 +36,38 @@
       gen: (x, p, q) => 480 - 95 * Math.abs(Math.sin(x / 130 + p)) + Math.sin(x / 400 + q) * 30 },
     { name: '롤러코스터', neon: '#ff8a3d', sky: ['#120805', '#40200c'],
       gen: (x, p, q) => 410 + Math.sin(x / 160 + p) * 85 + Math.sin(x / 70 + q) * 22 },
+    // ----- 전용 맵 (맵 선택 목록에는 안 나오고, 해당 모드에서 자동으로 쓰여요) -----
+    // 탱크마다 사이에 높은 벽이 서 있어서, 시작하자마자 수평으로 쏴서 한 방에 끝나는 일이 없어요. 지형은 duelTerrain 이 탱크 위치에 맞춰 만들어요.
+    { name: '저격 협곡', neon: '#7dffb0', sky: ['#04100c', '#0d3a2c'], duel: 'sniper', wall: 775, minY: 395,   // 벽 높이 775 → 꼭대기 y≈400: 낮게 쏴서는 절대 못 넘고, 높이 쏘아 올려야 넘어가요
+      gen: () => 470 },
+    { name: '레이저 미로', neon: '#ff6b6b', sky: ['#14050a', '#3d1030'], duel: 'laser', wall: 1055, minY: 115,   // 벽 꼭대기 y≈120: 천장 바로 아래라서 반사 경로로도 넘어가기 어려워요
+      gen: () => 470 },
   ];
+  const PUBLIC = 12;                                 // 맵 선택 목록에 나오는 일반 맵 개수 (뒤의 전용 맵은 제외)
+  const DUEL = { sniper: 12, laser: 13 };            // 모드 → 전용 맵 번호
 
-  function terrain(id) {
-    const m = MAPS[id], p = Math.random() * 6, q = Math.random() * 6;
+  // 전용 맵: 탱크(xs)들 사이마다 높고 얇은 벽을 세워요. (m.wall = 벽 높이, m.minY = 벽 꼭대기 y 한계)
+  // 반환하는 배열에 walls = [[왼쪽 끝, 오른쪽 끝], ...] 도 같이 붙여요 (탱크는 이 안으로 들어갈 수 없어요).
+  const WALL_SLOPE = 40, WALL_TOP = 30;              // 벽 옆면 경사(가로 1에 세로 40 = 거의 수직) / 벽 꼭대기 평평한 폭 · 벽이 얇아야 탱크 칸이 넓고, 완만한 벽은 빔을 탱크 쪽으로 모아주는 깔때기가 돼요
+  function duelTerrain(id, xs) {
+    const m = MAPS[id], p = Math.random() * 6, q = Math.random() * 6, hgt = m.wall, base = 470 * K, SL = m.slope || WALL_SLOPE, TOP = m.top || WALL_TOP;
+    const sorted = (xs || []).slice().sort((a, b) => a - b);
+    const mids = sorted.slice(1).map((x, k) => Math.round((sorted[k] + x) / 2));
+    const half = hgt / SL + TOP / 2;
+    const T = Array.from({ length: W }, (_, x) => {
+      let h = 0;
+      for (const c of mids) h = Math.max(h, Math.min(hgt, (hgt + TOP / 2 * SL) - Math.abs(x - c) * SL));   // 사다리꼴 벽 높이
+      const floor = base + Math.sin(x / 220 + p) * 14 + Math.sin(x / 90 + q) * 5;                                           // 바닥은 완만하게 울퉁불퉁
+      return Math.round(Math.min(540 * K, Math.max(m.minY || 120 * K, floor - Math.max(0, h))));
+    });
+    T.walls = mids.map(c => [Math.round(c - half - 12), Math.round(c + half + 12)]);
+    T.wallMids = mids;
+    return T;
+  }
+
+  function terrain(id, xs, p0, q0) {   // p0, q0: 지형 위상을 직접 정하면(순서 정하기의 개인 맵) 서버와 화면이 똑같은 지형을 만들어요
+    if (MAPS[id].duel) return duelTerrain(id, xs);
+    const m = MAPS[id], p = p0 !== undefined ? p0 : Math.random() * 6, q = q0 !== undefined ? q0 : Math.random() * 6;
     return Array.from({ length: W }, (_, x) =>
       Math.round(Math.min(540 * K, Math.max(120 * K, m.gen(x / K, p, q) * K))));
   }
@@ -83,7 +111,7 @@
     return { x: cx + nx * .5 + rvx / vl * rest, y: cy + ny * .5 + rvy / vl * rest, vx: rvx, vy: rvy, cx, cy };
   }
 
-  const api = { MAPS, terrain, K, W, H, TS, FUEL, STEP, SHOT_SPEED, makeRings, ringBounce };
+  const api = { MAPS, PUBLIC, DUEL, terrain, K, W, H, TS, FUEL, STEP, SHOT_SPEED, makeRings, ringBounce };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FMAP = api;
 })(this);

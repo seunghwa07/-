@@ -21,19 +21,19 @@
 (function (root) {
   const POOL = [
     // ----- 공통 -----
-    { id: 'armor',    tank: null, rarity: 'common', icon: '🛡️', name: '강철 장갑',  desc: '최대 체력 +30',               mods: { hp: 30 } },
+    { id: 'armor',    tank: null, rarity: 'common', icon: '🛡️', name: '강철 장갑',  desc: '최대 체력 +20',               mods: { hp: 20 } },
     { id: 'fuel',     tank: null, rarity: 'common', icon: '⛽',  name: '보조 연료',  desc: '이동력 ×1.5',                  mods: { fuel: 1.5 } },
     { id: 'powder',   tank: null, rarity: 'common', icon: '💥',  name: '강화 화약',  desc: '주는 피해 ×1.15',              mods: { dmg: 1.15 } },
-    { id: 'reactive', tank: null, rarity: 'common', icon: '🧱',  name: '반응 장갑',  desc: '받는 피해 ×0.85',              mods: { taken: .85 } },
-    { id: 'plate',    tank: null, rarity: 'rare', icon: '🏗️', name: '중장갑',     desc: '최대 체력 +50 · 이동력 ×0.8',  mods: { hp: 50, fuel: .8 } },
-    { id: 'medkit',   tank: null, rarity: 'common', icon: '🩹', name: '응급 수리',  desc: '체력 즉시 +40 회복 (최대 체력까지)',   mods: { heal: 40 } },
+    { id: 'reactive', tank: null, rarity: 'common', icon: '🧱',  name: '반응 장갑',  desc: '받는 피해 ×0.88',              mods: { taken: .88 } },
+    { id: 'plate',    tank: null, rarity: 'rare', icon: '🏗️', name: '중장갑',     desc: '최대 체력 +35 · 이동력 ×0.8',  mods: { hp: 35, fuel: .8 } },
+    { id: 'medkit',   tank: null, rarity: 'common', icon: '🩹', name: '응급 수리',  desc: '체력 즉시 +30 회복 (최대 체력까지)',   mods: { heal: 30 } },
     { id: 'glass',    tank: null, rarity: 'epic', icon: '🗡️', name: '유리 대포',  desc: '주는 피해 ×1.3 · 받는 피해 ×1.25',   mods: { dmg: 1.3, taken: 1.25 } },
-    { id: 'bulwark',  tank: null, rarity: 'rare', icon: '🏰', name: '방벽',       desc: '받는 피해 ×0.75 · 이동력 ×0.85',     mods: { taken: .75, fuel: .85 } },
+    { id: 'bulwark',  tank: null, rarity: 'rare', icon: '🏰', name: '방벽',       desc: '받는 피해 ×0.8 · 이동력 ×0.85',     mods: { taken: .8, fuel: .85 } },
     { id: 'runner',   tank: null, rarity: 'rare', icon: '👟', name: '질주',       desc: '이동력 ×2 · 받는 피해 ×1.1',          mods: { fuel: 2, taken: 1.1 } },
     { id: 'blast',    tank: null, rarity: 'common', icon: '💣', name: '확장 폭약',  desc: '모든 폭발 범위 ×1.2',                 mods: { rad: 1.2 } },
     { id: 'overdrive', tank: null, rarity: 'common', icon: '⚡', name: '과부하 회로', desc: '주는 피해 ×1.1 · 이동력 ×1.2',      mods: { dmg: 1.1, fuel: 1.2 } },
-    { id: 'balance',  tank: null, rarity: 'common', icon: '⚖️', name: '균형 장비',  desc: '체력 +15 · 주는 피해 ×1.05 · 받는 피해 ×0.95', mods: { hp: 15, dmg: 1.05, taken: .95 } },
-    { id: 'ceramic',  tank: null, rarity: 'common', icon: '🧿', name: '세라믹 장갑', desc: '체력 +20 · 받는 피해 ×0.9',          mods: { hp: 20, taken: .9 } },
+    { id: 'balance',  tank: null, rarity: 'common', icon: '⚖️', name: '균형 장비',  desc: '체력 +10 · 주는 피해 ×1.05 · 받는 피해 ×0.95', mods: { hp: 10, dmg: 1.05, taken: .95 } },
+    { id: 'ceramic',  tank: null, rarity: 'common', icon: '🧿', name: '세라믹 장갑', desc: '체력 +12 · 받는 피해 ×0.93',          mods: { hp: 12, taken: .93 } },
     // ----- 탱크 전용 -----
     { id: 'precision', tank: 'basic', rarity: 'rare', icon: '🎯', name: '정밀 조준',  desc: '기본탄 피해 ×1.3',   mods: { kindDmg: { basic: 1.3 } } },
     { id: 'overcharge', tank: 'heavy', rarity: 'rare', icon: '☄️', name: '과충전 장약', desc: '광폭탄 피해 ×1.25', mods: { kindDmg: { heavy: 1.25 } } },
@@ -82,14 +82,14 @@
     { id: 'permafrost', tank: 'frost', rarity: 'common', icon: '❄️', name: '영구 동토',     desc: '얼음 바닥이 남는 시간 +2차례 (3 → 5)',      mods: { turns: 2 } },
     // ----- 흡혈탄 -----
     { id: 'fang',      tank: 'vampire', rarity: 'rare', icon: '🦷', name: '날카로운 송곳니', desc: '흡혈탄 피해 ×1.3 (17 → 22)',            mods: { kindDmg: { vampire: 1.3 } } },
-    { id: 'bloodlust', tank: 'vampire', rarity: 'epic', icon: '🩸', name: '피의 갈증',       desc: '회복 비율 +30%p (피해의 50% → 80%)',    mods: { drain: .3 } },
+    { id: 'bloodlust', tank: 'vampire', rarity: 'epic', icon: '🩸', name: '피의 갈증',       desc: '회복 비율 +25%p (피해의 50% → 75%)',    mods: { drain: .25 } },
     { id: 'crimson',   tank: 'vampire', rarity: 'common', icon: '🍷', name: '핏빛 폭발',       desc: '흡혈탄 폭발 범위 ×1.25',                mods: { rad: 1.25 } },
     // ----- 물폭탄 -----
     { id: 'flood',     tank: 'water', rarity: 'common', icon: '🌊', name: '대홍수',     desc: '물 범위 ×1.4',                         mods: { area: 1.4 } },
     { id: 'highpress', tank: 'water', rarity: 'rare', icon: '🚿', name: '고압 분사',  desc: '물폭탄 피해 ×1.4 (26 → 36)',           mods: { kindDmg: { water: 1.4 } } },
     { id: 'tide',      tank: 'water', rarity: 'common', icon: '⏳', name: '만조',       desc: '물 범위가 남는 시간 +2차례 (3 → 5)',   mods: { turns: 2 } },
     // ----- 고폭탄 -----
-    { id: 'overpressure', tank: 'explosive', rarity: 'rare', icon: '💥', name: '과압 장약',   desc: '고폭탄 피해 ×1.25 (34 → 42)',      mods: { kindDmg: { explosive: 1.25 } } },
+    { id: 'overpressure', tank: 'explosive', rarity: 'rare', icon: '💥', name: '과압 장약',   desc: '고폭탄 피해 ×1.25 (40 → 50)',      mods: { kindDmg: { explosive: 1.25 } } },
     { id: 'bigcalibre',   tank: 'explosive', rarity: 'common', icon: '🕳️', name: '초대구경 포신', desc: '고폭탄 폭발 범위 ×1.3',            mods: { rad: 1.3 } },
     { id: 'bunker',       tank: 'explosive', rarity: 'rare', icon: '🏚️', name: '벙커 보강',    desc: '받는 피해 ×0.8 · 최대 체력 +20 (움직이지 못하니까)', mods: { taken: .8, hp: 20 } },
     // ----- 레일건 -----
@@ -115,29 +115,106 @@
     { id: 'shadeblade', tank: 'shadow', rarity: 'common', icon: '🗡️', name: '그림자 칼날',   desc: '섀도우 피해 ×1.4 (24 → 34)',                            mods: { kindDmg: { shadow: 1.4 } } },
     { id: 'longnight',  tank: 'shadow', rarity: 'rare',   icon: '🌙', name: '긴 밤',          desc: '어둠 영역이 남는 차례 +2 (4턴 → 6턴)',                  mods: { turns: 2 } },
     // ----- 에픽 · 전설 (잘 안 나오는 대신 강해요) -----
-    { id: 'bastion',   tank: null, rarity: 'epic',      icon: '🏯', name: '철옹성',       desc: '최대 체력 +80 · 받는 피해 ×0.9',                   mods: { hp: 80, taken: .9 } },
-    { id: 'warlord',   tank: null, rarity: 'epic',      icon: '🦾', name: '전쟁 군주',     desc: '주는 피해 ×1.25 · 최대 체력 +20',                  mods: { dmg: 1.25, hp: 20 } },
+    { id: 'bastion',   tank: null, rarity: 'epic',      icon: '🏯', name: '철옹성',       desc: '최대 체력 +50 · 받는 피해 ×0.93',                   mods: { hp: 50, taken: .93 } },
+    { id: 'warlord',   tank: null, rarity: 'epic',      icon: '🦾', name: '전쟁 군주',     desc: '주는 피해 ×1.25 · 최대 체력 +10',                  mods: { dmg: 1.25, hp: 10 } },
     { id: 'doomsday',  tank: 'heavy',  rarity: 'epic',   icon: '☠️', name: '종말의 포격',   desc: '광폭탄 피해 ×1.4 · 폭발 범위 ×1.2',                mods: { kindDmg: { heavy: 1.4 }, rad: 1.2 } },
     { id: 'lightspeed', tank: 'laser', rarity: 'epic',   icon: '🌈', name: '광속 반사',     desc: '레이저 피해 ×1.3 · 반사 +2 · 굵기·판정 ×1.25',     mods: { kindDmg: { laser: 1.3 }, bounce: 2, beam: 1.25 } },
-    { id: 'titan',     tank: null, rarity: 'legendary', icon: '🗿', name: '불멸의 거신',   desc: '최대 체력 +100 · 받는 피해 ×0.85',                 mods: { hp: 100, taken: .85 } },
+    { id: 'titan',     tank: null, rarity: 'legendary', icon: '🗿', name: '불멸의 거신',   desc: '최대 체력 +60 · 받는 피해 ×0.9',                 mods: { hp: 60, taken: .9 } },
     { id: 'kingstrike', tank: null, rarity: 'legendary', icon: '👑', name: '왕의 일격',    desc: '주는 피해 ×1.5 · 모든 폭발 범위 ×1.2',             mods: { dmg: 1.5, rad: 1.2 } },
-    { id: 'phoenix',   tank: null, rarity: 'legendary', icon: '🔥', name: '불사조의 축복', desc: '체력 즉시 완전 회복 · 최대 체력 +30',              mods: { hp: 30, heal: 999 } },
-    { id: 'perfect',   tank: null, rarity: 'legendary', icon: '🌟', name: '완전체',       desc: '체력 +40 · 주는 피해 ×1.2 · 받는 피해 ×0.85 · 이동력 ×1.2', mods: { hp: 40, dmg: 1.2, taken: .85, fuel: 1.2 } },
+    { id: 'phoenix',   tank: null, rarity: 'legendary', icon: '🔥', name: '불사조의 축복', desc: '체력 즉시 완전 회복 · 최대 체력 +10',              mods: { hp: 10, heal: 999 } },
+    { id: 'perfect',   tank: null, rarity: 'legendary', icon: '🌟', name: '완전체',       desc: '체력 +25 · 주는 피해 ×1.2 · 받는 피해 ×0.9 · 이동력 ×1.2', mods: { hp: 25, dmg: 1.2, taken: .9, fuel: 1.2 } },
     { id: 'deadeye',   tank: 'basic',  rarity: 'legendary', icon: '👁️', name: '신의 눈',     desc: '기본탄 피해 ×1.6 · 폭발 범위 ×1.2',                mods: { kindDmg: { basic: 1.6 }, rad: 1.2 } },
     { id: 'headshot',  tank: 'sniper', rarity: 'legendary', icon: '💀', name: '헤드샷',       desc: '저격탄 피해 ×1.5 (50 → 75) · 피격 범위 ×1.3',      mods: { kindDmg: { sniper: 1.5 }, hitr: 1.3 } },
     { id: 'zeropoint', tank: 'rail',   rarity: 'legendary', icon: '⚛️', name: '영점 에너지',  desc: '레일건 피해 ×1.5 · 쏜 뒤 충전 1단계에서 시작',     mods: { kindDmg: { rail: 1.5 }, charge0: 1 } },
-    { id: 'bloodking', tank: 'vampire', rarity: 'legendary', icon: '🧛', name: '혈족의 왕',   desc: '흡혈탄 피해 ×1.2 · 회복 비율 +50%p (50% → 100%)',  mods: { kindDmg: { vampire: 1.2 }, drain: .5 } },
+    { id: 'bloodking', tank: 'vampire', rarity: 'legendary', icon: '🧛', name: '혈족의 왕',   desc: '흡혈탄 피해 ×1.2 · 회복 비율 +40%p (50% → 90%)',  mods: { kindDmg: { vampire: 1.2 }, drain: .4 } },
     { id: 'meltdown',  tank: 'plasma', rarity: 'epic',      icon: '☢️', name: '노심 융해',     desc: '플라즈마 피해 ×1.3 · 부채꼴 각도 ×1.3 (15° → 19.5°) · 거리 감쇠 ×0.6', mods: { kindDmg: { plasma: 1.3 }, arc: 1.3, fall: .6 } },
     { id: 'eclipse',   tank: 'shadow', rarity: 'epic',      icon: '🌑', name: '개기일식',       desc: '어둠 영역 반경 ×1.4 · 남는 차례 +1 · 섀도우 피해 ×1.2',  mods: { area: 1.4, turns: 1, kindDmg: { shadow: 1.2 } } },
     { id: 'supernova', tank: 'plasma', rarity: 'legendary', icon: '🌠', name: '초신성',         desc: '플라즈마 피해 ×1.5 · 부채꼴 각도 ×1.5 (15° → 22.5°) · 거리 감쇠 ×0.4 · 지형(벽)을 관통해요', mods: { kindDmg: { plasma: 1.5 }, arc: 1.5, fall: .4, thru: true } },
     { id: 'voidlord',  tank: 'shadow', rarity: 'legendary', icon: '🕳️', name: '심연의 군주',    desc: '어둠 영역 반경 ×1.6 · 남는 차례 +2 · 섀도우 피해 ×1.5 (24 → 36)', mods: { area: 1.6, turns: 2, kindDmg: { shadow: 1.5 } } },
+    // ===== 추가 증강 (전용 증강이 없던 엘리먼트·에스컬레이션 + 적던 탱크 보강 + 공통) =====
+    // ----- 엘리먼트 (새 효과: push 해일 밀어내기 거리 ×N · mound 흙더미 크기 ×N · frags 불꽃 파편 +N개) -----
+    { id: 'emberheart', tank: 'element', rarity: 'common', icon: '❤️‍🔥', name: '불씨 심장', desc: '화염구·불꽃 파편 피해 ×1.25 (30 → 38)', mods: { kindDmg: { efire: 1.25, efrag: 1.25 } } },
+    { id: 'jetstream', tank: 'element', rarity: 'common', icon: '🌬️', name: '제트 기류', desc: '돌풍탄 피해 ×1.3 (22 → 29) · 해일탄 피해 ×1.15', mods: { kindDmg: { ewind: 1.3, ewater: 1.15 } } },
+    { id: 'tsunami', tank: 'element', rarity: 'rare', icon: '🌊', name: '쓰나미', desc: '해일탄 밀어내기 거리 ×1.4 (최대 170 → 238px) · 범위 ×1.2', mods: { push: 1.4 } },
+    { id: 'tectonic', tank: 'element', rarity: 'rare', icon: '⛰️', name: '지각 변동', desc: '대지탄 흙더미 높이 ×1.5 · 너비 ×1.2 · 대지탄 피해 ×1.2', mods: { mound: 1.5, kindDmg: { eearth: 1.2 } } },
+    { id: 'triad', tank: 'element', rarity: 'epic', icon: '☄️', name: '유성우', desc: '화염구 불꽃 파편 2개 → 4개 (더 멀리까지 퍼져요)', mods: { frags: 2 } },
+    { id: 'avatar', tank: 'element', rarity: 'legendary', icon: '🌀', name: '원소의 화신', desc: '모든 원소탄 피해 ×1.3 · 밀어내기 ×1.3 · 흙더미 ×1.3', mods: { kindDmg: { efire: 1.3, efrag: 1.3, ewater: 1.3, eearth: 1.3, ewind: 1.3 }, push: 1.3, mound: 1.3 } },
+    // ----- 에스컬레이션 (어떤 포탄이 나올지 모르니 모든 포탄에 걸리는 효과) -----
+    { id: 'gambler', tank: 'escalation', rarity: 'common', icon: '🎰', name: '도박사의 감', desc: '주는 피해 ×1.1 · 폭발 범위 ×1.1', mods: { dmg: 1.1, rad: 1.1 } },
+    { id: 'loaded', tank: 'escalation', rarity: 'rare', icon: '🎲', name: '조작된 주사위', desc: '주는 피해 ×1.2', mods: { dmg: 1.2 } },
+    { id: 'luckystreak', tank: 'escalation', rarity: 'epic', icon: '🍀', name: '연승 행진', desc: '주는 피해 ×1.25 · 폭발 범위 ×1.2', mods: { dmg: 1.25, rad: 1.2 } },
+    { id: 'wildcard', tank: 'escalation', rarity: 'common', icon: '🃏', name: '와일드카드', desc: '폭발 범위 ×1.2 · 이동력 ×1.2', mods: { rad: 1.2, fuel: 1.2 } },
+    { id: 'jackpot', tank: 'escalation', rarity: 'legendary', icon: '💰', name: '잭팟', desc: '주는 피해 ×1.4 · 폭발 범위 ×1.25', mods: { dmg: 1.4, rad: 1.25 } },
+    // ----- 중력탄 · 일렉트로 · 그라인더 (2개씩뿐이었어요) -----
+    { id: 'darkmatter', tank: 'gravity', rarity: 'common', icon: '🌌', name: '암흑 물질', desc: '중력탄 피해 ×1.15 · 끌어당기는 범위 ×1.1', mods: { kindDmg: { gravity: 1.15 }, rad: 1.1 } },
+    { id: 'singularity', tank: 'gravity', rarity: 'epic', icon: '🕳️', name: '특이점', desc: '중력탄 피해 ×1.4 · 끌어당기는 범위 ×1.2', mods: { kindDmg: { gravity: 1.4 }, rad: 1.2 } },
+    { id: 'blackstar', tank: 'gravity', rarity: 'legendary', icon: '⚫', name: '검은 별', desc: '중력탄 피해 ×1.6 · 끌어당기는 범위 ×1.35', mods: { kindDmg: { gravity: 1.6 }, rad: 1.35 } },
+    { id: 'capacitor2', tank: 'electro', rarity: 'common', icon: '🔋', name: '고용량 배터리', desc: '일렉트로 피해 ×1.2', mods: { kindDmg: { electro: 1.2 } } },
+    { id: 'stormcell', tank: 'electro', rarity: 'epic', icon: '⛈️', name: '뇌운', desc: '일렉트로 피해 ×1.35 · 전기장 지속 ×1.4', mods: { kindDmg: { electro: 1.35 }, fireMs: 1.4 } },
+    { id: 'thunder', tank: 'electro', rarity: 'legendary', icon: '🌩️', name: '천둥신의 망치', desc: '일렉트로 피해 ×1.6 · 전기장 지속 ×1.6', mods: { kindDmg: { electro: 1.6 }, fireMs: 1.6 } },
+    { id: 'whetstone', tank: 'grinder', rarity: 'common', icon: '🪨', name: '숫돌', desc: '그라인더 피해 ×1.2', mods: { kindDmg: { grinder: 1.2 } } },
+    { id: 'twinblade', tank: 'grinder', rarity: 'epic', icon: '⚙️', name: '쌍날 톱니', desc: '그라인더 피해 ×1.35 · 굴러가는 시간 ×1.3', mods: { kindDmg: { grinder: 1.35 }, fireMs: 1.3 } },
+    { id: 'buzzsaw', tank: 'grinder', rarity: 'legendary', icon: '🪚', name: '회전 지옥', desc: '그라인더 피해 ×1.6 · 굴러가는 시간 ×1.6', mods: { kindDmg: { grinder: 1.6 }, fireMs: 1.6 } },
+    // ----- 나머지 탱크 보강 (모두 5개 이상) -----
+    { id: 'veteran', tank: 'basic', rarity: 'epic', icon: '🎖️', name: '백전노장', desc: '기본탄 피해 ×1.35 · 폭발 범위 ×1.15', mods: { kindDmg: { basic: 1.35 }, rad: 1.15 } },
+    { id: 'inferno', tank: 'incendiary', rarity: 'epic', icon: '🌋', name: '지옥불', desc: '불길 반경 ×1.4 · 지속 ×1.4 · 소이탄 피해 ×1.2', mods: { area: 1.4, fireMs: 1.4, kindDmg: { incendiary: 1.2 } } },
+    { id: 'hellfire', tank: 'incendiary', rarity: 'legendary', icon: '🔥', name: '업화', desc: '소이탄 피해 ×1.6 · 불길 반경 ×1.5 · 지속 ×1.5', mods: { kindDmg: { incendiary: 1.6 }, area: 1.5, fireMs: 1.5 } },
+    { id: 'shrapnel', tank: 'cluster', rarity: 'common', icon: '🔩', name: '파편 강화', desc: '집속탄 피해 ×1.2 · 폭발 범위 ×1.15', mods: { kindDmg: { cluster: 1.2 }, rad: 1.15 } },
+    { id: 'clusterstorm', tank: 'cluster', rarity: 'legendary', icon: '🎆', name: '폭탄 폭풍', desc: '소탄 수 ×2 · 집속탄 피해 ×1.3', mods: { shells: 2, kindDmg: { cluster: 1.3 } } },
+    { id: 'thruster', tank: 'homing', rarity: 'common', icon: '🚀', name: '보조 추진기', desc: '유도탄 피해 ×1.15 · 불발 확률 절반', mods: { kindDmg: { homing: 1.15 }, dud: .5 } },
+    { id: 'hunterkiller', tank: 'homing', rarity: 'legendary', icon: '🦅', name: '사냥꾼', desc: '듀얼(2발) · 불발 없음 · 유도탄 피해 ×1.3', mods: { dual: true, dud: 0, kindDmg: { homing: 1.3 } } },
+    { id: 'titanshell', tank: 'heavy', rarity: 'legendary', icon: '🌑', name: '거신의 포탄', desc: '광폭탄 피해 ×1.5 · 폭발 범위 ×1.3', mods: { kindDmg: { heavy: 1.5 }, rad: 1.3 } },
+    { id: 'tunnelrat', tank: 'pierce', rarity: 'common', icon: '🐀', name: '땅굴 전문가', desc: '관통탄 피해 ×1.15 · 폭발 범위 ×1.2', mods: { kindDmg: { pierce: 1.15 }, rad: 1.2 } },
+    { id: 'drillmaster', tank: 'pierce', rarity: 'legendary', icon: '🌀', name: '드릴 마스터', desc: '작은 드릴 2발 추가 · 관통탄 피해 ×1.4', mods: { drills: true, kindDmg: { pierce: 1.4 } } },
+    { id: 'photon', tank: 'laser', rarity: 'legendary', icon: '💠', name: '광자 폭풍', desc: '레이저 피해 ×1.5 · 반사 +3 · 굵기·판정 ×1.3', mods: { kindDmg: { laser: 1.5 }, bounce: 3, beam: 1.3 } },
+    { id: 'airraid', tank: 'carpet', rarity: 'legendary', icon: '✈️', name: '대공습', desc: '미사일 +3발 · 융단 폭격 피해 ×1.3', mods: { missiles: 3, kindDmg: { carpet: 1.3 } } },
+    { id: 'superball', tank: 'bumper', rarity: 'common', icon: '🏀', name: '슈퍼볼', desc: '범퍼탄 피해 ×1.15 · 폭발 범위 ×1.1', mods: { kindDmg: { bumper: 1.15 }, rad: 1.1 } },
+    { id: 'chainreact', tank: 'bumper', rarity: 'legendary', icon: '🧨', name: '연쇄 반응', desc: '튈 때 4개로 분열 · 범퍼탄 피해 ×1.3', mods: { split: 4, kindDmg: { bumper: 1.3 } } },
+    { id: 'marksman', tank: 'sniper', rarity: 'epic', icon: '🎯', name: '명사수', desc: '저격탄 피해 ×1.3 · 중력 ×0.7 · 조준선 ×1.5', mods: { kindDmg: { sniper: 1.3 }, grav: .7, scope: 1.5 } },
+    { id: 'coilgun', tank: 'rail', rarity: 'common', icon: '🧲', name: '코일건', desc: '레일건 피해 ×1.15', mods: { kindDmg: { rail: 1.15 } } },
+    { id: 'overcap', tank: 'rail', rarity: 'epic', icon: '⚡', name: '과충전', desc: '레일건 피해 ×1.3 · 빔 굵기·판정 ×1.3', mods: { kindDmg: { rail: 1.3 }, beam: 1.3 } },
+    { id: 'blizzard', tank: 'frost', rarity: 'epic', icon: '🌨️', name: '눈보라', desc: '얼음 범위 ×1.5 · 남는 차례 +1 · 냉각탄 피해 ×1.3', mods: { area: 1.5, turns: 1, kindDmg: { frost: 1.3 } } },
+    { id: 'absolutezero', tank: 'frost', rarity: 'legendary', icon: '🧊', name: '절대영도', desc: '얼음 범위 ×1.7 · 남는 차례 +2 · 냉각탄 피해 ×1.5', mods: { area: 1.7, turns: 2, kindDmg: { frost: 1.5 } } },
+    { id: 'nightfeast', tank: 'vampire', rarity: 'common', icon: '🦇', name: '밤의 만찬', desc: '흡혈탄 피해 ×1.15 · 회복 비율 +10%p', mods: { kindDmg: { vampire: 1.15 }, drain: .1 } },
+    { id: 'monsoon', tank: 'water', rarity: 'epic', icon: '🌧️', name: '장마', desc: '물 범위 ×1.4 · 남는 차례 +1 · 물폭탄 피해 ×1.25', mods: { area: 1.4, turns: 1, kindDmg: { water: 1.25 } } },
+    { id: 'leviathan', tank: 'water', rarity: 'legendary', icon: '🐋', name: '리바이어던', desc: '물 범위 ×1.6 · 남는 차례 +2 · 물폭탄 피해 ×1.4', mods: { area: 1.6, turns: 2, kindDmg: { water: 1.4 } } },
+    { id: 'shapedcharge', tank: 'explosive', rarity: 'common', icon: '🎇', name: '성형 작약', desc: '고폭탄 피해 ×1.15 (40 → 46)', mods: { kindDmg: { explosive: 1.15 } } },
+    { id: 'grandmortar', tank: 'explosive', rarity: 'legendary', icon: '🏛️', name: '대구경 박격포', desc: '고폭탄 피해 ×1.5 (40 → 60) · 폭발 범위 ×1.3', mods: { kindDmg: { explosive: 1.5 }, rad: 1.3 } },
+    { id: 'aegis', tank: 'intercept', rarity: 'rare', icon: '🔰', name: '이지스', desc: '요격 범위 ×1.25 · 요격 확률 +10%p', mods: { icptR: 1.25, icptP: .1 } },
+    { id: 'irondome', tank: 'intercept', rarity: 'legendary', icon: '🏟️', name: '아이언 돔', desc: '터렛이 포탄 2발까지 요격 · 확률 +25%p · 범위 ×1.3', mods: { tickets: 1, icptP: .25, icptR: 1.3 } },
+    { id: 'thunderclap', tank: 'echo', rarity: 'legendary', icon: '📯', name: '천둥소리', desc: '에코 피해 ×1.5 · 부채꼴 ×1.4 · 거리 감쇠 ×0.4', mods: { kindDmg: { echo: 1.5 }, arc: 1.4, fall: .4 } },
+    // ----- 분열탄 (shells: 작은 탄 수 ×N) -----
+    { id: 'splitcore', tank: 'splitter', rarity: 'common', icon: '🧨', name: '고성능 뇌관', desc: '분열탄 피해 ×1.2 (폭발 12 → 14 · 작은 탄 8 → 10)', mods: { kindDmg: { splitter: 1.2 } } },
+    { id: 'widesplit', tank: 'splitter', rarity: 'common', icon: '💥', name: '확산 장약', desc: '분열탄 폭발 범위 ×1.25', mods: { rad: 1.25 } },
+    { id: 'moresplit', tank: 'splitter', rarity: 'rare', icon: '🫧', name: '다중 분열', desc: '작은 탄 6발 → 9발', mods: { shells: 1.5 } },
+    { id: 'megasplit', tank: 'splitter', rarity: 'epic', icon: '🎇', name: '연쇄 분열', desc: '작은 탄 6발 → 9발 · 분열탄 피해 ×1.2', mods: { shells: 1.5, kindDmg: { splitter: 1.2 } } },
+    { id: 'armageddon', tank: 'splitter', rarity: 'legendary', icon: '☄️', name: '아마겟돈', desc: '작은 탄 6발 → 12발 · 분열탄 피해 ×1.35', mods: { shells: 2, kindDmg: { splitter: 1.35 } } },
+    // ----- 공통 추가 (체력보다 공격·기동 쪽) -----
+    { id: 'nimble', tank: null, rarity: 'common', icon: '🐇', name: '경량화', desc: '이동력 ×1.3 · 주는 피해 ×1.05', mods: { fuel: 1.3, dmg: 1.05 } },
+    { id: 'sharpshot', tank: null, rarity: 'rare', icon: '🔪', name: '정밀 사격', desc: '주는 피해 ×1.15 · 폭발 범위 ×0.9', mods: { dmg: 1.15, rad: .9 } },
+    { id: 'demolition', tank: null, rarity: 'rare', icon: '🏚️', name: '철거 전문가', desc: '폭발 범위 ×1.3 · 주는 피해 ×0.95', mods: { rad: 1.3, dmg: .95 } },
+    { id: 'berserker', tank: null, rarity: 'epic', icon: '😤', name: '광전사', desc: '주는 피해 ×1.35 · 받는 피해 ×1.15', mods: { dmg: 1.35, taken: 1.15 } },
+    { id: 'scavenger', tank: null, rarity: 'rare', icon: '🧰', name: '고철 수집가', desc: '체력 즉시 +15 회복 · 주는 피해 ×1.08', mods: { heal: 15, dmg: 1.08 } },
+    // ----- 저주 (카오스 서든데스 모드에서만 강제로 붙어요 · 일반 선택지에는 안 나와요) -----
+    //   새 mods: hiAngle 발사 각도 70°~110° 고정 / size 탱크 크기·피격 판정 ×N / windx 내 포탄이 받는 바람 ×N
+    //            shaky 쏠 때 파워가 무작위로 흔들림 / vmul 포탄 속도 ×N / rev 이동 방향 반대
+    { id: 'c_highangle', tank: null, rarity: 'curse', curse: true, icon: '📐', name: '강제 고각',     desc: '발사 각도가 70°~110°로 고정돼요',          mods: { hiAngle: true } },
+    { id: 'c_giant',     tank: null, rarity: 'curse', curse: true, icon: '🦣', name: '거대화',        desc: '탱크 크기 · 피격 판정 ×1.5',               mods: { size: 1.5 } },
+    { id: 'c_glass',     tank: null, rarity: 'curse', curse: true, icon: '🥚', name: '유리 몸',       desc: '받는 피해 ×1.3',                           mods: { taken: 1.3 } },
+    { id: 'c_damp',      tank: null, rarity: 'curse', curse: true, icon: '💦', name: '눅눅한 화약',   desc: '주는 피해 ×0.75',                          mods: { dmg: .75 } },
+    { id: 'c_leak',      tank: null, rarity: 'curse', curse: true, icon: '🛢️', name: '기름 유출',     desc: '이동력 ×0.3',                              mods: { fuel: .3 } },
+    { id: 'c_windy',     tank: null, rarity: 'curse', curse: true, icon: '🎐', name: '바람 타는 포탄', desc: '내 포탄이 받는 바람 ×2',                   mods: { windx: 2 } },
+    { id: 'c_shaky',     tank: null, rarity: 'curse', curse: true, icon: '🫨', name: '떨리는 손',     desc: '쏠 때마다 파워가 ±12% 무작위로 흔들려요',  mods: { shaky: true } },
+    { id: 'c_lead',      tank: null, rarity: 'curse', curse: true, icon: '🧱', name: '납 포탄',       desc: '포탄 속도 ×0.85 (사거리 약 70%)',          mods: { vmul: .85 } },
+    { id: 'c_reverse',   tank: null, rarity: 'curse', curse: true, icon: '🔄', name: '거꾸로 조작',   desc: '이동 방향이 반대로 바뀌어요',              mods: { rev: true } },
+    { id: 'c_frail',     tank: null, rarity: 'curse', curse: true, icon: '🩹', name: '허약 체질',     desc: '최대 체력 -20',                            mods: { hp: -20 } },
   ];
   const byId = Object.fromEntries(POOL.map(a => [a.id, a]));
   const SPECIFIC_SLOTS = 1;   // 선택지 3개 중 탱크 전용을 최소 몇 개 넣을지 (전용 증강이 있는 탱크만)
   const PICK_MS = 20000;      // 선택 제한 시간 (넘기면 랜덤으로 골라져요)
 
   function calc(ids) {   // 가진 증강들을 합쳐서 최종 능력치 계산
-    const m = { hp: 0, dmg: 1, taken: 1, fuel: 1, kindDmg: {}, shells: 1, bounce: 0, beam: 1, area: 1, dual: false, missiles: 0, drills: false, split: 2, jumbo: false, rad: 1, dud: 1, fireMs: 1, spread: 1, grav: 1, hitr: 1, scope: 1, turns: 0, drain: 0, charge0: 0, icptR: 1, icptP: 0, tickets: 0, arc: 1, fall: 1, thru: false };
+    const m = { hp: 0, dmg: 1, taken: 1, fuel: 1, kindDmg: {}, shells: 1, bounce: 0, beam: 1, area: 1, dual: false, missiles: 0, drills: false, split: 2, jumbo: false, rad: 1, dud: 1, fireMs: 1, spread: 1, grav: 1, hitr: 1, scope: 1, turns: 0, drain: 0, charge0: 0, icptR: 1, icptP: 0, tickets: 0, arc: 1, fall: 1, thru: false, push: 1, mound: 1, frags: 0, hiAngle: false, size: 1, windx: 1, shaky: false, vmul: 1, rev: false };
     ids.forEach(id => {
       const a = byId[id]; if (!a) return;
       const x = a.mods || {};
@@ -146,6 +223,8 @@
       m.missiles += x.missiles || 0; m.drills = m.drills || !!x.drills; m.split = Math.max(m.split, x.split || 2); m.jumbo = m.jumbo || !!x.jumbo;
       m.rad *= x.rad || 1; m.grav *= x.grav || 1; m.hitr *= x.hitr || 1; m.scope *= x.scope || 1; m.fireMs *= x.fireMs || 1; m.spread *= x.spread || 1; m.dud *= x.dud === undefined ? 1 : x.dud;
       m.turns += x.turns || 0; m.drain += x.drain || 0; m.charge0 = Math.max(m.charge0, x.charge0 || 0); m.icptR *= x.icptR || 1; m.icptP += x.icptP || 0; m.tickets += x.tickets || 0; m.arc *= x.arc || 1; m.thru = m.thru || !!x.thru; m.fall *= x.fall === undefined ? 1 : x.fall;
+      m.push *= x.push || 1; m.mound *= x.mound || 1; m.frags += x.frags || 0;   // 엘리먼트
+      m.hiAngle = m.hiAngle || !!x.hiAngle; m.size *= x.size || 1; m.windx *= x.windx || 1; m.shaky = m.shaky || !!x.shaky; m.vmul *= x.vmul || 1; m.rev = m.rev || !!x.rev;   // 저주
       Object.entries(x.kindDmg || {}).forEach(([k, v]) => { m.kindDmg[k] = (m.kindDmg[k] || 1) * v; });
     });
     return m;
@@ -158,6 +237,7 @@
     { id: 'rare',      name: '레어',  color: '#4dd2ff', w: 28 },
     { id: 'epic',      name: '에픽',  color: '#c06bff', w: 10 },
     { id: 'legendary', name: '전설',  color: '#ffb62e', w: 2 },
+    { id: 'curse',     name: '저주',  color: '#ff4d8a', w: 0 },   // 저주: 일반 선택지에는 절대 안 나와요 (카오스 모드 전용)
   ];
   const rarOf = a => a.rarity || 'common';
   // 후보(cands) 중 하나를 등급 가중치로 뽑아요 (후보에 없는 등급은 건너뛰고 나머지끼리 다시 계산)
@@ -169,14 +249,24 @@
     return list[Math.floor(Math.random() * list.length)];
   }
   function offer(tank, have = [], n = 3) {   // 이 탱크에게 보여줄 선택지 n개 (이미 가진 증강은 제외, 등급이 높을수록 드물게)
-    let ok = POOL.filter(a => !have.includes(a.id) && (a.tank === null || a.tank === tank));
+    let ok = POOL.filter(a => !a.curse && !have.includes(a.id) && (a.tank === null || a.tank === tank));
     const out = [], takeOne = cands => { const a = draw(cands); if (a) { out.push(a); ok = ok.filter(o => o !== a); } };
     for (let k = 0; k < Math.min(SPECIFIC_SLOTS, n); k++) { const sp = ok.filter(a => a.tank === tank); if (sp.length) takeOne(sp); }
     while (out.length < n && ok.length) takeOne(ok);
     return shuffle(out).map(a => a.id);
   }
 
-  const api = { POOL, byId, calc, offer, RARITY, SPECIFIC_SLOTS, PICK_MS };
+  // 카오스 서든데스: 무작위 증강 1개 (curseRate 확률로 저주, 아니면 이 탱크가 받을 수 있는 이로운 증강을 등급 가중치로)
+  function chaosPick(tank, have = [], curseRate = .5) {
+    const curses = POOL.filter(a => a.curse && !have.includes(a.id));
+    const buffs = POOL.filter(a => !a.curse && !have.includes(a.id) && (a.tank === null || a.tank === tank));
+    const useCurse = curses.length && (Math.random() < curseRate || !buffs.length);
+    if (useCurse) return curses[Math.floor(Math.random() * curses.length)].id;
+    const b = buffs.length ? draw(buffs) : null;
+    return b ? b.id : null;
+  }
+
+  const api = { POOL, byId, calc, offer, chaosPick, RARITY, SPECIFIC_SLOTS, PICK_MS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FAUG = api;
 })(this);

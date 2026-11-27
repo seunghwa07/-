@@ -3,9 +3,9 @@
 // 조준은 서버의 비행 계산(flight · laserFlight · bumperFlight · zoneRun)을 그대로 돌려 보는 '시뮬레이션 탐색'이고,
 // 난이도는 (1) 조준 오차 (2) 바람을 얼마나 정확히 읽는지 (3) 생각하는 시간 (4) 위치 잡기 (5) 증강 고르는 안목 으로 나뉘어요.
 module.exports = function (X) {
-  const { FMAP, FAUG, SHELL, flight, laserFlight, plasmaCone, echoCone, bumperFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
+  const { FMAP, FAUG, SHELL, flight, laserFlight, plasmaCone, echoCone, bumperFlight, splitFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
     W, STEP, MAX_CLIMB, HIT_R, DIRECT, GRAV_R, GRAV_DMG, SNIPER_HIT, PIERCE_HIT, FIRE_R, FROST_R, WATER_R, CARPET_SPREAD, CARPET_GRAZE, ICE_FUEL, ICE_GAP,
-    doMove, doCharge, doFire, orderFire, pickAug, isBot } = X;
+    doMove, doCharge, doFire, orderFire, pickAug, isBot, orderCtx } = X;
 
   const LEVELS = {
     easy:   { label: '쉬움',   sa: 2.6,  sp: .05,  wind: .25, wn: 3, think: [2300, 4300], aug: 0, spots: 0, kill: 0,  human: 1,    moveP: .5 },
@@ -50,7 +50,7 @@ module.exports = function (X) {
   const shaped = (s, near) => s + (isFinite(near) ? 7 * Math.exp(-near / 260) : 0);   // 아직 못 맞히는 후보도 '가까울수록' 높게 쳐서 탐색이 길을 잃지 않게 해요
 
   function evalShot(ctx, a, pw) {
-    const { g, i } = ctx, p = g.players[i], m = p.mods, kind = p.tank === 'escalation' ? 'basic' : p.tank;
+    const { g, i } = ctx, p = g.players[i], m = p.mods, kind = p.tank === 'escalation' ? 'basic' : p.tank === 'element' ? 'efire' : p.tank;
     const dm = kind === 'bumper' ? 1 : (SHELL[kind] ? SHELL[kind].dmg : 0) * m.dmg * (m.kindDmg[kind] || 1);
     const rad = SHELL[kind] ? SHELL[kind].rad * m.rad : 0;
     if (kind === 'bumper') {
@@ -58,6 +58,15 @@ module.exports = function (X) {
       bumperFlight(g, i, a, pw).forEach(sh => {
         if (!sh.impact) return;
         const key = 'bumper' + Math.min(2, sh.gen), e = blast(ctx, sh.impact, SHELL[key].dmg * m.dmg * (m.kindDmg.bumper || 1), SHELL[key].rad * m.rad);
+        s += e.s; near = Math.min(near, e.near);
+      });
+      return { s, near };
+    }
+    if (kind === 'splitter') {   // 분열탄: 3초 뒤 터지는 자리 + 작은 탄들이 떨어지는 자리를 모두 계산해요
+      let s = 0, near = Infinity;
+      splitFlight(g, i, a, pw).forEach(sh => {
+        if (!sh.impact) return;
+        const key = sh.sub ? 'splitter2' : 'splitter', e = blast(ctx, sh.impact, SHELL[key].dmg * m.dmg * (m.kindDmg.splitter || 1), SHELL[key].rad * m.rad);
         s += e.s; near = Math.min(near, e.near);
       });
       return { s, near };
@@ -133,7 +142,7 @@ module.exports = function (X) {
   // ---------- 탐색: 거친 격자 → 가장 유망한 몇 곳을 촘촘하게 ----------
   function search(ev, o = {}) {
     const aS = o.aStep || 3, pS = o.pStep || 4, tops = [], cands = [], fs = o.fine ? .25 : .5;
-    for (let a = 8; a <= 172; a += aS) for (let pw = 12; pw <= 100; pw += pS) cands.push(ev(a, pw));
+    for (let a = o.lo ?? 8; a <= (o.hi ?? 172); a += aS) for (let pw = 12; pw <= 100; pw += pS) cands.push(ev(a, pw));   // lo/hi: 저주 '강제 고각'이면 70°~110°만
     cands.sort((x, y) => y.key - x.key);
     for (const c of cands) {
       if (tops.length >= (o.tops || (o.fine ? 8 : 5))) break;
@@ -157,11 +166,11 @@ module.exports = function (X) {
 
   // 한 자리에서의 최선의 포격 계획
   function planAt(r, g, i, lv, fast) {
-    const ctx = { r, g, i, lv, fast }, p = g.players[i], kind = p.tank === 'escalation' ? 'basic' : p.tank;
+    const ctx = { r, g, i, lv, fast }, p = g.players[i], kind = p.tank === 'escalation' ? 'basic' : p.tank === 'element' ? 'efire' : p.tank;
     if (kind === 'laser') return planLaser(ctx);
     if (kind === 'plasma' || kind === 'echo') return planPlasma(ctx, kind);
     return perceived(g, lv, () => {
-      const best = search((a, pw) => { const e = evalShot(ctx, a, pw); return { a, pw, s: e.s, key: shaped(e.s, e.near) }; }, fast ? { aStep: 4, pStep: 6, tops: 3, fast: false, fine: false } : { fine: !!lv.fine });
+      const best = search((a, pw) => { const e = evalShot(ctx, a, pw); return { a, pw, s: e.s, key: shaped(e.s, e.near) }; }, Object.assign(fast ? { aStep: 4, pStep: 6, tops: 3, fast: false, fine: false } : { fine: !!lv.fine }, p.mods.hiAngle ? { lo: 70, hi: 110 } : {}));
       return { angle: best.a, power: best.pw, score: best.s };
     });
   }
@@ -303,7 +312,7 @@ module.exports = function (X) {
     });
     return t;
   }
-  const nominal = (g, i) => { const p = g.players[i], k = p.tank === 'escalation' ? 'basic' : p.tank; return Math.max(6, (SHELL[k] && SHELL[k].dmg || 15) * p.mods.dmg * (p.mods.kindDmg[k] || 1)); };
+  const nominal = (g, i) => { const p = g.players[i], k = p.tank === 'escalation' ? 'basic' : p.tank === 'element' ? 'efire' : p.tank; return Math.max(6, (SHELL[k] && SHELL[k].dmg || 15) * p.mods.dmg * (p.mods.kindDmg[k] || 1)); };
 
   // ---------- 한 차례 ----------
   function turn(r, g) {
@@ -364,9 +373,9 @@ module.exports = function (X) {
       const lv = lvOf(sl.level);
       later(g, Math.max(0, g.orderGoAt - Date.now()) + rnd(lv.think[0] * .6, lv.think[1] * 1.3), () => {
         if (!live(r, g) || g.phase !== 'order' || g.oshots[i]) return;
-        const tx = g.target.x, ty = g.terrain[tx], ctx = { r, g, i, lv };
-        const pl = perceived(g, lv, () => search((a, pw) => {
-          const f = flight(g, i, a, pw, 'basic', true), d = f.impact ? Math.hypot(f.impact[0] - tx, f.impact[1] - ty) : 1e5;
+        const og = orderCtx(g, i), om = g.om[i], tx = om.tx, ty = om.terrain[tx];   // 내 개인 맵과 내 목표물
+        const pl = perceived(og, lv, () => search((a, pw) => {
+          const f = flight(og, i, a, pw, 'basic', true), d = f.impact ? Math.hypot(f.impact[0] - tx, f.impact[1] - ty) : 1e5;
           return { a, pw, key: -d };
         }));
         const n = noisy({ angle: pl.a, power: pl.pw }, lv);
