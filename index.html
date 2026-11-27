@@ -2240,7 +2240,71 @@ const BODY = {
 };
 
 // o: { col, lite, edge, dir(±1), a(조준 라디안), tilt, now, i }
-TK.shadow = { acc: '#b07cff', acc2: '#14081f' }; TPK.shadow = TPK.basic; BARREL.shadow = BARREL.basic; BODY.shadow = BODY.basic;   // 섀도우: 차체는 기본 탱크와 같고 보랏빛 포인트 색만 달라요
+// 섀도우: 어둠에 녹아드는 스텔스 탱크 — 각진 암흑 차체 + 뒤로 휘어진 그림자 뿔 + 초승달 문장 + 찢어진 보랏빛 눈 + 등 뒤에서 일렁이는 그림자 촉수 + 초승달 뿔처럼 갈라진 포구 (플레이어 색은 아주 어둡게 남겨서 누구 탱크인지는 알아봐요)
+TK.shadow = { acc: '#b07cff', acc2: '#14081f' };
+TPK.shadow = {   // 어둠 속 테두리(drawTankOutline)도 이 윤곽을 그대로 써요
+  hull: poly([[-22, -7], [-22, -10.5], [-15, -14.5], [11, -14.5], [24, -9.5], [24, -7]]),
+  turret: poly([[-14, -14.5], [-10, -20], [-3, -24], [7, -24], [14.5, -19.5], [15, -14.5]]),
+};
+const SHF = [.1, -.35, -.72], STF = [.3, -.18, -.62];   // 섀도우 차체/포탑 명암
+const CRES = new Path2D('M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z');   // 초승달
+BARREL.shadow = function (o) {
+  const k = o.k, pu = .55 + .45 * Math.sin(o.now / 300 + o.i);
+  C.fillStyle = lg(-2, 2, [[0, '#7a68a8'], [.5, '#2b1f48'], [1, '#0d0719']]); C.fillRect(-2, -1.8, 23, 3.6);
+  C.fillStyle = rgba(k.acc, .55 + .4 * pu); C.fillRect(5, -2.3, 1.2, 4.6); C.fillRect(11, -2.3, 1.2, 4.6); C.fillRect(16, -2.3, .9, 4.6);   // 빛나는 룬 띠
+  [-1, 1].forEach(s => {   // 초승달 뿔처럼 위·아래로 갈라진 포구
+    C.beginPath(); C.moveTo(18, s * 2.8); C.quadraticCurveTo(25, s * 3.4, 29, s * 7); C.quadraticCurveTo(26, s * 1.8, 21.5, s * .5); C.lineTo(18, s * .5); C.closePath();
+    C.fillStyle = '#1a0f33'; C.fill(); C.lineWidth = .9; C.strokeStyle = k.acc; C.stroke();
+  });
+  glow(23, 0, 8, k.acc, .3 + .3 * pu);
+  C.fillStyle = rgba('#efe0ff', .8 + .2 * pu); C.beginPath(); C.arc(22.5, 0, 1.5, 0, 7); C.fill();
+  for (let n = 0; n < 3; n++) {   // 포구에서 새어 나오는 그림자 연기
+    const u = (o.now / 900 + n / 3 + o.i * .21) % 1;
+    C.fillStyle = rgba('#7a3cff', .4 * (1 - u)); C.beginPath(); C.arc(26 + u * 6, Math.sin(u * 7 + n * 2) * 2, 1 + u * 2.2, 0, 7); C.fill();
+  }
+};
+BODY.shadow = function (o) {
+  const k = o.k, now = o.now, pu = .55 + .45 * Math.sin(now / 330 + o.i), ph = now / 420 + o.i;
+  for (let n = 0; n < 4; n++) {   // 땅 위로 깔리는 그림자 안개
+    const u = (now / 1800 + n / 4 + o.i * .17) % 1;
+    C.fillStyle = rgba('#5b2bd6', .32 * (1 - u)); C.beginPath(); C.ellipse(-20 - u * 12, -1.5 - u * 3, 5 + u * 6, 2 + u * 2, 0, 0, 7); C.fill();
+  }
+  [[-13, -17, 15, 1], [-9, -19, 21, .8], [-16, -15, 11, 1.2]].forEach(([x, y, L, sp], n) => {   // 등 뒤에서 일렁이는 그림자 촉수 세 가닥
+    const w1 = Math.sin(ph * sp * 1.6 + n * 2.1) * 3.2, w2 = Math.sin(ph * sp * 1.3 + n * 1.3 + 1) * 4;
+    C.beginPath(); C.moveTo(x, y);
+    C.bezierCurveTo(x - L * .35, y - L * .3 + w1, x - L * .45 + w2, y - L * .75, x - L * .35 + w2 * 1.4, y - L);
+    C.bezierCurveTo(x - L * .2 + w2, y - L * .7, x - L * .12 + w1, y - L * .3, x + 3, y + 1); C.closePath();
+    C.fillStyle = lg(y - L, y, [[0, rgba('#8a4dff', 0)], [.5, rgba('#4a1fb0', .55)], [1, 'rgba(20,8,40,.9)']]); C.fill();
+    C.lineWidth = .8; C.strokeStyle = rgba('#b07cff', .55); C.stroke();
+  });
+  for (let n = 0; n < 5; n++) {   // 피어오르는 보랏빛 불씨
+    const u = (now / 1400 + n / 5 + o.i * .11) % 1;
+    C.fillStyle = rgba('#d9b8ff', .8 * (1 - u)); C.beginPath(); C.arc(-14 - u * 8 + Math.sin(ph * 2 + n * 3) * 2.5, -18 - u * 20, .4 + 1.1 * (1 - u), 0, 7); C.fill();
+  }
+  tracks(o, -23, 46, 8.5, 4.2, [-17, -8.5, 0, 8.5, 17]);
+  C.beginPath(); C.moveTo(-24, -8.2); C.lineTo(23, -8.2); C.lineTo(19, -4); C.lineTo(-20, -4); C.closePath();   // 각진 암흑 스커트
+  C.fillStyle = '#120a22'; C.fill(); C.lineWidth = 1; C.strokeStyle = rgba(k.acc, .7); C.stroke();
+  paint(o, o.tp.hull, -15, -7, SHF);
+  C.save(); C.clip(o.tp.hull);
+  C.strokeStyle = rgba(k.acc, .35); C.lineWidth = .8;   // 스텔스 패널 선
+  C.beginPath(); C.moveTo(-8, -14.5); C.lineTo(-13, -7); C.moveTo(4, -14.5); C.lineTo(-1, -7); C.moveTo(15, -12.3); C.lineTo(11, -7); C.stroke();
+  const sg = C.createLinearGradient(-20, 0, 22, 0); sg.addColorStop(0, rgba(k.acc, 0)); sg.addColorStop(.5, rgba(k.acc, .5 + .45 * pu)); sg.addColorStop(1, rgba('#efe0ff', .9));
+  C.fillStyle = sg; C.fillRect(-22, -11.2, 46, 1.4);   // 차체를 가르는 보랏빛 빛줄기
+  C.restore();
+  glow(22, -9.6, 6, k.acc, .15 + .45 * pu); lamp(21, -10.3, '#efe0ff');
+  [[[-9, -21], [-23, -29], [-15, -19.5]], [[-5, -23.5], [-15, -32], [-9, -22]]].forEach(pts => {   // 포탑 뒤로 휘어진 그림자 뿔
+    C.beginPath(); pts.forEach(([x, y], n) => n ? C.lineTo(x, y) : C.moveTo(x, y)); C.closePath();
+    C.fillStyle = '#150b28'; C.fill(); C.lineWidth = .9; C.strokeStyle = rgba(k.acc, .8); C.stroke();
+  });
+  paint(o, o.tp.turret, -24, -14.5, STF);
+  C.save(); C.translate(-9.3, -23.5); C.scale(.36, .36);   // 포탑 위 초승달 문장
+  C.shadowColor = k.acc; C.shadowBlur = 6; C.fillStyle = rgba(k.acc, .75 + .25 * pu); C.fill(CRES);
+  C.shadowBlur = 0; C.lineWidth = 2; C.strokeStyle = rgba('#efe0ff', .7); C.stroke(CRES);
+  C.restore();
+  C.beginPath(); C.moveTo(2.5, -18.2); C.lineTo(12.5, -20.6); C.lineTo(11.2, -17.4); C.lineTo(4.5, -16.8); C.closePath(); C.fillStyle = '#0b0614'; C.fill();   // 비스듬히 찢어진 눈
+  glow(8.5, -18.6, 9, k.acc, .3 + .35 * pu);
+  C.beginPath(); C.moveTo(4, -18); C.lineTo(12, -20); C.lineTo(10.8, -18); C.lineTo(5.2, -17.4); C.closePath(); C.fillStyle = rgba('#e9d6ff', .85 + .15 * pu); C.fill();
+};
 TK.escalation = { acc: '#ffb347', acc2: '#ff4d6a' }; TPK.escalation = TPK.basic; BARREL.escalation = BARREL.basic; BODY.escalation = BODY.basic;   // 에스컬레이션: 차체는 기본 탱크와 같고 포인트 색만 달라요
 function paintTank(kind, o) {
   o.k = TK[kind]; o.tp = TPK[kind];
@@ -2260,7 +2324,7 @@ function drawTank(p, i, deg, active) {
   ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.scale(1, .26);   // 발밑 네온 빛
   const ug = ctx.createRadialGradient(0, 0, 0, 0, 0, 40); ug.addColorStop(0, rgba(col, .6)); ug.addColorStop(1, rgba(col, 0));
   ctx.fillStyle = ug; ctx.beginPath(); ctx.arc(0, 0, 40, 0, 7); ctx.fill();
-  if (kind === 'incendiary' || kind === 'laser' || kind === 'rail' || kind === 'plasma' || kind === 'gravity' || kind === 'electro') {   // 종류 색이 살짝 섞인 두 번째 빛
+  if (kind === 'incendiary' || kind === 'laser' || kind === 'rail' || kind === 'plasma' || kind === 'gravity' || kind === 'electro' || kind === 'shadow') {   // 종류 색이 살짝 섞인 두 번째 빛
     const u2 = ctx.createRadialGradient(0, 0, 0, 0, 0, 30); u2.addColorStop(0, rgba(k.acc, .3)); u2.addColorStop(1, rgba(k.acc, 0));
     ctx.fillStyle = u2; ctx.beginPath(); ctx.arc(0, 0, 30, 0, 7); ctx.fill();
   }
