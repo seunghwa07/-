@@ -17,7 +17,7 @@ const rooms = new Map();
 
 // ---------- 탱크(포탄) 종류 ----------
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
-const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept', 'plasma', 'shadow'];
+const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept', 'plasma', 'echo', 'shadow'];
 const ESC_POOL = KINDS.filter(k => k !== 'rail' && k !== 'intercept');   // 에스컬레이션이 쏠 때마다 뽑는 포탄 후보 (레일건은 충전이 필요해서, 요격탄은 기본탄과 같아서 뺐어요)
 const FIXED_TANK = { escalation: 'escalation', laser: 'laser' };   // 이 모드에서는 모두가 같은 탱크예요 (탱크를 고를 수 없어요)
 const LASER_MODE_BOUNCES = 10;   // 레이저 모드: 모두 레이저 탱크 · 반사 횟수는 언제나 10회
@@ -39,7 +39,8 @@ const SHELL = {
   explosive: { dmg: 34, rad: 70 },   // 고폭탄: 기본탄(17)의 2배 피해 + 조금 더 큰 폭발(반지름 70) · 대신 이동 불가 (fuelOf 참고) · 사거리는 SPEED 참고
   intercept: { dmg: 17, rad: CRATER },   // 요격탄: 탄은 기본탄과 완전히 같아요 · 대신 매 차례 요격 티켓이 설치돼요 (아래 ICPT_* 참고)
   plasma: { dmg: 34, rad: 0 },     // 플라즈마: 가까이서 맞는 최대 피해 (거리에 따라 줄어 맵 맨 끝에서 4 · 아래 PLASMA_* 참고) · 땅은 안 파여요
-  grinder: { dmg: 10, rad: 0 },    // 그라인더: 톱니바퀴에 닿은 탱크가 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
+  echo: { dmg: 28, rad: 0 },       // 에코: 가장 가까이서 맞는 최대 피해 (거리에 따라 줄어 사거리 끝에서 6 · 아래 ECHO_* 참고) · 땅은 안 파여요 · 벽을 통과해요
+  grinder: { dmg: 3, rad: 0 },     // 그라인더: 톱니바퀴에 닿은 탱크가 틱마다 받는 피해 (아래 GRIND_* 와 같은 값) · 땅은 안 파여요
 };
 const EXPL_SPEED = 1.35;   // 고폭탄 탄속 배율: 최대 사거리 ≈ 5800px 로 월드 폭(5000px)보다 길어서 맵 어디든 닿아요 (한 걸음 22.5px < 피격 반경 23.4px 라 탱크를 건너뛰지도 않아요) — 클라이언트(index.html)와 같아야 해요
 const SPEED = { heavy: Math.sqrt(0.7), gravity: Math.sqrt(0.7), explosive: EXPL_SPEED };   // 광폭탄·중력탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
@@ -62,11 +63,11 @@ const GRAV_FRAMES = 150;           // 블랙홀 연출 길이 (화면 프레임)
 const GRAV_MS = GRAV_FRAMES * 1000 / 60 + 200;
 // ----- 일렉트로 · 그라인더: 땅에 닿으면 장판이 생겨 3초 동안 '앞으로(포탄이 날아오던 방향)' 나아가요 -----
 // 일렉트로: 포탄이 상·하 반쪽으로 갈라지고 그 사이에 전깃줄이 생겨요. 줄에 닿은 탱크는 ELEC_TICK 마다 ELEC_DMG 피해
-// 그라인더: 톱니바퀴가 땅을 타고 굴러가요. 닿은 탱크는 (탱크마다 한 번) GRIND_DMG 피해, 너무 가파른 벽을 만나면 그 자리에서 멈춰요
+// 그라인더: 톱니바퀴가 땅을 타고 굴러가요. 닿아 있는 동안 GRIND_TICK 마다 GRIND_DMG 피해 (탱크마다 최대 GRIND_HITS 번), 너무 가파른 벽을 만나면 그 자리에서 멈춰요
 // 이동 경로와 피해는 발사 순간 서버가 한 번에 계산해서 보내요. (탱크는 움직이지 않고, 지형도 안 변하니까 결과가 같아요) 아래 값은 클라이언트(index.html)에도 필요한 것만 같이 보내요
 const ZONE_STEP = 50;                                                    // 장판 위치를 기록하는 간격(ms)
 const ELEC_MS = 3000, ELEC_SPEED = 280, ELEC_H = 240, ELEC_W = 55, ELEC_TICK = 300, ELEC_DMG = 8, ELEC_HITS = 2;   // 지속 / 이동 속도(px/s) / 전깃줄 길이(px) / 닿는 폭(px) / 피해 간격(ms · 느려졌어요) / 틱당 피해 / 탱크 하나가 전기장 한 번에 맞는 횟수(2번)
-const GRIND_MS = 3000, GRIND_SPEED = 220, GRIND_R = 34, GRIND_HIT = GRIND_R + 16, GRIND_DMG = 10, GRIND_CLIMB = 1.7;   // 지속 / 이동 속도 / 톱니바퀴 반지름 / 피격 거리 / 피해 / 오를 수 있는 최대 기울기(높이÷거리)
+const GRIND_MS = 3000, GRIND_SPEED = 220, GRIND_R = 34, GRIND_HIT = GRIND_R + 16, GRIND_DMG = 3, GRIND_TICK = 100, GRIND_HITS = 6, GRIND_CLIMB = 1.7;   // 지속 / 이동 속도 / 톱니바퀴 반지름 / 피격 거리 / 틱당 피해 / 피해 간격(ms) / 탱크 하나가 한 번에 맞는 최대 횟수(6번 = 최대 18) / 오를 수 있는 최대 기울기(높이÷거리)
 const DIRECT = HIT_R + 8;          // 이 거리 안이면 직격 → 전체 피해
 const SNIPER_G = .3, SNIPER_HIT = HIT_R * .55, SNIPER_ANIM = 1.8;   // 스나이퍼탄: 중력 30% / 피격 범위 55%(작아서 맞추기 어려워요) / 화면에서 날아가는 속도 배율(빨라요)
 const segDist = (px, py, x, y, cx, cy) => {   // 점 (cx,cy)와 선분 (px,py)-(x,y) 사이의 거리 (빠른 탄이 작은 판정을 건너뛰지 않게)
@@ -82,6 +83,7 @@ const FROST_R = 150, FROST_TURNS = 3;   // 냉각탄: 얼음 바닥 반경(px) /
 const ICE_GAP = 70, ICE_FUEL = 2;   // 얼음 바닥 위: 이동 간격 70ms(기본 30~40ms 대비 절반 속도) / 한 걸음당 연료 2배
 const onIce = (g, q) => (g.ice || []).some(f => Math.hypot(q.x - f.x, tankY(g, q) - f.y) < f.r);
 // 물폭탄: 착탄 주변에 물 범위가 WATER_TURNS 차례 동안 남아요. 그 범위 안의 (적) 탱크가 쏘는 포탄은 WATER_DUD 확률로 불발(날아가다 사라짐)
+const SHADOW_LIFT = 0.6;   // 어둠 영역 중심을 땅에서 반경의 60% 만큼 위로 올려요 (땅속에 박혀 보이지 않게)
 const SHADOW_R = 150, SHADOW_TURNS = 3;   // 섀도우: 어둠 영역 반경(px) / 남아 있는 차례 수 — 영역 안은 지형과 다른 탱크가 안 보이고 자기 탱크만 보여요 (화면 연출이라 서버는 위치만 기억해요)
 const WATER_R = 200, WATER_TURNS = 3, WATER_DUD = .5;   // 물 범위 반경(px) / 남아 있는 차례 수 / 범위 안에서 쏜 포탄이 불발될 확률
 const inWater = (g, i) => { const q = g.players[i]; return (g.water || []).some(z => !isAlly(g, z.by, i) && Math.hypot(q.x - z.x, tankY(g, q) - z.y) < z.r); };
@@ -398,7 +400,7 @@ function explode(g, shooter, impact, kind, delay = 0, mul = 1) {   // mul: 이 �
   }
   if (kind === 'shadow') {   // 섀도우: 착탄 자리에 어둠 영역 생성
     const dx0 = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), dr = Math.round(SHADOW_R * g.players[shooter].mods.area);
-    g.dark.push({ id: ++g.darkSeq, x: dx0, y: g.terrain[dx0], r: dr, left: SHADOW_TURNS + g.players[shooter].mods.turns + 1, by: shooter });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
+    g.dark.push({ id: ++g.darkSeq, x: dx0, y: g.terrain[dx0] - Math.round(dr * SHADOW_LIFT), r: dr, left: SHADOW_TURNS + g.players[shooter].mods.turns + 1, by: shooter });   // +1: 쏜 직후 차례가 넘어갈 때 하나 줄어요
   }
   if (kind === 'water') {   // 물폭탄: 착탄 주변에 물 범위 생성 (그 안의 적 탱크가 쏘는 포탄은 50% 불발)
     const wx = Math.max(0, Math.min(W - 1, Math.round(impact[0]))), wy = g.terrain[wx], wr = Math.round(WATER_R * g.players[shooter].mods.area);
@@ -681,6 +683,40 @@ function firePlasma(r, shooter, angle) {
   return { type: 'shot', by: shooter, angle, kind: 'plasma', dud: false, shells: [{ path, impact: null }], plasma: { half: c.half, len: Math.round(len), range: PLASMA_RANGE, min: 1 - (1 - PLASMA_MIN) * g.players[shooter].mods.fall, prof: c.prof, hits }, state: snapshot(r) };
 }
 
+// ----- 에코: 조준 방향으로 30° 부채꼴(좌우 15°) 음파를 쏴요. 플라즈마처럼 범위 안의 적을 모두 맞히지만 사거리가 짧고, 멀수록 약해져요 (가장 가까이 28 → 사거리 끝 6) -----
+// 음파라서 벽(지형)을 그대로 통과해요: 지형 그림자가 없고, 벽 너머의 적도 맞아요. 파워는 무관, 땅은 안 파여요.
+const ECHO_HALF = 15 * Math.PI / 180, ECHO_RANGE = 1800, ECHO_END_DMG = 6, ECHO_MIN = ECHO_END_DMG / SHELL.echo.dmg, ECHO_STEP = 80;   // 부채꼴 반각(총 30°) / 사거리(px · 플라즈마는 맵 끝까지) / 사거리 끝 피해 / 연출용 경로 점 간격
+const echoDmg = (base, dist, fall = 1) => Math.max(1, Math.round(base * (1 - (1 - ECHO_MIN) * fall * Math.max(0, Math.min(1, dist / ECHO_RANGE)))));   // fall: 거리 감쇠 배수 (증강 · 1 = 기본)
+function echoCone(g, shooter, angle) {   // 쏘지 않고 판정만 계산 (봇 조준도 같이 써요) · 지형은 보지 않아요 = 벽 통과
+  const p = g.players[shooter], a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), x0 = p.x, y0 = g.terrain[p.x] - 20 * TS, half = ECHO_HALF * p.mods.arc, tn = Math.tan(half), base = SHELL.echo.dmg;
+  let full = ECHO_RANGE;   // 맵 경계에서 끝나요 (연출용 경로 길이)
+  if (dx > 1e-6) full = Math.min(full, (W - 1 - x0) / dx); else if (dx < -1e-6) full = Math.min(full, -x0 / dx);
+  if (dy < -1e-6) full = Math.min(full, -y0 / dy); else if (dy > 1e-6) full = Math.min(full, (H - 1 - y0) / dy);
+  full = Math.max(60, full);
+  const hits = [];
+  g.players.forEach((q, i) => {
+    if (i === shooter || q.hp <= 0 || isAlly(g, shooter, i)) return;
+    const qy = tankY(g, q), vx = q.x - x0, vy = qy - y0, along = vx * dx + vy * dy, dist = Math.hypot(vx, vy), perp = Math.abs(vx * dy - vy * dx);
+    if (dist > ECHO_RANGE + HIT_R || along > full + HIT_R || (along < 0 && dist > HIT_R)) return;
+    if (dist > HIT_R && perp > Math.max(0, along) * tn + HIT_R) return;   // 부채꼴 밖 (탱크 반지름만큼 여유)
+    hits.push({ i, dist, dmg: echoDmg(base, dist, p.mods.fall), along });   // 벽은 상관없이 맞아요
+  });
+  return { x0, y0, dx, dy, len: full, hits, half };
+}
+function fireEcho(r, shooter, angle) {
+  const g = r.game, c = echoCone(g, shooter, angle), len = c.len;
+  const n = Math.max(2, Math.ceil(len / ECHO_STEP) + 1), step = len / (n - 1);
+  const path = Array.from({ length: n }, (_, k) => [c.x0 + c.dx * step * k, c.y0 + c.dy * step * k]);
+  const hits = c.hits.map(h => {
+    const q = g.players[h.i], hp0 = q.hp;
+    q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, h.i, h.dmg, 'echo'));
+    return { i: h.i, idx: Math.max(0, Math.min(n - 1, h.along / step)), x: q.x, y: Math.round(tankY(g, q)), d: hp0 - q.hp };
+  });
+  const ms = n * 1000 / 60 / FMAP.SHOT_SPEED + 900 + 2000;
+  if (!checkEnd(r, ms - 2000)) { g.busy = true; g.busyTimer = setTimeout(() => resolveShot(r, g), ms); }
+  return { type: 'shot', by: shooter, angle, kind: 'echo', dud: false, shells: [{ path, impact: null }], echo: { half: c.half, len: Math.round(len), range: ECHO_RANGE, min: 1 - (1 - ECHO_MIN) * g.players[shooter].mods.fall, hits }, state: snapshot(r) };
+}
+
 // 중력탄: 떨어진 자리(cx, cy)에 블랙홀 → 반경 안의 탱크는 중심으로 끌려오고(서로 간격을 두고 늘어서요), 붕괴 폭발 피해를 받아요. 팀전에서 아군은 끌려오기만 하고 피해는 없어요.
 function gravityWell(g, shooter, impact) {
   const mods = g.players[shooter].mods, R = GRAV_R * mods.rad;
@@ -715,7 +751,7 @@ function zoneRun(g, shooter, impact, vx, kind) {
       if (!(el ? segDist(x, y - ELEC_H, x, y, q.x, qy) < ELEC_W : Math.hypot(x - q.x, y - qy) < GRIND_HIT)) return;
       const hp0 = q.hp;
       q.hp = Math.max(0, q.hp - scaleDmg(g, shooter, i, el ? ELEC_DMG : GRIND_DMG, kind));
-      cnt[i]++; next[i] = el ? (cnt[i] >= ELEC_HITS ? Infinity : t + ELEC_TICK) : Infinity;   // 전기는 탱크마다 ELEC_TICK 간격으로 딱 2번만 지지고, 톱날은 탱크마다 한 번만 갈아요
+      cnt[i]++; next[i] = cnt[i] >= (el ? ELEC_HITS : GRIND_HITS) ? Infinity : t + (el ? ELEC_TICK : GRIND_TICK);   // 전기는 ELEC_TICK 간격으로 딱 2번, 톱날은 GRIND_TICK 간격으로 닿아 있는 동안 최대 GRIND_HITS 번 지져요
       hits.push({ i, t, x: q.x, y: Math.round(qy), d: hp0 - q.hp });
     });
     if (k < n) {
@@ -729,10 +765,10 @@ function zoneRun(g, shooter, impact, vx, kind) {
   return { kind, dir, ms: n * ZONE_STEP, step: ZONE_STEP, h: ELEC_H, r: GRIND_R, path, hits };
 }
 
-function fire(r, shooter, angle, power) {   // 에스컬레이션: 쏠 때마다 포탄 종류를 새로 뽑아요 (플라즈마 말고는 수평 위(0°~180°)로만 쏠 수 있어요)
+function fire(r, shooter, angle, power) {   // 에스컬레이션: 쏠 때마다 포탄 종류를 새로 뽑아요 (플라즈마·에코 말고는 수평 위(0°~180°)로만 쏠 수 있어요)
   if (r.game.players[shooter].tank !== 'escalation') return fireKind(r, shooter, angle, power, r.game.players[shooter].tank);
   const kind = ESC_POOL[Math.floor(Math.random() * ESC_POOL.length)];
-  const out = fireKind(r, shooter, kind === 'plasma' ? angle : Math.min(180, Math.max(0, angle)), power, kind);
+  const out = fireKind(r, shooter, (kind === 'plasma' || kind === 'echo') ? angle : Math.min(180, Math.max(0, angle)), power, kind);
   out.esc = true;
   return out;
 }
@@ -742,6 +778,7 @@ function fireKind(r, shooter, angle, power, kind) {
   if (!wet && kind === 'carpet') return fireCarpet(r, shooter, angle, power);
   if (!wet && kind === 'rail') return fireRail(r, shooter, angle);
   if (!wet && kind === 'plasma') return firePlasma(r, shooter, angle);
+  if (!wet && kind === 'echo') return fireEcho(r, shooter, angle);
   let shells, dud = false, grav = null, zone = null;
   if (wet) {   // 불발: 날아가다 떨어져 사라져요 (피해·폭발·장판 없음)
     const s = flight(g, shooter, angle, power, 'basic');
@@ -962,7 +999,7 @@ function doFire(r, i, angle, power) {
   const g = r.game;
   if (!g || g.phase === 'order' || g.winner !== -1 || g.busy || g.turn !== i || g.players[i].hp <= 0) return false;
   if (g.players[i].tank === 'rail' && (g.players[i].charge || 0) < 1) return false;   // 레일건은 최소 1번 충전해야 발사할 수 있어요
-  const railAim = g.players[i].tank === 'rail' || g.players[i].tank === 'plasma' || g.players[i].tank === 'escalation';   // 레일건·플라즈마는 수평 아래로도 조준 가능
+  const railAim = g.players[i].tank === 'rail' || g.players[i].tank === 'plasma' || g.players[i].tank === 'echo' || g.players[i].tank === 'escalation';   // 레일건·플라즈마는 수평 아래로도 조준 가능
   toRoom(r, fire(r, i,
     Math.min(railAim ? 180 - RAIL_AIM_MIN : 180, Math.max(railAim ? RAIL_AIM_MIN : 0, +angle || 0)),
     Math.min(100, Math.max(10, +power || 10))));
@@ -985,7 +1022,7 @@ function pickAug(r, i, id) {   // 증강 선택
 }
 
 // ===== 솔로 모드 AI: bot.js (쉬움 · 보통 · 어려움 · 엑스퍼트) =====
-const BOT = require('./bot.js')({ FMAP, FAUG, SHELL, flight, laserFlight, plasmaCone, bumperFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
+const BOT = require('./bot.js')({ FMAP, FAUG, SHELL, flight, laserFlight, plasmaCone, echoCone, bumperFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
   W, STEP, MAX_CLIMB, HIT_R, DIRECT, GRAV_R, GRAV_DMG, SNIPER_HIT, PIERCE_HIT, FIRE_R, FROST_R, WATER_R, CARPET_SPREAD, CARPET_GRAZE, ICE_FUEL, ICE_GAP,
   doMove, doCharge, doFire, orderFire, pickAug, isBot });
 const LEVELS = BOT.LEVELS;

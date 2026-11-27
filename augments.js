@@ -69,7 +69,7 @@
     { id: 'scope',     tank: 'sniper', rarity: 'common', icon: '🔭', name: '고배율 조준경', desc: '조준 점선이 2배 길어져요',             mods: { scope: 2 } },
     { id: 'highvolt', tank: 'electro', rarity: 'rare', icon: '⚡', name: '고전압',        desc: '전기장 피해 ×1.5 (8 → 12)',                    mods: { kindDmg: { electro: 1.5 } } },
     { id: 'longarc',  tank: 'electro', rarity: 'common', icon: '🔌', name: '장시간 방전',   desc: '전기장이 나아가는 시간 ×1.5 (3초 → 4.5초)',     mods: { fireMs: 1.5 } },
-    { id: 'carbide',  tank: 'grinder', rarity: 'rare', icon: '🔩', name: '초경 톱날',     desc: '톱니바퀴 피해 ×1.4 (10 → 14)',                 mods: { kindDmg: { grinder: 1.4 } } },
+    { id: 'carbide',  tank: 'grinder', rarity: 'rare', icon: '🔩', name: '초경 톱날',     desc: '톱니바퀴 틱 피해 ×1.4 (3 → 4)',                 mods: { kindDmg: { grinder: 1.4 } } },
     { id: 'longroll', tank: 'grinder', rarity: 'common', icon: '🛞', name: '장거리 구동',   desc: '톱니바퀴가 굴러가는 시간 ×1.5 (3초 → 4.5초)',   mods: { fireMs: 1.5 } },
     { id: 'rubber',    tank: 'bumper', rarity: 'rare', icon: '🟢', name: '고무 탄성',   desc: '범퍼탄 피해 ×1.3',                 mods: { kindDmg: { bumper: 1.3 } } },
     { id: 'heavyball', tank: 'bumper', rarity: 'common', icon: '🎱', name: '묵직한 공',   desc: '범퍼탄 폭발 범위 ×1.25',           mods: { rad: 1.25 } },
@@ -105,6 +105,11 @@
     { id: 'widearc',    tank: 'plasma', rarity: 'common', icon: '📐', name: '광각 방출기',   desc: '부채꼴 각도 ×1.4 (15° → 21°) · 더 많은 적을 한 번에',   mods: { arc: 1.4 } },
     { id: 'stabilizer', tank: 'plasma', rarity: 'rare',   icon: '🧬', name: '안정화 코일',   desc: '멀리서도 피해가 덜 줄어요 (맵 맨 끝 4 → 19)',           mods: { fall: .5 } },
     { id: 'focuslens',  tank: 'plasma', rarity: 'rare',   icon: '🔭', name: '집속 렌즈',     desc: '부채꼴 각도 ×0.6 (15° → 9°) · 플라즈마 피해 ×1.35',     mods: { arc: .6, kindDmg: { plasma: 1.35 } } },
+    // ----- 에코 -----
+    { id: 'resonance',  tank: 'echo', rarity: 'common', icon: '🔊', name: '공명 증폭',     desc: '에코 피해 ×1.25 (가장 가까이 28 → 35)',                  mods: { kindDmg: { echo: 1.25 } } },
+    { id: 'widewave',   tank: 'echo', rarity: 'common', icon: '📣', name: '광역 음파',     desc: '부채꼴 각도 ×1.4 (30° → 42°) · 더 많은 적을 한 번에',    mods: { arc: 1.4 } },
+    { id: 'cleartone',  tank: 'echo', rarity: 'rare',   icon: '🎼', name: '맑은 음색',     desc: '멀리서도 피해가 덜 줄어요 (사거리 끝 6 → 17)',           mods: { fall: .5 } },
+    { id: 'sonicboom',  tank: 'echo', rarity: 'epic',   icon: '💥', name: '소닉 붐',       desc: '에코 피해 ×1.3 · 부채꼴 각도 ×1.2 (30° → 36°) · 거리 감쇠 ×0.6', mods: { kindDmg: { echo: 1.3 }, arc: 1.2, fall: .6 } },
     // ----- 섀도우 -----
     { id: 'dusk',       tank: 'shadow', rarity: 'common', icon: '🌆', name: '땅거미',         desc: '어둠 영역 반경 ×1.3 (150 → 195)',                       mods: { area: 1.3 } },
     { id: 'shadeblade', tank: 'shadow', rarity: 'common', icon: '🗡️', name: '그림자 칼날',   desc: '섀도우 피해 ×1.4 (15 → 21)',                            mods: { kindDmg: { shadow: 1.4 } } },
