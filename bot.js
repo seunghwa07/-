@@ -13,6 +13,8 @@ module.exports = function (X) {
     hard:   { label: '어려움', sa: .28,  sp: .005, wind: 1,   wn: 0, think: [1000, 2200], aug: 2, spots: 5, kill: 14, human: 1.3,  moveP: 1 },
     // 엑스퍼트: 어려움 + (1) 조준 오차 거의 0 (2) 촘촘한 0.25° 탐색 (3) 이동 후보 10곳 이상 비교 (4) 체력 낮은 적 집중 공격 (5) 내 자리의 '반격 위험'까지 계산 (6) 내 탱크에 맞는 증강만 고름
     expert: { label: '엑스퍼트', sa: .03, sp: .0005, wind: 1,   wn: 0, think: [600, 1300],   aug: 3, spots: 10, kill: 30, human: 1.5,  moveP: 1, fine: true, focus: .6, danger: .5 },
+    // 임파서블: 엑스퍼트와 똑같은 실력 · 대신 탱크는 스나이퍼나 레이저만 써요 (서버 IMPOSSIBLE_TANKS)
+    impossible: { label: '임파서블', sa: .03, sp: .0005, wind: 1, wn: 0, think: [600, 1300], aug: 3, spots: 10, kill: 30, human: 1.5, moveP: 1, fine: true, focus: .6, danger: .5 },
   };
   const lvOf = k => LEVELS[k] || LEVELS.normal;
   const rnd = (a, b) => a + Math.random() * (b - a);

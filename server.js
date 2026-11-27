@@ -19,8 +19,9 @@ const rooms = new Map();
 // dmg: 직격 피해 (기본탄 17 → 정통으로 6발 맞으면 HP 100 파괴), rad: 폭발(크레이터) 크기
 const KINDS = ['basic', 'incendiary', 'cluster', 'homing', 'heavy', 'pierce', 'laser', 'carpet', 'bumper', 'sniper', 'rail', 'gravity', 'electro', 'grinder', 'frost', 'vampire', 'water', 'explosive', 'intercept', 'plasma', 'echo', 'shadow'];
 const ESC_POOL = KINDS.filter(k => k !== 'rail' && k !== 'intercept');   // 에스컬레이션이 쏠 때마다 뽑는 포탄 후보 (레일건은 충전이 필요해서, 요격탄은 기본탄과 같아서 뺐어요)
-const FIXED_TANK = { escalation: 'escalation', laser: 'laser' };   // 이 모드에서는 모두가 같은 탱크예요 (탱크를 고를 수 없어요)
+const FIXED_TANK = { escalation: 'escalation', laser: 'laser', sniper: 'sniper' };   // 이 모드에서는 모두가 같은 탱크예요 (탱크를 고를 수 없어요)
 const LASER_MODE_BOUNCES = 10;   // 레이저 모드: 모두 레이저 탱크 · 반사 횟수는 언제나 10회
+const IMPOSSIBLE_TANKS = ['sniper', 'laser'];   // 임파서블 AI 는 이 두 탱크만 써요 (엑스퍼트와 같은 실력)
 const isTank = k => KINDS.includes(k) || k === 'escalation' || k === 'random';   // 고를 수 있는 탱크 종류
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
@@ -213,7 +214,7 @@ function newGame(r) {
   const map = r.mapId === RANDOM_MAP ? Math.floor(Math.random() * FMAP.MAPS.length) : r.mapId;
   r.game = {
     map, terrain: FMAP.terrain(map), wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [], ice: [], water: [], dark: [], frozen: false, iceSeq: 0, waterSeq: 0, darkSeq: 0,
-    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (FIXED_TANK[r.mode] || (r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank)) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (FIXED_TANK[r.mode] || (r.slots[i].bot && r.slots[i].level === 'impossible' ? IMPOSSIBLE_TANKS[Math.floor(Math.random() * IMPOSSIBLE_TANKS.length)] : r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank)) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
   g.gid = ++GID;   // 게임마다 고유 번호 (토너먼트에서 화면이 다른 경기로 바뀐 걸 클라이언트가 알아채요)
@@ -685,7 +686,7 @@ function firePlasma(r, shooter, angle) {
 
 // ----- 에코: 조준 방향으로 30° 부채꼴(좌우 15°) 음파를 쏴요. 플라즈마처럼 범위 안의 적을 모두 맞히지만 사거리가 짧고, 멀수록 약해져요 (가장 가까이 28 → 사거리 끝 6) -----
 // 음파라서 벽(지형)을 그대로 통과해요: 지형 그림자가 없고, 벽 너머의 적도 맞아요. 파워는 무관, 땅은 안 파여요.
-const ECHO_HALF = 15 * Math.PI / 180, ECHO_RANGE = 1800, ECHO_END_DMG = 6, ECHO_MIN = ECHO_END_DMG / SHELL.echo.dmg, ECHO_STEP = 80;   // 부채꼴 반각(총 30°) / 사거리(px · 플라즈마는 맵 끝까지) / 사거리 끝 피해 / 연출용 경로 점 간격
+const ECHO_HALF = 15 * Math.PI / 180, ECHO_RANGE = 2520, ECHO_END_DMG = 6, ECHO_MIN = ECHO_END_DMG / SHELL.echo.dmg, ECHO_STEP = 80;   // 부채꼴 반각(총 30°) / 사거리(px · 플라즈마는 맵 끝까지) / 사거리 끝 피해 / 연출용 경로 점 간격
 const echoDmg = (base, dist, fall = 1) => Math.max(1, Math.round(base * (1 - (1 - ECHO_MIN) * fall * Math.max(0, Math.min(1, dist / ECHO_RANGE)))));   // fall: 거리 감쇠 배수 (증강 · 1 = 기본)
 function echoCone(g, shooter, angle) {   // 쏘지 않고 판정만 계산 (봇 조준도 같이 써요) · 지형은 보지 않아요 = 벽 통과
   const p = g.players[shooter], a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a), x0 = p.x, y0 = g.terrain[p.x] - 20 * TS, half = ECHO_HALF * p.mods.arc, tn = Math.tan(half), base = SHELL.echo.dmg;
@@ -1079,14 +1080,14 @@ wss.on('connection', ws => {
       r.mapId = Math.max(0, Math.min(RANDOM_MAP, (+m.id) | 0));
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'mode' && !r.game && !r.solo && ws.slot === host(r)) {
-      r.mode = ['team', 'escalation', 'laser', 'tournament'].includes(m.mode) ? m.mode : 'ffa';   // tournament: 3~4명 1:1 대진   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
+      r.mode = ['team', 'escalation', 'laser', 'sniper', 'tournament'].includes(m.mode) ? m.mode : 'ffa';   // tournament: 3~4명 1:1 대진   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'bot' && r.solo && !r.game && ws.slot === host(r)) {   // AI 추가 / 제거 / 난이도 / 탱크
       const sl = r.slots[m.slot | 0];
       if (m.op === 'add') { if (r.slots.includes(null)) addBot(r, m.level); }
       else if (sl && sl.bot && m.op === 'del') r.slots[m.slot | 0] = null;
       else if (sl && sl.bot && m.op === 'level' && LEVELS[m.level]) { sl.level = m.level; sl.name = botName(m.slot | 0, m.level); }
-      else if (sl && sl.bot && m.op === 'tank' && isTank(m.kind)) sl.tank = m.kind;
+      else if (sl && sl.bot && m.op === 'tank' && isTank(m.kind) && sl.level !== 'impossible') sl.tank = m.kind;
       else return;
       toRoom(r, roomMsg(r));
     } else if (r && m.type === 'team' && !r.game && !r.solo) {
