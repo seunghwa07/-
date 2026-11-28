@@ -3,7 +3,7 @@
 // 조준은 서버의 비행 계산(flight · laserFlight · bumperFlight · zoneRun)을 그대로 돌려 보는 '시뮬레이션 탐색'이고,
 // 난이도는 (1) 조준 오차 (2) 바람을 얼마나 정확히 읽는지 (3) 생각하는 시간 (4) 위치 잡기 (5) 증강 고르는 안목 으로 나뉘어요.
 module.exports = function (X) {
-  const { FMAP, FAUG, SHELL, flight, laserFlight, plasmaCone, echoCone, bumperFlight, splitFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
+  const { FMAP, FAUG, SHELL, flight, laserFlight, plasmaCone, echoCone, bumperFlight, splitFlight, burstFlight, zoneRun, dmgAt, tankY, isAlly, onIce, RAIL_LV, RAIL_MAX, RAIL_AIM_MIN,
     W, STEP, MAX_CLIMB, HIT_R, DIRECT, GRAV_R, GRAV_DMG, SNIPER_HIT, PIERCE_HIT, FIRE_R, FROST_R, WATER_R, CARPET_SPREAD, CARPET_GRAZE, ICE_FUEL, ICE_GAP,
     doMove, doCharge, doFire, orderFire, pickAug, isBot, orderCtx } = X;
 
@@ -62,11 +62,11 @@ module.exports = function (X) {
       });
       return { s, near };
     }
-    if (kind === 'splitter') {   // 분열탄: 3초 뒤 터지는 자리 + 작은 탄들이 떨어지는 자리를 모두 계산해요
+    if (kind === 'splitter' || kind === 'burster') {   // 분열탄·파열탄: 정해진 시간 뒤 터지는 자리 + 작은 탄들이 떨어지는 자리를 모두 계산해요
       let s = 0, near = Infinity;
-      splitFlight(g, i, a, pw).forEach(sh => {
+      (kind === 'burster' ? burstFlight : splitFlight)(g, i, a, pw).forEach(sh => {
         if (!sh.impact) return;
-        const key = sh.sub ? 'splitter2' : 'splitter', e = blast(ctx, sh.impact, SHELL[key].dmg * m.dmg * (m.kindDmg.splitter || 1), SHELL[key].rad * m.rad);
+        const key = (sh.sub ? kind + '2' : kind), e = blast(ctx, sh.impact, SHELL[key].dmg * m.dmg * (m.kindDmg[kind] || 1), SHELL[key].rad * m.rad);
         s += e.s; near = Math.min(near, e.near);
       });
       return { s, near };

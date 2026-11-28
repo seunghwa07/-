@@ -200,6 +200,12 @@
     { id: 'moresplit', tank: 'splitter', rarity: 'rare', icon: '🫧', name: '다중 분열', desc: '작은 탄 6발 → 9발', mods: { shells: 1.5 } },
     { id: 'megasplit', tank: 'splitter', rarity: 'epic', icon: '🎇', name: '연쇄 분열', desc: '작은 탄 6발 → 9발 · 분열탄 피해 ×1.2', mods: { shells: 1.5, kindDmg: { splitter: 1.2 } } },
     { id: 'armageddon', tank: 'splitter', rarity: 'legendary', icon: '☄️', name: '아마겟돈', desc: '작은 탄 6발 → 12발 · 분열탄 피해 ×1.35', mods: { shells: 2, kindDmg: { splitter: 1.35 } } },
+    // ----- 파열탄 (shells: 작은 탄 수 ×N) -----
+    { id: 'burstcore', tank: 'burster', rarity: 'common', icon: '💣', name: '고성능 화약', desc: '파열탄 피해 ×1.2 (큰 폭발 20 → 24 · 작은 탄 6 → 7)', mods: { kindDmg: { burster: 1.2 } } },
+    { id: 'widerupture', tank: 'burster', rarity: 'common', icon: '💥', name: '충격파 증폭', desc: '파열탄 폭발 범위 ×1.25', mods: { rad: 1.25 } },
+    { id: 'morefrag', tank: 'burster', rarity: 'rare', icon: '🪨', name: '파편 증가', desc: '작은 탄 10발 → 15발', mods: { shells: 1.5 } },
+    { id: 'chainburst', tank: 'burster', rarity: 'epic', icon: '🎆', name: '연쇄 파열', desc: '작은 탄 10발 → 15발 · 파열탄 피해 ×1.2', mods: { shells: 1.5, kindDmg: { burster: 1.2 } } },
+    { id: 'cataclysm', tank: 'burster', rarity: 'legendary', icon: '🌋', name: '대파열', desc: '작은 탄 10발 → 20발 · 파열탄 피해 ×1.35', mods: { shells: 2, kindDmg: { burster: 1.35 } } },
     // ----- 공통 추가 (체력보다 공격·기동 쪽) -----
     { id: 'nimble', tank: null, rarity: 'common', icon: '🐇', name: '경량화', desc: '이동력 ×1.3 · 주는 피해 ×1.05', mods: { fuel: 1.3, dmg: 1.05 } },
     { id: 'sharpshot', tank: null, rarity: 'rare', icon: '🔪', name: '정밀 사격', desc: '주는 피해 ×1.15 · 폭발 범위 ×0.9', mods: { dmg: 1.15, rad: .9 } },
@@ -288,6 +294,7 @@
     plasma: [{ fall: .8 }, { arc: 1.1 }, { kindDmg: { plasma: 1.1 } }],
     echo: [{ fall: .8 }, { arc: 1.1 }, { kindDmg: { echo: 1.1 } }],
     splitter: [{ rad: 1.1 }, { kindDmg: { splitter: 1.1 } }],
+    burster: [{ rad: 1.1 }, { kindDmg: { burster: 1.1 } }],
     element: [{ kindDmg: ALLK }, { push: 1.15 }, { mound: 1.15 }],
     escalation: [{ rad: 1.1 }, { dmg: 1.05 }, { fuel: 1.1 }],
   };
@@ -339,7 +346,7 @@
   const levelOf = (have, id) => Math.min(maxLv(id), (have || []).reduce((c, x) => c + (x === id ? 1 : 0), 0));   // 지금 몇 단계인지 (0 = 없음)
 
   // ----- 단계별 설명 문구 (효과를 ' · ' 로 이어요 — 카드가 이걸 줄 단위로 나눠요) -----
-  const KIND_KO = { basic: '기본탄', incendiary: '소이탄', cluster: '집속탄', homing: '유도탄', heavy: '광폭탄', pierce: '관통탄', laser: '레이저', carpet: '융단 폭격', bumper: '범퍼탄', sniper: '저격탄', rail: '레일건', gravity: '중력탄', electro: '일렉트로', grinder: '그라인더', frost: '냉각탄', vampire: '흡혈탄', water: '물폭탄', shadow: '섀도우', explosive: '고폭탄', intercept: '요격탄', plasma: '플라즈마', echo: '에코', splitter: '분열탄', efire: '화염구', efrag: '불꽃 파편', ewater: '해일탄', eearth: '대지탄', ewind: '돌풍탄' };
+  const KIND_KO = { basic: '기본탄', incendiary: '소이탄', cluster: '집속탄', homing: '유도탄', heavy: '광폭탄', pierce: '관통탄', laser: '레이저', carpet: '융단 폭격', bumper: '범퍼탄', sniper: '저격탄', rail: '레일건', gravity: '중력탄', electro: '일렉트로', grinder: '그라인더', frost: '냉각탄', vampire: '흡혈탄', water: '물폭탄', shadow: '섀도우', explosive: '고폭탄', intercept: '요격탄', plasma: '플라즈마', echo: '에코', splitter: '분열탄', burster: '파열탄', efire: '화염구', efrag: '불꽃 파편', ewater: '해일탄', eearth: '대지탄', ewind: '돌풍탄' };
   const ELEM_KEYS = ['efire', 'efrag', 'ewater', 'eearth', 'ewind'];
   const AREA_KO = { incendiary: '화염 범위', frost: '얼음 범위', water: '물 범위', shadow: '어둠 영역 반경' };
   const TURN_KO = { frost: '얼음 바닥이 남는 차례', water: '물 범위가 남는 차례', shadow: '어둠 영역이 남는 차례' };
@@ -359,7 +366,7 @@
       else { const g = {}; ent.forEach(([k, v]) => { (g[v] = g[v] || []).push(KIND_KO[k] || k); }); Object.entries(g).forEach(([v, ns]) => out.push(`${ns.join('·')} 피해 ×${n2(v)}`)); }
     }
     if (x.rad) out.push(`${t === null ? '모든 폭발' : t === 'gravity' ? '끌어당기는' : '폭발'} 범위 ×${n2(x.rad)}`);
-    if (x.shells) out.push(`${t === 'splitter' ? '작은 탄' : t === 'cluster' ? '소탄' : '탄'} 수 ×${n2(x.shells)}`);
+    if (x.shells) out.push(`${t === 'splitter' || t === 'burster' ? '작은 탄' : t === 'cluster' ? '소탄' : '탄'} 수 ×${n2(x.shells)}`);
     if (x.bounce) out.push(`반사 +${x.bounce}`);
     if (x.beam) out.push(`굵기·판정 범위 ×${n2(x.beam)}`);
     if (x.area) out.push(`${AREA_KO[t] || '효과 범위'} ×${n2(x.area)}`);
