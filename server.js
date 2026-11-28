@@ -91,9 +91,9 @@ const SPLIT_FAN = 55, SPLIT_V = [150, 210];
 // ----- 파열탄: 분열탄처럼 날아가다(땅에 닿으면 튕겨요) 정해진 시간이 지나면 '큰 폭발' + 작은 탄 10발이 360° 사방으로 흩어져요. 적 탱크에 닿으면 바로 터져요. 날아가는 동안 화면에서 깜빡여요 (끝이 가까울수록 빨리) -----
 const BURST_SEC = 2.5;                                                    // 화면에서 터지기까지 걸리는 시간(초) — 클라이언트(index.html)의 BURST_SEC 와 같아야 해요
 const BURST_STEPS = Math.round(BURST_SEC * 60 * FMAP.SHOT_SPEED) * 4;
-const BURST_N = 10, BURST_V = [140, 230];                                 // 작은 탄 수 / 속도 범위
+const BURST_N = 10, BURST_V = [330, 380], BURST_GRAV = .25;                                 // 작은 탄 수 / 속도 범위
 const SPLIT_CFG = { steps: SPLIT_STEPS, n: SPLIT_N, v: SPLIT_V, fan: SPLIT_FAN, ring: false };
-const BURST_CFG = { steps: BURST_STEPS, n: BURST_N, v: BURST_V, fan: 180, ring: true, inh: .7 };   // inh: 본체 속도를 파편이 물려받는 비율                                // 작은 탄이 퍼지는 각도(위쪽 기준 ±도) / 속도 범위 (융단 폭격처럼 너무 멀리 가지 않게)
+const BURST_CFG = { steps: BURST_STEPS, n: BURST_N, v: BURST_V, fan: 180, ring: true, inh: .5, g: BURST_GRAV, life: 85 };   // life: 파편이 날아가는 최대 걸음 수 (85 ≈ 0.7초)   // inh: 본체 속도를 파편이 물려받는 비율                                // 작은 탄이 퍼지는 각도(위쪽 기준 ±도) / 속도 범위 (융단 폭격처럼 너무 멀리 가지 않게)
 const EXPL_SPEED = 1.35;   // 고폭탄 탄속 배율: 최대 사거리 ≈ 5800px 로 월드 폭(5000px)보다 길어서 맵 어디든 닿아요 (한 걸음 22.5px < 피격 반경 23.4px 라 탱크를 건너뛰지도 않아요) — 클라이언트(index.html)와 같아야 해요
 const SPEED = { heavy: Math.sqrt(0.7), gravity: Math.sqrt(0.7), explosive: EXPL_SPEED };   // 광폭탄·중력탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
 const SLOW_ANIM = { heavy: .6, gravity: .6, explosive: EXPL_SPEED };   // 고폭탄은 탄속이 빠른 만큼 화면에서도 빨리 날아가요 (비행 시간은 기본탄과 비슷)   // 화면에서 날아가는 속도 배율 (클라이언트와 같아야 해요)
@@ -535,15 +535,17 @@ function splitFlight(g, shooter, angle, power, cfg = SPLIT_CFG) {   // cfg: 분�
   const main = { path, impact: [x, y], bnc, vx, vy, hit, early: hit != null }, out = [main], n = Math.round(cfg.n * p.mods.shells);
   for (let k = 0; k < n; k++) {   // 작은 탄: 위쪽 부채꼴로 고르게 퍼져요 (속도는 번갈아 빠르고 느리게)
     const ang = (cfg.ring ? -90 + 360 * k / n : -90 + (n > 1 ? -cfg.fan + 2 * cfg.fan * k / (n - 1) : 0)) * Math.PI / 180, sp = (k % 2 ? cfg.v[1] : cfg.v[0]) * K;   // 파열탄은 360° 를 고르게 나눠서 사방으로
-    let bx = x, by = y - (cfg.ring ? 9 : 6), bvx = sp * Math.cos(ang) + (cfg.inh ? vx * cfg.inh : 0), bvy = sp * Math.sin(ang) + (cfg.inh ? vy * cfg.inh : 0), imp = null;   // 파열탄: 본체의 진행 속도가 폭발의 추진력으로 이어져 파편이 그 방향으로 더 멀리 뻗어요
+    let bx = x, by = y - (cfg.ring ? 18 : 6), bvx = sp * Math.cos(ang) + (cfg.inh ? vx * cfg.inh : 0), bvy = sp * Math.sin(ang) + (cfg.inh ? vy * cfg.inh : 0), imp = null;   // 파열탄: 본체의 진행 속도가 폭발의 추진력으로 이어져 파편이 그 방향으로 더 멀리 뻗어요
     const sub = path.slice();
-    for (let t = 0; t < 1200; t++) {
-      bvx += g.wind * 1.5 * K * dt * p.mods.windx; bvy += G * dt;
+    let gone = false;
+    for (let t = 0; t < (cfg.life || 1200); t++) {
+      bvx += g.wind * 1.5 * K * dt * p.mods.windx; bvy += G * dt * (cfg.g || 1);   // 파열탄 파편은 중력을 적게 받아 거의 직선으로 쏘아져 나가요
       bx += bvx * dt; by += bvy * dt;
       if (t % 4 === 0) sub.push([bx, by]);
-      if (bx < 0 || bx >= W || by > H) break;
+      if (bx < 0 || bx >= W || by > H) { gone = true; break; }
       if (by >= g.terrain[Math.floor(bx)] || (t > 6 && g.players.some((q, i) => q.hp > 0 && !isAlly(g, shooter, i) && Math.hypot(bx - q.x, by - tankY(g, q)) < HIT_R * q.mods.size))) { imp = [bx, by]; break; }
     }
+    if (!imp && cfg.life && !gone) imp = [bx, by];   // 파열탄 파편: 부딪히지 않고 끝까지 날아가면 그 자리 허공에서 터져요
     if (imp) sub.push(imp);
     out.push({ path: sub, impact: imp, sub: true, small: true, n0: path.length });
   }
