@@ -26,6 +26,17 @@ const FIXED_TANK = { escalation: 'escalation', laser: 'laser', sniper: 'sniper' 
 const LASER_MODE_BOUNCES = 10;   // 레이저 모드: 모두 레이저 탱크 · 반사 횟수는 언제나 10회
 const IMPOSSIBLE_TANKS = ['sniper', 'laser'];   // 임파서블 AI 는 이 두 탱크만 써요 (엑스퍼트와 같은 실력)
 const isTank = k => KINDS.includes(k) || k === 'escalation' || k === 'random';   // 고를 수 있는 탱크 종류
+const ZERO_NO_TANKS = ['plasma', 'echo', 'rail', 'homing'];   // 제로 포인트에서는 이 탱크들을 쓸 수 없어요 (플라즈마·에코·레일건·유도탄)
+const tankOk = (mode, k) => !(mode === 'zero' && ZERO_NO_TANKS.includes(k));
+const ZERO_TANK_MSG = '제로 포인트에서는 플라즈마·에코·레일건·유도탄을 쓸 수 없어요';
+const pickTank = (r, i) => {   // 게임이 시작될 때 i번 자리의 탱크를 확정해요 (랜덤이면 여기서 정해요)
+  const sl = r.slots[i], pool = r.mode === 'zero' ? KINDS.filter(k => !ZERO_NO_TANKS.includes(k)) : KINDS;
+  if (FIXED_TANK[r.mode]) return FIXED_TANK[r.mode];
+  if (sl.tourTank) return sl.tourTank;   // 토너먼트: 대진 정하기 때 정해진 탱크를 끝까지 써요 (대진표에 보이는 탱크와 같아요)
+  let k = sl.bot && sl.level === 'impossible' ? IMPOSSIBLE_TANKS[Math.floor(Math.random() * IMPOSSIBLE_TANKS.length)] : sl.tank;
+  if (k === 'random' || !tankOk(r.mode, k)) k = pool[Math.floor(Math.random() * pool.length)];   // 제로 포인트에서 금지된 탱크가 남아 있어도 랜덤으로 바꿔요
+  return k;
+};
 const SHELL = {
   basic: { dmg: 17, rad: CRATER }, incendiary: { dmg: 10, rad: 40 }, cluster: { dmg: 5, rad: 22 }, homing: { dmg: 12, rad: 45 },
   carpet: { dmg: 20, rad: 40 },   // 융단 폭격: 미사일 1발 정통 20 / 스치면 13 (CARPET_GRAZE) 피해 (신호탄 자체는 피해 없음)
@@ -156,7 +167,7 @@ const rndWind = () => Math.round(Math.random() * 20 - 10);
 const count = r => r.slots.filter(Boolean).length;
 const host = r => r.slots.findIndex(Boolean);
 const toRoom = (r, m) => { r.slots.forEach(s => s && send(s.ws, m)); if (r.watch) r.watch.forEach(w => send(w, m)); };   // 토너먼트 경기방은 관전자(watch)에게도 보내요
-const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, solo: !!r.solo, bots: r.slots.map(s => (s && s.bot ? s.level : null)), teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && (FIXED_TANK[r.mode] || s.tank)), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
+const roomMsg = r => ({ type: 'room', code: r.code, host: host(r), mapId: r.mapId, mode: r.mode, solo: !!r.solo, bots: r.slots.map(s => (s && s.bot ? s.level : null)), teams: r.slots.map(s => s && s.team), tanks: r.slots.map(s => s && (FIXED_TANK[r.mode] || (tankOk(r.mode, s.tank) ? s.tank : 'random'))), names: r.slots.map(s => s && s.name), icons: r.slots.map(s => s && s.icon) });
 const listMsg = () => ({
   type: 'rooms',
   rooms: [...rooms.values()].filter(r => !r.solo).map(r => ({
@@ -265,7 +276,7 @@ function newGame(r) {
   const terr = FMAP.terrain(map, r.slots.map((sl, i) => (sl ? xs[i] : null)).filter(v => v != null));
   r.game = {
     map, terrain: terr, walls: terr.walls || null, wind: rndWind(), winner: -1, mode: r.mode, winTeam: -1, fires: [], ice: [], water: [], dark: [], frozen: false, iceSeq: 0, waterSeq: 0, darkSeq: 0,
-    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, zero: r.mode === 'zero', charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? (FIXED_TANK[r.mode] || (r.slots[i].bot && r.slots[i].level === 'impossible' ? IMPOSSIBLE_TANKS[Math.floor(Math.random() * IMPOSSIBLE_TANKS.length)] : r.slots[i].tank === 'random' ? KINDS[Math.floor(Math.random() * KINDS.length)] : r.slots[i].tank)) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
+    players: SPAWN.map((sx, i) => ({ x: xs[i] ?? sx, hp: r.slots[i] ? 100 : 0, maxHp: 100, zero: r.mode === 'zero', charge: 0, mods: FAUG.calc([]), aug: [], lastHp: 100, lostFrac: 0, augTaken: 0, on: !!r.slots[i], team: r.slots[i] ? r.slots[i].team : 0, tank: r.slots[i] ? pickTank(r, i) : 'basic', name: r.slots[i] ? r.slots[i].name : '', icon: r.slots[i] ? r.slots[i].icon : '' })),
   };
   const g = r.game;
   if (r.mode === 'zero') g.players.forEach(q => { if (q.on) { q.hp = q.maxHp = q.lastHp = 1; } });   // 제로 포인트: 모두 체력 1 → 무엇이든 맞으면 즉시 파괴
@@ -722,7 +733,7 @@ function startAugment(r, g, who, why = 'start') {
   g.pickers = ps.filter(i => g.offers[i].length);
   if (!g.pickers.length) return finishAugment(r, g);
   g.augTimer = setTimeout(() => finishAugment(r, g), FAUG.PICK_MS + 800);   // 시간이 지나면 못 고른 사람은 랜덤
-  r.slots.forEach((sl, i) => sl && send(sl.ws, { type: 'augment', offers: g.offers[i], left: FAUG.PICK_MS, why, round: g.chaosRound || 0, n: g.pickers.length, who: g.pickers }));
+  r.slots.forEach((sl, i) => sl && send(sl.ws, { type: 'augment', offers: g.offers[i], lvs: g.offers[i].map(id => FAUG.levelOf((g.players[i] || {}).aug, id) + 1), left: FAUG.PICK_MS, why, round: g.chaosRound || 0, n: g.pickers.length, who: g.pickers }));
   BOT.augment(r, g);   // AI 는 알아서 골라요
 }
 // 체력바 한 칸(최대 체력의 25%)이 깎일 때마다 그 플레이어에게 증강 선택권이 생겨요 (한 번에 여러 번 깎였으면 차례로 여러 번)
@@ -747,7 +758,7 @@ function applyAug(p, id) {   // 증강 하나를 붙이고 능력치·체력을 
   if (p.tank === 'intercept') p.ticket = p.turret ? 1 : 0;
   if (p.zero) { p.lastHp = p.hp; return; }   // 제로 포인트: 체력은 언제나 1
   p.maxHp = 100 + p.mods.hp; p.hp = Math.max(1, Math.min(p.maxHp, p.hp + p.mods.hp - before));   // 체력 증강은 현재 체력도 같이 올려요 (허약 체질은 내려요, 그래도 최소 1)
-  const heal = (FAUG.byId[id].mods || {}).heal || 0;
+  const heal = FAUG.modsAt(id, FAUG.levelOf(p.aug, id)).heal || 0;            // 방금 올라간 단계의 회복량 (강화할 때마다 그 단계 수치만큼 다시 회복해요)
   if (heal) p.hp = Math.min(p.maxHp, p.hp + heal);                            // 응급 수리: 즉시 회복
   p.lastHp = p.hp;                                                           // 증강으로 바뀐 체력은 '피해'로 세지 않아요
 }
@@ -775,14 +786,14 @@ function finishAugment(r, g) {
   g.phase = 'play'; endBusy(g);
   if (mid && (!g.players[g.turn].on || g.players[g.turn].hp <= 0)) advance(r, g.turn);   // 고르는 동안 차례인 사람이 나갔다면 넘겨요
   g.fuel = fuelOf(g, g.turn);
-  toRoom(r, { type: 'augdone', picks: g.picks });
+  toRoom(r, { type: 'augdone', picks: g.picks, lvs: Object.fromEntries(Object.entries(g.picks).map(([i, id]) => [i, FAUG.levelOf(g.players[i].aug, id)])) });
   toRoom(r, snapshot(r));
   if (mid && startMid(r, g)) return;   // 아직 못 받은 선택권이 남았으면 이어서 한 번 더
   toRoom(r, turnMsg(g)); BOT.turn(r, g);
 }
 
 const ZERO_BAN = FAUG.POOL.filter(a => ZERO_NO.some(k => (a.mods || {})[k] !== undefined)).map(a => a.id);
-const offerFor = (g, p) => FAUG.offer(p.tank, g.mode === 'laser' ? p.aug.concat(['reflect', 'prism']) : g.mode === 'zero' ? p.aug.concat(ZERO_BAN) : p.aug);   // 레이저 모드는 반사 횟수가 10회로 고정이라 반사 증강은 나오지 않아요
+const offerFor = (g, p) => FAUG.offer(p.tank, p.aug, 3, g.mode === 'laser' ? ['reflect', 'prism'] : g.mode === 'zero' ? ZERO_BAN : []);   // 레이저 모드는 반사 횟수가 10회로 고정이라 반사 증강은 나오지 않아요 (이미 가진 증강은 강화 후보로 나와요)
 const tp_isIcpt = (g, i) => g.players[i] && g.players[i].tank === 'intercept' && g.players[i].hp > 0;
 function advance(r, from) {   // 다음 차례로 넘겨요
   const g = r.game;
@@ -1112,7 +1123,8 @@ const liveMatchOf = (r, i) => r.tour && r.tour.matches.find(mt => mt.state === '
 function startTournament(r, g) {
   const seeds = g.order.filter(i => r.slots[i]);   // 목표 맞추기 순위 (나간 사람 제외)
   r.game = null;
-  const T = r.tour = { id: ++TID, seeds, bye: -1, champ: -1, matches: [], info: r.slots.map(s => s && { name: s.name, icon: s.icon }) };
+  r.slots.forEach((s, i) => { if (s && g.players[i]) s.tourTank = g.players[i].tank; });   // 대진 정하기 때 정해진 탱크를 토너먼트 내내 써요 (랜덤이어도 경기마다 바뀌지 않아요)
+  const T = r.tour = { id: ++TID, seeds, bye: -1, champ: -1, matches: [], info: r.slots.map(s => s && { name: s.name, icon: s.icon, tank: s.tourTank }) };
   const n = seeds.length;
   if (n >= 5) {   // 5~6명: 8강 → 준결승 → 결승. 상위 시드는 8강을 건너뛰어요
     if (n >= 6) {
@@ -1173,7 +1185,7 @@ function progress(r) {   // 경기가 끝날 때마다: 다음 경기 준비 / �
   if (fin.state === 'done') {   // 우승!
     T.champ = fin.winner;
     toRoom(r, tourMsg(r));
-    setTimeout(() => { if (r.tour === T && !r.dead) { r.tour = null; toRoom(r, roomMsg(r)); pushList(); } }, TOUR_END_MS);
+    setTimeout(() => { if (r.tour === T && !r.dead) { r.tour = null; r.slots.forEach(sl => { if (sl) delete sl.tourTank; }); toRoom(r, roomMsg(r)); pushList(); } }, TOUR_END_MS);
     return;
   }
   let finReady = false;
@@ -1337,14 +1349,16 @@ wss.on('connection', ws => {
       r.mapId = Math.max(0, Math.min(RANDOM_MAP, (+m.id) | 0));
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'mode' && !r.game && !r.solo && ws.slot === host(r)) {
-      r.mode = ['team', 'escalation', 'laser', 'sniper', 'tournament', 'chaos', 'zero', 'bull', 'bo3'].includes(m.mode) ? m.mode : 'ffa';   // chaos: 카오스 서든데스   // tournament: 3~6명 1:1 대진   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
+      r.mode = ['team', 'escalation', 'laser', 'sniper', 'tournament', 'chaos', 'zero', 'bull', 'bo3'].includes(m.mode) ? m.mode : 'ffa';
+      if (r.mode === 'zero') r.slots.forEach(sl => { if (sl && !tankOk('zero', sl.tank)) sl.tank = 'random'; });   // 제로 포인트: 금지 탱크를 골라 둔 사람은 랜덤으로 바꿔요
+        // chaos: 카오스 서든데스   // tournament: 3~6명 1:1 대진   // 에스컬레이션: 개인전 규칙 + 모두 쏠 때마다 포탄이 랜덤
       toRoom(r, roomMsg(r)); pushList();
     } else if (r && m.type === 'bot' && r.solo && !r.game && ws.slot === host(r)) {   // AI 추가 / 제거 / 난이도 / 탱크
       const sl = r.slots[m.slot | 0];
       if (m.op === 'add') { if (r.slots.includes(null)) addBot(r, m.level); }
       else if (sl && sl.bot && m.op === 'del') r.slots[m.slot | 0] = null;
       else if (sl && sl.bot && m.op === 'level' && LEVELS[m.level]) { sl.level = m.level; sl.name = botName(m.slot | 0, m.level); }
-      else if (sl && sl.bot && m.op === 'tank' && isTank(m.kind) && sl.level !== 'impossible') sl.tank = m.kind;
+      else if (sl && sl.bot && m.op === 'tank' && isTank(m.kind) && sl.level !== 'impossible') { if (!tankOk(r.mode, m.kind)) return send(ws, { type: 'error', msg: ZERO_TANK_MSG }); sl.tank = m.kind; }
       else return;
       toRoom(r, roomMsg(r));
     } else if (r && m.type === 'team' && !r.game && !r.solo) {
@@ -1352,6 +1366,7 @@ wss.on('connection', ws => {
       const target = Number.isInteger(m.slot) && ws.slot === host(r) ? m.slot : ws.slot;
       if (r.mode === 'team' && r.slots[target]) { r.slots[target].team = m.team === 1 ? 1 : 0; toRoom(r, roomMsg(r)); }
     } else if (r && m.type === 'tank' && !r.game && isTank(m.kind)) {
+      if (!tankOk(r.mode, m.kind)) return send(ws, { type: 'error', msg: ZERO_TANK_MSG });
       r.slots[ws.slot].tank = m.kind; toRoom(r, roomMsg(r));
     } else if (r && m.type === 'start' && !r.game && !r.tour && !(r.bo && r.bo.wait) && ws.slot === host(r) && count(r) >= 2) {
       if (r.mode === 'team') {

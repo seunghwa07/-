@@ -386,15 +386,20 @@ module.exports = function (X) {
 
   // ---------- 증강 고르기 ----------
   function augScore(g, i, id, lv) {
-    const a = FAUG.byId[id], x = a.mods || {}, p = g.players[i];
-    let s = a.tank ? 4 : 0;
-    s += (x.hp || 0) / 14 + (x.heal ? Math.min(x.heal, p.maxHp - p.hp) / 12 : 0);
-    s += ((x.dmg || 1) - 1) * 30 + (1 - (x.taken || 1)) * 34 + ((x.rad || 1) - 1) * 18;
+    const a = FAUG.byId[id], p = g.players[i], cur = FAUG.levelOf(p.aug, id);   // cur: 지금 몇 단계인지 (0 = 처음 고름 · 1~2 = 강화)
     const own = p.tank === 'escalation' ? null : p.tank;
-    Object.entries(x.kindDmg || {}).forEach(([k, v]) => { s += (v - 1) * 28 * (lv.aug >= 3 && own && k !== own ? .08 : 1); });   // 엑스퍼트: 내 탱크 탄에만 붙는 증강을 높게 쳐요
-    if (p.tank !== 'explosive') s += ((x.fuel || 1) - 1) * 3;
-    s += ((x.shells || 1) - 1) * 4 + (x.bounce || 0) * 2 + ((x.beam || 1) - 1) * 6 + (x.missiles || 0) * 1.5 + (x.drills ? 4 : 0) + (x.dual ? 3 : 0) + (x.jumbo ? 2 : 0) + (x.split > 2 ? 3 : 0);
-    if (a.curse) s -= 8 + (x.hiAngle ? 6 : 0) + (x.size ? 5 : 0) + (x.vmul ? 5 : 0) + (x.shaky ? 4 : 0) + (x.rev ? 3 : 0) + (x.windx ? 3 : 0);   // 카오스: 저주는 피하고, 다 저주면 그나마 덜 아픈 걸로
+    const sc = x => {   // 능력치 묶음 하나의 점수 (강화는 '다음 단계 − 지금 단계'만큼만 쳐요)
+      let s = (x.hp || 0) / 14;
+      s += ((x.dmg || 1) - 1) * 30 + (1 - (x.taken || 1)) * 34 + ((x.rad || 1) - 1) * 18;
+      Object.entries(x.kindDmg || {}).forEach(([k, v]) => { s += (v - 1) * 28 * (lv.aug >= 3 && own && k !== own ? .08 : 1); });   // 엑스퍼트: 내 탱크 탄에만 붙는 증강을 높게 쳐요
+      if (p.tank !== 'explosive') s += ((x.fuel || 1) - 1) * 3;
+      s += ((x.shells || 1) - 1) * 4 + (x.bounce || 0) * 2 + ((x.beam || 1) - 1) * 6 + (x.missiles || 0) * 1.5 + (x.drills ? 4 : 0) + (x.dual ? 3 : 0) + (x.jumbo ? 2 : 0) + (x.split > 2 ? 3 : 0);
+      if (a.curse) s -= 8 + (x.hiAngle ? 6 : 0) + (x.size ? 5 : 0) + (x.vmul ? 5 : 0) + (x.shaky ? 4 : 0) + (x.rev ? 3 : 0) + (x.windx ? 3 : 0);   // 카오스: 저주는 피하고, 다 저주면 그나마 덜 아픈 걸로
+      return s;
+    };
+    const nx = FAUG.modsAt(a, cur + 1);
+    let s = (a.tank ? 4 : 0) + sc(nx) - (cur ? sc(FAUG.modsAt(a, cur)) : 0);
+    if (nx.heal) s += Math.min(nx.heal, p.maxHp - p.hp) / 12;   // 즉시 회복은 강화할 때마다 새로 받아요
     return s + (lv.aug === 1 ? rnd(-3, 3) : 0);
   }
   function augment(r, g) {

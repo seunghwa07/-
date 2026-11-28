@@ -18,6 +18,17 @@
 //          thru    플라즈마가 지형(벽)을 관통(true)   arc     플라즈마 부채꼴 각도 ×N(기본 15°)   fall   플라즈마 거리 감쇠 ×N(1 = 기본, 0.5 = 멀리서도 피해가 절반만 줄어요)
 //          icptR   요격탄 요격 범위 ×N   icptP  요격 성공 확률 +N(0.2 = +20%p)   tickets  요격 터렛이 적이 한 번 쏠 때 요격을 시도하는 포탄 수 +N
 //   (아래 목록은 틀이 잘 도는지 확인하려고 넣은 샘플이에요. 마음대로 바꾸고 늘리세요)
+//
+// ===== 강화 단계 (같은 증강을 최대 3번 골라 더 강하게!) =====
+//   · 아래 목록의 mods 는 '기본 수치'예요. 실제 효과는 단계(Lv.1~3)에 따라 LV_F 배율로 바뀌어요 (1단계는 기본보다 약하게, 3단계는 2배).
+//       - ×N 곱셈 효과      → 1 + (N-1) × 배율       (예: 주는 피해 ×1.15 → 1단계 ×1.12 · 2단계 ×1.21 · 3단계 ×1.30)
+//       - 체력·회복·%p 효과 → 값 × 배율
+//       - 반사·미사일·턴 수처럼 딱 떨어지는 +N 효과 → 1단계는 기본 그대로, 단계마다 최소 1씩 늘어요
+//       - 듀얼·드릴 같은 켜짐/꺼짐 효과는 처음부터 켜져 있어요 (수치가 없는 것은 아래 lv 로 단계별 효과를 직접 적어요)
+//   · lv: [1단계 mods, 2단계 mods, 3단계 mods]  — 자동 계산이 안 맞는 증강만 직접 적어요 (각 단계의 전체 효과를 적어요)
+//   · 저주(curse)는 강화되지 않아요. 같은 증강을 또 고르면 단계가 올라가고, 3단계가 되면 더 이상 선택지에 안 나와요.
+//   · describe(id, 단계) 가 단계별 설명 문구를 자동으로 만들어요 (카드·내 증강 목록이 이걸 써요)
+//   · ✨ 3단계가 되면 기본 효과(2배)에 더해 '3단계 보너스' 추가 효과가 한 줄 더 붙어요 (b3: { …mods } 로 직접 정하거나, 안 적으면 자동 · 자세한 건 아래 B3 표)
 (function (root) {
   const POOL = [
     // ----- 공통 -----
@@ -43,17 +54,17 @@
     { id: 'blaze',    tank: 'incendiary', rarity: 'rare', icon: '🔥', name: '불타는 영역',   desc: '화염 범위 ×1.5',                               mods: { area: 1.5 } },
     { id: 'signal',    tank: 'carpet', rarity: 'epic', icon: '📡', name: '신호탄',    desc: '미사일 +2발 (3발 → 5발) · 피해 중앙 20 / 양옆 15 / 끝 10',                         mods: { missiles: 2 } },
     { id: 'emergency', tank: 'carpet', rarity: 'rare', icon: '🚨', name: '비상 신호', desc: '미사일 피해 ×1.5',                               mods: { kindDmg: { carpet: 1.5 } } },
-    { id: 'multidrill', tank: 'pierce', rarity: 'epic', icon: '⚙️', name: '다중 드릴', desc: '기존 드릴 + 작은 드릴 2발 · 작은 드릴은 각 피해 50%', mods: { drills: true } },
-    { id: 'fission',  tank: 'bumper', rarity: 'epic', icon: '🧬', name: '분열',      desc: '튈 때 나오는 탄 2개 → 4개',                      mods: { split: 4 } },
-    { id: 'jumbo',    tank: 'bumper', rarity: 'epic', icon: '🏀', name: '점보',      desc: '가장 큰 탄 하나가 3번 튕겨요 · 분열 없음',        mods: { jumbo: true } },
-    { id: 'dual',     tank: 'homing', rarity: 'epic',     icon: '✌️', name: '듀얼',          desc: '유도탄 2발 발사 · 각 피해 70% · 3인 이상이면 서로 다른 적을 노려요', mods: { dual: true } },
+    { id: 'multidrill', lv: [{ drills: true }, { drills: true, kindDmg: { pierce: 1.12 } }, { drills: true, kindDmg: { pierce: 1.25 } }], tank: 'pierce', rarity: 'epic', icon: '⚙️', name: '다중 드릴', desc: '기존 드릴 + 작은 드릴 2발 · 작은 드릴은 각 피해 50%', mods: { drills: true } },
+    { id: 'fission', lv: [{ split: 4 }, { split: 4, kindDmg: { bumper: 1.12 } }, { split: 4, kindDmg: { bumper: 1.25 } }],  tank: 'bumper', rarity: 'epic', icon: '🧬', name: '분열',      desc: '튈 때 나오는 탄 2개 → 4개',                      mods: { split: 4 } },
+    { id: 'jumbo', lv: [{ jumbo: true }, { jumbo: true, kindDmg: { bumper: 1.15 } }, { jumbo: true, kindDmg: { bumper: 1.3 } }],    tank: 'bumper', rarity: 'epic', icon: '🏀', name: '점보',      desc: '가장 큰 탄 하나가 3번 튕겨요 · 분열 없음',        mods: { jumbo: true } },
+    { id: 'dual', lv: [{ dual: true }, { dual: true, kindDmg: { homing: 1.15 } }, { dual: true, kindDmg: { homing: 1.3 }, dud: .5 }],     tank: 'homing', rarity: 'epic',     icon: '✌️', name: '듀얼',          desc: '유도탄 2발 발사 · 각 피해 70% · 3인 이상이면 서로 다른 적을 노려요', mods: { dual: true } },
     { id: 'crater',    tank: 'basic', rarity: 'common', icon: '🕳️', name: '대구경 탄두', desc: '기본탄 폭발 범위 ×1.25',           mods: { rad: 1.25 } },
     { id: 'tungsten',  tank: 'basic', rarity: 'common', icon: '🔩', name: '텅스텐 탄심', desc: '기본탄 피해 ×1.15 · 폭발 범위 ×1.1', mods: { kindDmg: { basic: 1.15 }, rad: 1.1 } },
     { id: 'shockwave', tank: 'heavy', rarity: 'common', icon: '🌋', name: '충격파',      desc: '광폭탄 폭발 범위 ×1.25',           mods: { rad: 1.25 } },
     { id: 'demolish',  tank: 'heavy', rarity: 'common', icon: '🧨', name: '파쇄 장약',   desc: '광폭탄 피해 ×1.15 · 폭발 범위 ×1.1', mods: { kindDmg: { heavy: 1.15 }, rad: 1.1 } },
     { id: 'warhead',   tank: 'cluster', rarity: 'rare', icon: '💢', name: '확산 탄두',  desc: '소탄 피해 ×1.5',                  mods: { kindDmg: { cluster: 1.5 } } },
     { id: 'bomblet',   tank: 'cluster', rarity: 'common', icon: '🎇', name: '대형 소탄',  desc: '소탄 폭발 범위 ×1.4',             mods: { rad: 1.4 } },
-    { id: 'seeker',    tank: 'homing', rarity: 'rare', icon: '📡', name: '정밀 탐색기', desc: '유도탄 불발 없음',                 mods: { dud: 0 } },
+    { id: 'seeker', lv: [{ dud: .2 }, { dud: 0 }, { dud: 0, kindDmg: { homing: 1.15 } }],    tank: 'homing', rarity: 'rare', icon: '📡', name: '정밀 탐색기', desc: '유도탄 불발 없음',                 mods: { dud: 0 } },
     { id: 'hwarhead',  tank: 'homing', rarity: 'rare', icon: '🎯', name: '강화 탄두',   desc: '유도탄 피해 ×1.4',                 mods: { kindDmg: { homing: 1.4 } } },
     { id: 'drillpower', tank: 'pierce', rarity: 'rare', icon: '🪛', name: '고출력 드릴', desc: '관통탄 피해 ×1.3 (드릴 포함)',     mods: { kindDmg: { pierce: 1.3 } } },
     { id: 'widebore',  tank: 'pierce', rarity: 'common', icon: '⭕', name: '광폭 천공',   desc: '관통탄 폭발 범위 ×1.4',            mods: { rad: 1.4 } },
@@ -95,7 +106,7 @@
     // ----- 레일건 -----
     { id: 'capacitor', tank: 'rail', rarity: 'rare', icon: '🔋', name: '고용량 축전기', desc: '레일건 피해 ×1.25',                          mods: { kindDmg: { rail: 1.25 } } },
     { id: 'magnet',    tank: 'rail', rarity: 'rare', icon: '🧲', name: '자기 집속',     desc: '레일 빔 굵기·판정 범위 ×1.4',                mods: { beam: 1.4 } },
-    { id: 'preheat',   tank: 'rail', rarity: 'common', icon: '♨️', name: '예열 코일',     desc: '쏜 뒤 충전이 0이 아닌 1단계에서 시작 (바로 다시 쏠 수 있어요)', mods: { charge0: 1 } },
+    { id: 'preheat', lv: [{ charge0: 1 }, { charge0: 1, kindDmg: { rail: 1.1 } }, { charge0: 2, kindDmg: { rail: 1.1 } }],   tank: 'rail', rarity: 'common', icon: '♨️', name: '예열 코일',     desc: '쏜 뒤 충전이 0이 아닌 1단계에서 시작 (바로 다시 쏠 수 있어요)', mods: { charge0: 1 } },
     // ----- 요격탄 -----
     { id: 'scanner', tank: 'intercept', rarity: 'common', icon: '📡', name: '광역 레이더',   desc: '요격 범위 ×1.4',                           mods: { icptR: 1.4 } },
     { id: 'lock',    tank: 'intercept', rarity: 'rare', icon: '🎯', name: '정밀 추적',     desc: '요격 성공 확률 +20%p (50% → 70%)',         mods: { icptP: .2 } },
@@ -213,11 +224,185 @@
   const SPECIFIC_SLOTS = 1;   // 선택지 3개 중 탱크 전용을 최소 몇 개 넣을지 (전용 증강이 있는 탱크만)
   const PICK_MS = 20000;      // 선택 제한 시간 (넘기면 랜덤으로 골라져요)
 
-  function calc(ids) {   // 가진 증강들을 합쳐서 최종 능력치 계산
+  // ----- 강화 단계 -----
+  const LV_MAX = 3;                     // 같은 증강을 최대 몇 번까지 고를 수 있는지
+  const LV_F = [0, .8, 1.4, 2.0];       // 단계별 효과 배율 (1단계 = 기본의 80% · 2단계 = 140% · 3단계 = 200%)
+  const UPGRADE_CHANCE = .4;            // 이미 가진 증강(3단계 미만)이 있을 때, 선택지 한 칸이 그 증강의 강화로 채워질 확률
+  const r2 = x => Math.round(x * 100) / 100;
+  const MUL_KEYS = ['dmg', 'taken', 'fuel', 'shells', 'beam', 'area', 'rad', 'fireMs', 'spread', 'grav', 'hitr', 'scope', 'icptR', 'arc', 'push', 'mound'];   // ×N 으로 곱해지는 효과
+  const DISC_KEYS = ['bounce', 'missiles', 'turns', 'tickets', 'frags'];                                                                                       // 딱 떨어지는 +N 효과
+  const MUL_MIN = { arc: .4 };          // 이보다 더 줄어들지 않는 효과 (부채꼴이 너무 좁아지는 것 방지)
+  function discAt(v, L) {               // +N 효과: 1단계는 기본 그대로(큰 값만 살짝 약하게), 단계마다 최소 1씩 늘어요
+    let out = 0;
+    for (let l = 1; l <= L; l++) out = Math.max(l === 1 ? 1 : out + 1, Math.round(v * LV_F[l]));
+    return out;
+  }
+  function scaleMods(x, L) {            // 기본 mods 를 L단계 효과로 바꿔요
+    const f = LV_F[L], o = {};
+    Object.entries(x).forEach(([k, v]) => {
+      if (k === 'kindDmg') { o.kindDmg = {}; Object.entries(v).forEach(([kk, vv]) => { o.kindDmg[kk] = r2(Math.max(.25, 1 + (vv - 1) * f)); }); }
+      else if (MUL_KEYS.includes(k)) o[k] = r2(Math.max(MUL_MIN[k] || .25, 1 + (v - 1) * f));
+      else if (k === 'dud' || k === 'fall') o[k] = r2(Math.max(0, 1 + (v - 1) * f));        // 0 까지 내려갈 수 있어요 (불발 없음 · 거리 감쇠 없음)
+      else if (k === 'hp') o[k] = Math.round(v * f);
+      else if (k === 'heal') o[k] = v >= 999 ? v : Math.round(v * f);                         // 999 = 완전 회복은 그대로
+      else if (k === 'drain' || k === 'icptP') o[k] = r2(v * f);
+      else if (DISC_KEYS.includes(k)) o[k] = discAt(v, L);
+      else o[k] = v;                                                                          // 켜짐/꺼짐 · 고정값은 그대로
+    });
+    return o;
+  }
+  function baseModsAt(a, L) {           // 증강 하나(객체 또는 id)의 L단계 기본 효과 (3단계 보너스는 빼고)
+    if (typeof a === 'string') a = byId[a]; if (!a) return {};
+    if (a.curse) return a.mods || {};
+    L = Math.max(1, Math.min(LV_MAX, L | 0 || 1));
+    return a.lv && a.lv[L - 1] ? a.lv[L - 1] : scaleMods(a.mods || {}, L);
+  }
+
+  // ----- ✨ 3단계 보너스: 3단계(MAX)가 되면 기본 효과에 '다른 종류의 추가 효과'가 한 줄 더 붙어요 -----
+  //   · 증강에 b3: { …mods } 를 직접 적으면 그게 보너스예요 (b3: null 이면 보너스 없음)
+  //   · 안 적으면 아래 규칙으로 자동 정해져요: 그 증강이 이미 올려주는 능력치는 피하고, 다른 능력치를 조금 올려줘요
+  //       - 방어 증강(체력·받는 피해) → 체력 즉시 +25 회복   - 공격 증강 → 폭발 범위 ×1.1 (이미 있으면 주는 피해 ×1.05)
+  //       - 이동 증강 → 받는 피해 ×0.95                        - 탱크 전용 증강 → 그 탱크에 맞는 부가 효과 (아래 B3 표, 앞에서부터 안 겹치는 첫 번째)
+  const ALLK = { efire: 1.1, efrag: 1.1, ewater: 1.1, eearth: 1.1, ewind: 1.1 };
+  const B3 = {   // 탱크별 보너스 후보 (앞에서부터 · 이미 그 증강이 올려주는 효과와 안 겹치는 것을 써요)
+    basic: [{ rad: 1.1 }, { kindDmg: { basic: 1.1 } }],
+    heavy: [{ rad: 1.1 }, { kindDmg: { heavy: 1.1 } }],
+    cluster: [{ rad: 1.1 }, { kindDmg: { cluster: 1.1 } }],
+    homing: [{ dud: .5 }, { kindDmg: { homing: 1.1 } }, { rad: 1.1 }],
+    pierce: [{ rad: 1.1 }, { kindDmg: { pierce: 1.1 } }],
+    laser: [{ beam: 1.15 }, { kindDmg: { laser: 1.1 } }],
+    incendiary: [{ fireMs: 1.2 }, { area: 1.15 }, { kindDmg: { incendiary: 1.1 } }],
+    carpet: [{ spread: 1.15 }, { rad: 1.1 }, { kindDmg: { carpet: 1.1 } }],
+    bumper: [{ kindDmg: { bumper: 1.1 } }, { rad: 1.1 }],
+    sniper: [{ hitr: 1.2 }, { scope: 1.5 }, { grav: .85 }, { kindDmg: { sniper: 1.1 } }],
+    rail: [{ beam: 1.15 }, { kindDmg: { rail: 1.1 } }],
+    gravity: [{ rad: 1.1 }, { kindDmg: { gravity: 1.1 } }],
+    electro: [{ fireMs: 1.2 }, { kindDmg: { electro: 1.1 } }],
+    grinder: [{ fireMs: 1.2 }, { kindDmg: { grinder: 1.1 } }],
+    frost: [{ turns: 1 }, { area: 1.15 }, { kindDmg: { frost: 1.1 } }],
+    vampire: [{ kindDmg: { vampire: 1.1 } }, { rad: 1.1 }, { drain: .1 }],
+    water: [{ turns: 1 }, { area: 1.15 }, { kindDmg: { water: 1.1 } }],
+    shadow: [{ turns: 1 }, { area: 1.15 }, { kindDmg: { shadow: 1.1 } }],
+    explosive: [{ rad: 1.1 }, { kindDmg: { explosive: 1.1 } }],
+    intercept: [{ icptP: .1 }, { icptR: 1.15 }],
+    plasma: [{ fall: .8 }, { arc: 1.1 }, { kindDmg: { plasma: 1.1 } }],
+    echo: [{ fall: .8 }, { arc: 1.1 }, { kindDmg: { echo: 1.1 } }],
+    splitter: [{ rad: 1.1 }, { kindDmg: { splitter: 1.1 } }],
+    element: [{ kindDmg: ALLK }, { push: 1.15 }, { mound: 1.15 }],
+    escalation: [{ rad: 1.1 }, { dmg: 1.05 }, { fuel: 1.1 }],
+  };
+  const B3_ANY = [{ dmg: 1.05 }, { rad: 1.1 }, { fuel: 1.1 }, { taken: .95 }, { heal: 25 }];   // 어떤 증강이든 마지막에 쓰는 대체 후보 (효과가 많은 증강은 여기까지 내려와요)
+  const clash = (x, c) => Object.keys(c).some(k => k === 'kindDmg' ? Object.keys(c.kindDmg).some(kk => x.kindDmg && x.kindDmg[kk] !== undefined) : x[k] !== undefined);   // 후보가 기본 효과와 겹치는지
+  function commonCands(x) {             // 공통(전용 아닌) 증강: 성격에 따라 후보를 골라요
+    if (x.hp > 0 || x.taken < 1) return [{ heal: 25 }, { hp: 15 }, { fuel: 1.1 }];      // 방어형
+    if (x.dmg > 1 || x.rad > 1 || x.kindDmg) return [{ rad: 1.1 }, { dmg: 1.05 }, { fuel: 1.1 }];   // 공격형
+    return [{ taken: .95 }, { dmg: 1.05 }, { rad: 1.1 }];                              // 이동·그 밖
+  }
+  const bonusMemo = {};
+  function bonusOf(a) {                 // 3단계 보너스 mods (없으면 null)
+    if (typeof a === 'string') a = byId[a]; if (!a || a.curse) return null;
+    if (bonusMemo[a.id] !== undefined) return bonusMemo[a.id];
+    let b = null;
+    if (a.b3 !== undefined) b = a.b3;
+    else {
+      const x = baseModsAt(a, LV_MAX), cands = (a.tank && B3[a.tank] ? B3[a.tank] : commonCands(x)).concat(B3_ANY);   // 전용 후보가 전부 겹치면 공통 후보로
+      b = cands.find(c => !clash(x, c)) || null;
+    }
+    return (bonusMemo[a.id] = b);
+  }
+  function mergeMods(x, b) {            // 기본 효과 x 에 보너스 b 를 합쳐요 (원본은 안 건드려요)
+    const o = Object.assign({}, x); if (x.kindDmg) o.kindDmg = Object.assign({}, x.kindDmg);
+    Object.entries(b).forEach(([k, v]) => {
+      if (k === 'kindDmg') { o.kindDmg = o.kindDmg || {}; Object.entries(v).forEach(([kk, vv]) => { o.kindDmg[kk] = r2((o.kindDmg[kk] || 1) * vv); }); }
+      else if (MUL_KEYS.includes(k) || k === 'dud' || k === 'fall') o[k] = r2((o[k] === undefined ? 1 : o[k]) * v);
+      else if (k === 'heal') o[k] = (o[k] || 0) >= 999 || v >= 999 ? 999 : (o[k] || 0) + v;
+      else if (typeof v === 'number') o[k] = (o[k] || 0) + v;      // hp · turns · drain · icptP …
+      else o[k] = o[k] || v;
+    });
+    return o;
+  }
+  function modsAt(a, L) {               // 증강 하나(객체 또는 id)의 L단계 효과 (3단계면 보너스까지 합친 것)
+    if (typeof a === 'string') a = byId[a]; if (!a) return {};
+    if (a.curse) return a.mods || {};
+    L = Math.max(1, Math.min(LV_MAX, L | 0 || 1));
+    const x = baseModsAt(a, L);
+    if (L < LV_MAX) return x;
+    const b = bonusOf(a); return b ? mergeMods(x, b) : x;
+  }
+  const maxMemo = {};
+  function maxLv(a) {                   // 몇 단계까지 강화되는지 (저주 · 단계마다 효과가 같은 증강은 1)
+    if (typeof a === 'string') a = byId[a]; if (!a) return 1;
+    if (a.curse) return 1;
+    if (maxMemo[a.id] === undefined) maxMemo[a.id] = JSON.stringify(modsAt(a, 1)) === JSON.stringify(modsAt(a, 2)) ? 1 : LV_MAX;
+    return maxMemo[a.id];
+  }
+  const levelOf = (have, id) => Math.min(maxLv(id), (have || []).reduce((c, x) => c + (x === id ? 1 : 0), 0));   // 지금 몇 단계인지 (0 = 없음)
+
+  // ----- 단계별 설명 문구 (효과를 ' · ' 로 이어요 — 카드가 이걸 줄 단위로 나눠요) -----
+  const KIND_KO = { basic: '기본탄', incendiary: '소이탄', cluster: '집속탄', homing: '유도탄', heavy: '광폭탄', pierce: '관통탄', laser: '레이저', carpet: '융단 폭격', bumper: '범퍼탄', sniper: '저격탄', rail: '레일건', gravity: '중력탄', electro: '일렉트로', grinder: '그라인더', frost: '냉각탄', vampire: '흡혈탄', water: '물폭탄', shadow: '섀도우', explosive: '고폭탄', intercept: '요격탄', plasma: '플라즈마', echo: '에코', splitter: '분열탄', efire: '화염구', efrag: '불꽃 파편', ewater: '해일탄', eearth: '대지탄', ewind: '돌풍탄' };
+  const ELEM_KEYS = ['efire', 'efrag', 'ewater', 'eearth', 'ewind'];
+  const AREA_KO = { incendiary: '화염 범위', frost: '얼음 범위', water: '물 범위', shadow: '어둠 영역 반경' };
+  const TURN_KO = { frost: '얼음 바닥이 남는 차례', water: '물 범위가 남는 차례', shadow: '어둠 영역이 남는 차례' };
+  const TIME_KO = { incendiary: '불길 지속 시간', electro: '전기장 지속 시간', grinder: '톱니바퀴가 굴러가는 시간' };
+  const ARC_DEG = { plasma: 15, echo: 30 };
+  const n2 = v => String(r2(v));
+  function parts(a, x) {                // 능력치 묶음 x 를 설명 문구 조각들로
+    const t = a.tank, out = [];
+    if (x.hp) out.push(`최대 체력 ${x.hp > 0 ? '+' : ''}${x.hp}`);
+    if (x.heal) out.push(x.heal >= 999 ? '체력 즉시 완전 회복' : `체력 즉시 +${x.heal} 회복`);
+    if (x.dmg) out.push(`주는 피해 ×${n2(x.dmg)}`);
+    if (x.taken) out.push(`받는 피해 ×${n2(x.taken)}`);
+    if (x.fuel) out.push(`이동력 ×${n2(x.fuel)}`);
+    if (x.kindDmg) {   // 같은 값끼리 묶어요
+      const ent = Object.entries(x.kindDmg);
+      if (ent.length >= 4 && ent.every(([k, v]) => ELEM_KEYS.includes(k) && v === ent[0][1])) out.push(`모든 원소탄 피해 ×${n2(ent[0][1])}`);
+      else { const g = {}; ent.forEach(([k, v]) => { (g[v] = g[v] || []).push(KIND_KO[k] || k); }); Object.entries(g).forEach(([v, ns]) => out.push(`${ns.join('·')} 피해 ×${n2(v)}`)); }
+    }
+    if (x.rad) out.push(`${t === null ? '모든 폭발' : t === 'gravity' ? '끌어당기는' : '폭발'} 범위 ×${n2(x.rad)}`);
+    if (x.shells) out.push(`${t === 'splitter' ? '작은 탄' : t === 'cluster' ? '소탄' : '탄'} 수 ×${n2(x.shells)}`);
+    if (x.bounce) out.push(`반사 +${x.bounce}`);
+    if (x.beam) out.push(`굵기·판정 범위 ×${n2(x.beam)}`);
+    if (x.area) out.push(`${AREA_KO[t] || '효과 범위'} ×${n2(x.area)}`);
+    if (x.turns) out.push(`${TURN_KO[t] || '효과가 남는 차례'} +${x.turns}`);
+    if (x.fireMs) out.push(`${TIME_KO[t] || '지속 시간'} ×${n2(x.fireMs)}`);
+    if (x.dual) out.push('듀얼: 2발 발사 · 각 피해 70%');
+    if (x.dud !== undefined) out.push(x.dud === 0 ? '불발 없음' : `불발 확률 ×${n2(x.dud)}`);
+    if (x.missiles) out.push(`미사일 +${x.missiles}발`);
+    if (x.spread) out.push(`미사일 간격 ×${n2(x.spread)}`);
+    if (x.drills) out.push('작은 드릴 2발 추가 (각 피해 50%)');
+    if (x.split >= 4) out.push('튈 때 4개로 분열');
+    if (x.jumbo) out.push('점보: 큰 탄 하나가 3번 튕겨요 (분열 없음)');
+    if (x.grav) out.push(`저격탄 중력 ×${n2(x.grav)}`);
+    if (x.hitr) out.push(`저격탄 피격 범위 ×${n2(x.hitr)}`);
+    if (x.scope) out.push(`조준 점선 길이 ×${n2(x.scope)}`);
+    if (x.drain) out.push(`흡혈 회복 비율 +${Math.round(x.drain * 100)}%p`);
+    if (x.charge0) out.push(`쏜 뒤 충전 ${x.charge0}단계에서 시작`);
+    if (x.icptR) out.push(`요격 범위 ×${n2(x.icptR)}`);
+    if (x.icptP) out.push(`요격 확률 +${Math.round(x.icptP * 100)}%p`);
+    if (x.tickets) out.push(`터렛이 포탄 ${1 + x.tickets}발까지 요격`);
+    if (x.arc) out.push(ARC_DEG[t] ? `부채꼴 각도 ×${n2(x.arc)} (${ARC_DEG[t]}° → ${Math.round(ARC_DEG[t] * x.arc * 10) / 10}°)` : `부채꼴 각도 ×${n2(x.arc)}`);
+    if (x.fall !== undefined) out.push(x.fall === 0 ? '거리 감쇠 없음' : `거리 감쇠 ×${n2(x.fall)}`);
+    if (x.thru) out.push('지형(벽)을 관통해요');
+    if (x.push) out.push(`밀어내기 거리 ×${n2(x.push)}`);
+    if (x.mound) out.push(`흙더미 크기 ×${n2(x.mound)}`);
+    if (x.frags) out.push(`불꽃 파편 +${x.frags}개`);
+    return out;
+  }
+  function describe(id, L) {
+    const a = typeof id === 'string' ? byId[id] : id; if (!a) return '';
+    if (a.curse) return a.desc || '';
+    L = Math.max(1, Math.min(LV_MAX, L | 0 || 1));
+    const out = parts(a, baseModsAt(a, L)), b = L >= LV_MAX ? bonusOf(a) : null;
+    if (b) parts(a, b).forEach((t, k) => out.push('✨ ' + (k ? '' : 'MAX 보너스: ') + t));   // 보너스 줄은 ✨ 로 시작해요 (카드가 금색으로 칠해요)
+    return out.join(' · ') || a.desc || '';
+  }
+
+  function calc(ids) {   // 가진 증강들을 합쳐서 최종 능력치 계산 (같은 증강을 여러 번 골랐으면 그 횟수 = 단계)
     const m = { hp: 0, dmg: 1, taken: 1, fuel: 1, kindDmg: {}, shells: 1, bounce: 0, beam: 1, area: 1, dual: false, missiles: 0, drills: false, split: 2, jumbo: false, rad: 1, dud: 1, fireMs: 1, spread: 1, grav: 1, hitr: 1, scope: 1, turns: 0, drain: 0, charge0: 0, icptR: 1, icptP: 0, tickets: 0, arc: 1, fall: 1, thru: false, push: 1, mound: 1, frags: 0, hiAngle: false, size: 1, windx: 1, shaky: false, vmul: 1, rev: false };
-    ids.forEach(id => {
+    const cnt = {}; ids.forEach(id => { cnt[id] = (cnt[id] || 0) + 1; });
+    Object.entries(cnt).forEach(([id, n]) => {
       const a = byId[id]; if (!a) return;
-      const x = a.mods || {};
+      const x = modsAt(a, Math.min(n, maxLv(a)));
       m.hp += x.hp || 0; m.dmg *= x.dmg || 1; m.taken *= x.taken || 1; m.fuel *= x.fuel || 1;
       m.shells *= x.shells || 1; m.bounce += x.bounce || 0; m.beam *= x.beam || 1; m.area *= x.area || 1; m.dual = m.dual || !!x.dual;
       m.missiles += x.missiles || 0; m.drills = m.drills || !!x.drills; m.split = Math.max(m.split, x.split || 2); m.jumbo = m.jumbo || !!x.jumbo;
@@ -248,10 +433,12 @@
     const list = cands.filter(a => rarOf(a) === pick.id);
     return list[Math.floor(Math.random() * list.length)];
   }
-  function offer(tank, have = [], n = 3) {   // 이 탱크에게 보여줄 선택지 n개 (이미 가진 증강은 제외, 등급이 높을수록 드물게)
-    let ok = POOL.filter(a => !a.curse && !have.includes(a.id) && (a.tank === null || a.tank === tank));
+  function offer(tank, have = [], n = 3, banned = []) {   // 이 탱크에게 보여줄 선택지 n개 (3단계가 된 증강·banned 는 제외, 이미 가진 증강은 강화로 나와요, 등급이 높을수록 드물게)
+    let ok = POOL.filter(a => !a.curse && !banned.includes(a.id) && (a.tank === null || a.tank === tank) && levelOf(have, a.id) < maxLv(a));
     const out = [], takeOne = cands => { const a = draw(cands); if (a) { out.push(a); ok = ok.filter(o => o !== a); } };
-    for (let k = 0; k < Math.min(SPECIFIC_SLOTS, n); k++) { const sp = ok.filter(a => a.tank === tank); if (sp.length) takeOne(sp); }
+    const own = ok.filter(a => levelOf(have, a.id) > 0);   // 강화 칸: 이미 가진 증강(3단계 미만) 하나를 끼워 넣어요
+    if (own.length && n > 0 && Math.random() < UPGRADE_CHANCE) takeOne(own);
+    for (let need = Math.min(SPECIFIC_SLOTS, n) - out.filter(a => a.tank === tank).length; need > 0; need--) { const sp = ok.filter(a => a.tank === tank); if (sp.length) takeOne(sp); }
     while (out.length < n && ok.length) takeOne(ok);
     return shuffle(out).map(a => a.id);
   }
@@ -259,7 +446,7 @@
   // 카오스 서든데스: 무작위 증강 1개 (curseRate 확률로 저주, 아니면 이 탱크가 받을 수 있는 이로운 증강을 등급 가중치로)
   function chaosPick(tank, have = [], curseRate = .5) {
     const curses = POOL.filter(a => a.curse && !have.includes(a.id));
-    const buffs = POOL.filter(a => !a.curse && !have.includes(a.id) && (a.tank === null || a.tank === tank));
+    const buffs = POOL.filter(a => !a.curse && (a.tank === null || a.tank === tank) && levelOf(have, a.id) < maxLv(a));
     const useCurse = curses.length && (Math.random() < curseRate || !buffs.length);
     if (useCurse) return curses[Math.floor(Math.random() * curses.length)].id;
     const b = buffs.length ? draw(buffs) : null;
@@ -282,7 +469,7 @@
     return out.sort(() => Math.random() - .5);
   }
 
-  const api = { POOL, byId, calc, offer, chaosPick, chaosOffer, RARITY, SPECIFIC_SLOTS, PICK_MS };
+  const api = { POOL, byId, calc, offer, chaosPick, chaosOffer, RARITY, SPECIFIC_SLOTS, PICK_MS, LV_MAX, LV_F, UPGRADE_CHANCE, modsAt, baseModsAt, bonusOf, maxLv, levelOf, describe };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FAUG = api;
 })(this);
