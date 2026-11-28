@@ -93,7 +93,7 @@ const BURST_SEC = 2.5;                                                    // 화
 const BURST_STEPS = Math.round(BURST_SEC * 60 * FMAP.SHOT_SPEED) * 4;
 const BURST_N = 10, BURST_V = [140, 230];                                 // 작은 탄 수 / 속도 범위
 const SPLIT_CFG = { steps: SPLIT_STEPS, n: SPLIT_N, v: SPLIT_V, fan: SPLIT_FAN, ring: false };
-const BURST_CFG = { steps: BURST_STEPS, n: BURST_N, v: BURST_V, fan: 180, ring: true };                                // 작은 탄이 퍼지는 각도(위쪽 기준 ±도) / 속도 범위 (융단 폭격처럼 너무 멀리 가지 않게)
+const BURST_CFG = { steps: BURST_STEPS, n: BURST_N, v: BURST_V, fan: 180, ring: true, inh: .7 };   // inh: 본체 속도를 파편이 물려받는 비율                                // 작은 탄이 퍼지는 각도(위쪽 기준 ±도) / 속도 범위 (융단 폭격처럼 너무 멀리 가지 않게)
 const EXPL_SPEED = 1.35;   // 고폭탄 탄속 배율: 최대 사거리 ≈ 5800px 로 월드 폭(5000px)보다 길어서 맵 어디든 닿아요 (한 걸음 22.5px < 피격 반경 23.4px 라 탱크를 건너뛰지도 않아요) — 클라이언트(index.html)와 같아야 해요
 const SPEED = { heavy: Math.sqrt(0.7), gravity: Math.sqrt(0.7), explosive: EXPL_SPEED };   // 광폭탄·중력탄 탄속: 사거리가 속도²에 비례하므로 사거리 70%
 const SLOW_ANIM = { heavy: .6, gravity: .6, explosive: EXPL_SPEED };   // 고폭탄은 탄속이 빠른 만큼 화면에서도 빨리 날아가요 (비행 시간은 기본탄과 비슷)   // 화면에서 날아가는 속도 배율 (클라이언트와 같아야 해요)
@@ -512,7 +512,11 @@ function splitFlight(g, shooter, angle, power, cfg = SPLIT_CFG) {   // cfg: 분�
       const px = x, py = y; x += vx * dt; y += vy * dt;
       const rb = FMAP.ringBounce(g.rings, px, py, x, y, vx, vy);
       if (rb) { x = rb.x; y = rb.y; vx = rb.vx; vy = rb.vy; }
-      if (x < 0 || x >= W || y > H) return [{ path, impact: null, fizzled: false, vx, vy }];   // 맵 밖으로 사라지면 안 터져요
+      if (x < 0 || x >= W) {   // 맵 양끝 벽에 튕겨요 (분열탄·파열탄 본체)
+        x = x < 0 ? 0 : W - 1; vx = -vx * SPLIT_FRICTION;
+        if (!bnc.length || path.length - 1 - bnc[bnc.length - 1] > 3) bnc.push(path.length);
+      }
+      if (y > H) return [{ path, impact: null, fizzled: false, vx, vy }];   // 아래로 떨어져 사라지면 안 터져요
       const xi = Math.floor(x);
       if (y >= g.terrain[xi]) {   // 땅에 닿았어요: 경사면 기울기로 튕겨요 (아직 3초 전이라 터지지 않아요)
         const l = g.terrain[Math.max(0, xi - 3)], r = g.terrain[Math.min(W - 1, xi + 3)], nx0 = (r - l) / 6, nl = Math.hypot(nx0, 1), nx = nx0 / nl, ny = -1 / nl;
@@ -531,7 +535,7 @@ function splitFlight(g, shooter, angle, power, cfg = SPLIT_CFG) {   // cfg: 분�
   const main = { path, impact: [x, y], bnc, vx, vy, hit, early: hit != null }, out = [main], n = Math.round(cfg.n * p.mods.shells);
   for (let k = 0; k < n; k++) {   // 작은 탄: 위쪽 부채꼴로 고르게 퍼져요 (속도는 번갈아 빠르고 느리게)
     const ang = (cfg.ring ? -90 + 360 * k / n : -90 + (n > 1 ? -cfg.fan + 2 * cfg.fan * k / (n - 1) : 0)) * Math.PI / 180, sp = (k % 2 ? cfg.v[1] : cfg.v[0]) * K;   // 파열탄은 360° 를 고르게 나눠서 사방으로
-    let bx = x, by = y - (cfg.ring ? 9 : 6), bvx = sp * Math.cos(ang), bvy = sp * Math.sin(ang), imp = null;
+    let bx = x, by = y - (cfg.ring ? 9 : 6), bvx = sp * Math.cos(ang) + (cfg.inh ? vx * cfg.inh : 0), bvy = sp * Math.sin(ang) + (cfg.inh ? vy * cfg.inh : 0), imp = null;   // 파열탄: 본체의 진행 속도가 폭발의 추진력으로 이어져 파편이 그 방향으로 더 멀리 뻗어요
     const sub = path.slice();
     for (let t = 0; t < 1200; t++) {
       bvx += g.wind * 1.5 * K * dt * p.mods.windx; bvy += G * dt;
